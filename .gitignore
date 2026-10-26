@@ -14,3 +14,7 @@ __pycache__/
 .idea/
 *.iml
 dist/
+**/.kotlin/
+server/backups/
+.env.*
+*.deeraft-tmp

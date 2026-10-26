@@ -57,7 +57,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('今天，也一起玩。'), findsOneWidget);
+    expect(find.text('服务器状态'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await expectLater(
       find.byKey(const Key('screen')),
@@ -68,7 +68,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     }
-    expect(find.text('我的足迹'), findsOneWidget);
+    expect(find.text('个人资料'), findsOneWidget);
   });
   testWidgets('small mobile viewport accommodates login form', (tester) async {
     tester.view.physicalSize = const Size(320, 640);

@@ -60,24 +60,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 64),
-                    const Text(
-                      'YOUR PEOPLE. YOUR WORLD.',
-                      style: TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 10,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 40),
                     Text(
-                      _register ? '从这里，\n加入我们的世界。' : '熟悉的朋友，\n在这里相聚。',
+                      _register ? '注册' : '登录',
                       style: Theme.of(context).textTheme.headlineLarge,
-                    ),
-                    const SizedBox(height: 18),
-                    Text(
-                      _register ? '使用网站账号体系，注册后即可登录。' : '登录 Deeraft，看看今天谁在线。',
-                      style: const TextStyle(color: AppColors.muted),
                     ),
                     const SizedBox(height: 36),
                     TextFormField(
@@ -136,7 +122,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Text(_register ? '注册并登录' : '进入 Deeraft  →'),
+                            : Text(_register ? '注册' : '登录'),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -176,22 +162,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             ? null
                             : ref.read(appProvider.notifier).enterDemo,
                         child: const Text(
-                          '先看看界面 · 演示模式',
+                          '演示模式',
                           style: TextStyle(
                             color: AppColors.muted,
                             fontSize: 12,
                           ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Center(
-                      child: Text(
-                        'DEERAFT  /  与你一起，创造更多',
-                        style: TextStyle(
-                          color: AppColors.muted,
-                          fontSize: 10,
-                          letterSpacing: 1,
                         ),
                       ),
                     ),
@@ -396,13 +371,11 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 132),
         children: [
-          const Eyebrow('THE DEERAFT COMMUNITY'),
-          const SizedBox(height: 10),
-          Text('今天，也一起玩。', style: Theme.of(context).textTheme.headlineMedium),
+          Text('服务器状态', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
           Text(
             community == null
-                ? '正在连接我们的世界…'
+                ? '正在加载…'
                 : '${DateFormat('MM.dd · EEE').format(community.fetchedAt.toLocal())}   /   ${DateFormat('HH:mm:ss').format(community.fetchedAt.toLocal())} 更新',
             style: Theme.of(context).textTheme.bodySmall,
           ),
@@ -426,7 +399,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     const SizedBox(width: 10),
                     const Expanded(
                       child: Text(
-                        '我们的方块世界',
+                        'Deeraft',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           fontSize: 16,
@@ -518,7 +491,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           ),
           const SizedBox(height: 30),
           SectionTitle(
-            '谁在这里',
+            '在线玩家',
             action: SegmentedToggle(
               labels: const ['真人', '全部'],
               selected: _allPlayers ? 1 : 0,
@@ -568,11 +541,11 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
             ),
           const SizedBox(height: 10),
           const Text(
-            '真人分类来自社区识别名单，不代表入服权限。',
+            '真人名单用于玩家分类。',
             style: TextStyle(fontSize: 10, color: AppColors.muted),
           ),
           const SizedBox(height: 30),
-          const SectionTitle('语音里见', trailing: 'KOOK'),
+          const SectionTitle('KOOK'),
           if (community == null || !community.kookSource.available)
             SurfaceCard(
               child: EmptyContent(
@@ -625,7 +598,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                         const Padding(
                           padding: EdgeInsets.only(top: 12),
                           child: Text(
-                            '安静的小角落，等你加入',
+                            '暂无成员',
                             style: TextStyle(
                               color: AppColors.muted,
                               fontSize: 12,
@@ -673,17 +646,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                 ),
               );
             }),
-          const SizedBox(height: 18),
-          const Center(
-            child: Text(
-              'GOOD TIMES, BETTER TOGETHER.',
-              style: TextStyle(
-                fontSize: 9,
-                letterSpacing: 2,
-                color: AppColors.muted,
-              ),
-            ),
-          ),
         ],
       ),
     );
@@ -701,14 +663,7 @@ class ServersScreen extends ConsumerWidget {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 22, 24, 132),
         children: [
-          const Eyebrow('WORLDS TO EXPLORE'),
-          const SizedBox(height: 10),
-          Text('选一个世界。', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 10),
-          const Text(
-            '网站托管的服务器与当前运行状态',
-            style: TextStyle(color: AppColors.muted, fontSize: 13),
-          ),
+          Text('服务器列表', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 28),
           if (state.serversError != null) ErrorNotice(state.serversError!),
           if (state.servers.isEmpty && state.serversError == null)
@@ -926,9 +881,7 @@ class ChatScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Eyebrow('CONVERSATIONS IN THE WORLD'),
-              const SizedBox(height: 10),
-              Text('世界频道', style: Theme.of(context).textTheme.headlineMedium),
+              Text('聊天消息', style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -954,7 +907,7 @@ class ChatScreen extends ConsumerWidget {
               ? const Center(
                   child: EmptyContent(
                     icon: Icons.forum_outlined,
-                    text: '等待世界里的下一句话…',
+                    text: '暂无聊天消息',
                   ),
                 )
               : ListView.builder(
@@ -1056,9 +1009,7 @@ class ProfileScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 22, 24, 132),
       children: [
-        const Eyebrow('A LITTLE ABOUT YOU'),
-        const SizedBox(height: 10),
-        Text('我的足迹', style: Theme.of(context).textTheme.headlineMedium),
+        Text('个人资料', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 28),
         SurfaceCard(
           child: Column(
@@ -1128,7 +1079,7 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 28),
-        const SectionTitle('在这里的时光'),
+        const SectionTitle('游玩时长统计'),
         SurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1237,7 +1188,7 @@ class ProfileScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 10),
         const Text(
-          '累计时长来自世界存档；每日时长来自上下线日志，统计口径不同。',
+          '累计时长：存档统计；每日在线：日志统计。',
           style: TextStyle(color: AppColors.muted, fontSize: 10),
         ),
         const SizedBox(height: 28),
@@ -1297,7 +1248,7 @@ Future<void> showConnectionSettings(BuildContext context, WidgetRef ref) async {
               ),
               const SizedBox(height: 12),
               const Text(
-                '填写网站地址，支持现有 Deeraft HTTP 入口及 HTTPS。更换地址会退出当前账号。',
+                '更换地址后需重新登录。',
                 style: TextStyle(color: AppColors.muted, fontSize: 13),
               ),
               const SizedBox(height: 20),

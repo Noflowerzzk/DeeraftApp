@@ -11,7 +11,7 @@ Json demoCommunity() => {
   },
   'mc': {
     'online': true,
-    'motd': 'Deeraft · 一起创造一点不一样',
+    'motd': 'Deeraft',
     'version': 'Java 1.21.4',
     'latency_ms': 32,
     'online_count': 12,
@@ -64,17 +64,17 @@ Json demoCommunity() => {
   },
 };
 const demoServers = <Json>[
-  {'name': 'SSCG26.3', 'version': '1.21.4', 'motd': '一起建造，慢慢探索。', 'img': ''},
+  {'name': 'SSCG26.3', 'version': '1.21.4', 'motd': '生存服务器', 'img': ''},
   {
     'name': 'BlockRacing_New',
     'version': '1.20.4',
-    'motd': '下一个方块，下一次突破。',
+    'motd': '跑酷服务器',
     'img': '',
   },
   {
     'name': 'Deeraft Creative',
     'version': '1.21.4',
-    'motd': '把脑海里的世界搭出来。',
+    'motd': '创造服务器',
     'img': '',
   },
 ];

@@ -1,154 +1,690 @@
---- a/backend/app/controllers/mobile_oauth.py
-+++ b/backend/app/controllers/mobile_oauth.py
-@@ -1,13 +1,16 @@
- """Uses the existing registered Microsoft callback URI; no Azure change required."""
- from datetime import timedelta
- from urllib.parse import urlencode
--from fastapi import APIRouter, HTTPException
-+from fastapi import APIRouter, HTTPException, Depends
- from fastapi.responses import RedirectResponse
- from pydantic import BaseModel, Field
- from app.services import microsoft_auth_service
- from app.services.mobile_oauth_store import OAuthStore
- from app.services.user_service import UserService
- from app.utils.jwt import create_access_token
-+from app.utils.jwt import verify_token
-+from app.config.database import get_db
-+from sqlalchemy.orm import Session
- 
- router = APIRouter(prefix='/api/v1/mobile/auth/microsoft', tags=['移动端认证'])
- store = OAuthStore()
-@@ -32,11 +35,15 @@
- 
- 
- @router.post('/exchange')
--def exchange(payload: ExchangeRequest):
-+def exchange(payload: ExchangeRequest, db: Session = Depends(get_db)):
-     token = store.exchange(payload.code, payload.code_verifier)
-     if not token:
-         raise HTTPException(400, '交换码无效或已过期')
--    return {'access_token': token, 'token_type': 'bearer'}
-+    username=verify_token(token)
-+    user=UserService.get_user_by_username(db,username) if username else None
-+    if not user:raise HTTPException(401,'登录已失效，请重试')
-+    from app.controllers.mobile_session import session_for
-+    return session_for(user)
- 
- 
- def complete_callback(*, code, state, error, db):
---- a/backend/app/controllers/mobile_session.py
-+++ b/backend/app/controllers/mobile_session.py
-@@ -0,0 +1,49 @@
-+from datetime import timedelta
-+from fastapi import APIRouter, Depends, HTTPException
-+from pydantic import BaseModel, Field
-+from sqlalchemy.orm import Session
-+from app.config.database import get_db
-+from app.controllers.auth_controller import login as website_login
-+from app.models.user import User
-+from app.schemas.user import UserLogin
-+from app.services.user_service import UserService
-+from app.services.mobile_session_store import SessionStore
-+from app.utils.auth import get_current_user
-+from app.utils.jwt import create_access_token
+--- a/backend/app/services/chat_history_service.py
++++ b/backend/app/services/chat_history_service.py
+@@ -0,0 +1,114 @@
++"""One server-owned collector, independent of HTTP/WS client lifetimes."""
++import asyncio
++import logging
++import time
++from fastapi import WebSocketDisconnect
++from app.services.chat_history_store import ChatHistoryStore
++from app.services.server_service import server_service
 +
-+router=APIRouter(prefix='/api/v1/mobile/auth',tags=['移动端认证'])
-+sessions=SessionStore()
++logger=logging.getLogger(__name__)
 +
-+class RefreshRequest(BaseModel):
-+    refresh_token: str = Field(min_length=40,max_length=256)
++class ChatHistoryService:
++    def __init__(self,store=None,provider=None,interval=1):
++        self.store=store or ChatHistoryStore()
++        self.provider=provider or server_service
++        self.interval=interval
++        self.current_server=None
++        self._next_discovery=0
++        self._task=None
++        self._subscribers=set()
++        self._tracked=set()
++        self._scan_task=None
++        self._scan_lock=asyncio.Lock()
 +
-+def access_for(user):
-+    return create_access_token(data={'sub':user.username,'role':user.role},expires_delta=timedelta(days=1))
++    def _scan(self):
++        changed=False
++        if time.monotonic()>=self._next_discovery:
++            active=self.provider.get_running_server()
++            self._next_discovery=time.monotonic()+5
++            if active:
++                self._tracked.add(active)
++                if active!=self.current_server:
++                    self.current_server=active;self.store.remember_server(active);changed=True
++        messages=[]
++        # Also drain the final lines after an instance stops or another starts.
++        for server in sorted(self._tracked):
++            messages.extend(self.store.ingest(server,self.provider.get_latest_log_path(server)))
++        return changed,messages
 +
-+def session_for(user):
-+    return {'access_token':access_for(user),'refresh_token':sessions.issue(user.id),'token_type':'bearer'}
++    async def _cycle(self):
++        async with self._scan_lock:
++            self._scan_task=asyncio.create_task(asyncio.to_thread(self._scan))
++            changed,messages=await asyncio.shield(self._scan_task)
++        if changed:self._publish({'reset':True})
++        if messages:self._publish({'messages':messages})
 +
-+@router.post('/login')
-+async def login(payload:UserLogin,db:Session=Depends(get_db)):
-+    await website_login(payload,db=db)
-+    user=UserService.get_user_by_username(db,payload.username)
-+    return session_for(user)
++    def _publish(self,event):
++        for queue in tuple(self._subscribers):
++            if queue.full():
++                while not queue.empty():queue.get_nowait()
++                queue.put_nowait({'reset':True})
++            else:queue.put_nowait(event)
 +
-+@router.post('/session')
-+def upgrade_session(user:User=Depends(get_current_user)):
-+    """Upgrade a still-valid login from older App versions without reauthentication."""
-+    return session_for(user)
++    async def start(self):
++        if self._task is not None:return
++        self.current_server=await asyncio.to_thread(self.store.last_server)
++        if self.current_server:self._tracked.add(self.current_server)
++        try:await self._cycle()
++        except Exception:logger.exception('Initial chat collection failed; will retry')
++        self._task=asyncio.create_task(self._run(),name='chat-history-collector')
 +
-+@router.post('/refresh')
-+def refresh(payload:RefreshRequest,db:Session=Depends(get_db)):
-+    user_id=sessions.resolve(payload.refresh_token)
-+    user=db.query(User).filter(User.id==user_id).first() if user_id is not None else None
-+    if user is None:
-+        sessions.revoke(payload.refresh_token)
-+        raise HTTPException(401,'登录已失效，请重新登录')
-+    return {'access_token':access_for(user),'token_type':'bearer'}
++    async def _run(self):
++        while True:
++            await asyncio.sleep(self.interval)
++            try:await self._cycle()
++            except Exception:logger.exception('Chat collection failed; checkpoint retained for retry')
 +
-+@router.post('/logout')
-+def logout(payload:RefreshRequest):
-+    sessions.revoke(payload.refresh_token)
-+    return {'ok':True}
---- a/backend/app/services/mobile_session_store.py
-+++ b/backend/app/services/mobile_session_store.py
-@@ -0,0 +1,50 @@
-+"""Revocable opaque mobile sessions; only SHA-256 token digests are persisted."""
++    async def stop(self):
++        if self._task is not None:
++            self._task.cancel()
++            try:await self._task
++            except asyncio.CancelledError:pass
++            self._task=None
++        if self._scan_task is not None:
++            await asyncio.gather(self._scan_task,return_exceptions=True)
++        await asyncio.to_thread(self.store.close)
++
++    async def history(self,limit=100):
++        return await asyncio.to_thread(self.store.history,self.current_server,limit)
++
++    async def serve(self,websocket):
++        await websocket.accept()
++        queue=asyncio.Queue(maxsize=64);self._subscribers.add(queue)
++        async def send():
++            server=None;last_id=0
++            async def snapshot():
++                nonlocal server,last_id
++                server=self.current_server
++                history=await asyncio.to_thread(self.store.history,server,100)
++                last_id=max((m['id'] for m in history['messages']),default=0)
++                await websocket.send_json({'type':'initial_chat_messages','messages':history['messages'],
++                                           'count':history['returned'],'total_lines':history['total']})
++            await snapshot()
++            while True:
++                event=await queue.get()
++                if event.get('reset') or server!=self.current_server:
++                    await snapshot();continue
++                rows=[m for m in event.get('messages',[]) if m['server_name']==server and m['id']>last_id]
++                if rows:
++                    await websocket.send_json({'type':'new_chat_messages','messages':rows,'count':len(rows)})
++                    last_id=max(m['id'] for m in rows)
++        async def receive():
++            while True:
++                if await websocket.receive_text()=='ping':await websocket.send_text('pong')
++        tasks=[asyncio.create_task(send()),asyncio.create_task(receive())]
++        try:
++            done,_=await asyncio.wait(tasks,return_when=asyncio.FIRST_COMPLETED)
++            for task in done:task.result()
++        except WebSocketDisconnect:pass
++        finally:
++            self._subscribers.discard(queue)
++            for task in tasks:task.cancel()
++            await asyncio.gather(*tasks,return_exceptions=True)
++
++chat_history_service=ChatHistoryService()
+--- a/backend/app/services/chat_history_store.py
++++ b/backend/app/services/chat_history_store.py
+@@ -0,0 +1,136 @@
++"""Incremental single-writer log ingestion with durable byte checkpoints."""
 +from contextlib import contextmanager
++from datetime import datetime, timezone
 +import hashlib
 +import os
 +from pathlib import Path
-+import secrets
++import re
 +import sqlite3
-+import time
 +
-+IDLE_SECONDS = 90 * 86400
-+MAX_SECONDS = 365 * 86400
++MAX_BATCH = 1024 * 1024
++ANSI = re.compile(r'\x1b\[[0-9;]*m')
++INFO = re.compile(r'\[(?:Server thread|Async Chat Thread[^\]]*)/INFO\]')
++CHAT = re.compile(r'<([^>]+)>\s+(.+)')
++PRESENCE = re.compile(r'([^\s]+)\s+(joined|left) the game')
++CLOCK = re.compile(r'(?<!\d)(\d{2}:\d{2}:\d{2})(?:\.\d+)?')
 +
-+class SessionStore:
-+    def __init__(self, path=None, clock=time.time):
-+        self.path=Path(path or Path(__file__).resolve().parents[2]/'data/mobile_sessions.sqlite3')
-+        self.clock=clock
++def parse_message(raw):
++    line=ANSI.sub('',raw.decode('utf-8',errors='replace') if isinstance(raw,bytes) else raw).rstrip('\r\n')
++    header=INFO.search(line)
++    if not header:return None
++    clock=CLOCK.search(line[:header.start()])
++    time=clock.group(1) if clock else '00:00:00'
++    text=line[header.end():]
++    chat=CHAT.search(text)
++    if chat:return {'time':time,'player':chat.group(1),'message':chat.group(2),'type':'chat'}
++    presence=PRESENCE.search(text)
++    if presence:
++        joined=presence.group(2)=='joined'
++        return {'time':time,'player':presence.group(1),'message':'joined the game' if joined else 'left the game','type':'join' if joined else 'leave'}
++    return None
++
++class ChatHistoryStore:
++    def __init__(self,path=None):
++        self.path=Path(path or Path(__file__).resolve().parents[2]/'data/chat_history.sqlite3')
++        self.handles={}
 +
 +    @contextmanager
 +    def connect(self):
 +        self.path.parent.mkdir(parents=True,exist_ok=True)
-+        conn=sqlite3.connect(self.path,timeout=5,isolation_level=None)
++        db=sqlite3.connect(self.path,timeout=5,isolation_level=None)
++        db.row_factory=sqlite3.Row
 +        try:
 +            os.chmod(self.path,0o600)
-+            conn.execute('CREATE TABLE IF NOT EXISTS sessions (digest TEXT PRIMARY KEY,user_id INTEGER NOT NULL,expires REAL NOT NULL,absolute_expires REAL NOT NULL)')
-+            conn.execute('DELETE FROM sessions WHERE expires<=? OR absolute_expires<=?',(self.clock(),self.clock()))
-+            yield conn
-+        finally:conn.close()
++            db.execute('PRAGMA journal_mode=WAL')
++            db.execute('CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY AUTOINCREMENT,server_name TEXT NOT NULL,time TEXT NOT NULL,player TEXT NOT NULL,message TEXT NOT NULL,type TEXT NOT NULL,source TEXT NOT NULL,generation INTEGER NOT NULL,position INTEGER NOT NULL,captured_at TEXT NOT NULL,UNIQUE(source,generation,position))')
++            db.execute('CREATE INDEX IF NOT EXISTS chat_server_id ON messages(server_name,id)')
++            db.execute('CREATE TABLE IF NOT EXISTS checkpoints (source TEXT PRIMARY KEY,dev INTEGER,ino INTEGER,offset INTEGER,generation INTEGER,anchor TEXT,skipping INTEGER NOT NULL DEFAULT 0)')
++            db.execute('CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY,value TEXT)')
++            yield db
++        finally:db.close()
 +
-+    def issue(self,user_id):
-+        token=secrets.token_urlsafe(48)
-+        now=self.clock()
++    def last_server(self):
 +        with self.connect() as db:
-+            db.execute('INSERT INTO sessions VALUES(?,?,?,?)',(self.digest(token),user_id,now+IDLE_SECONDS,now+MAX_SECONDS))
-+        return token
++            row=db.execute("SELECT value FROM metadata WHERE key='server'").fetchone()
++            return row['value'] if row else None
++
++    def remember_server(self,server):
++        with self.connect() as db:
++            db.execute("INSERT INTO metadata VALUES('server',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",(server,))
 +
 +    @staticmethod
-+    def digest(token):return hashlib.sha256(token.encode()).hexdigest()
++    def anchor(handle,offset):
++        handle.seek(max(0,offset-64))
++        return hashlib.sha256(handle.read(min(offset,64))).hexdigest()
 +
-+    def resolve(self,token):
-+        now=self.clock()
++    def _ingest_handle(self,server,source,handle,final=False):
++        stat=os.fstat(handle.fileno())
 +        with self.connect() as db:
 +            db.execute('BEGIN IMMEDIATE')
-+            row=db.execute('SELECT user_id,absolute_expires FROM sessions WHERE digest=? AND expires>? AND absolute_expires>?',
-+                           (self.digest(token),now,now)).fetchone()
-+            if row:db.execute('UPDATE sessions SET expires=? WHERE digest=?',(min(now+IDLE_SECONDS,row[1]),self.digest(token)))
++            row=db.execute('SELECT * FROM checkpoints WHERE source=?',(source,)).fetchone()
++            same=row is not None and (row['dev'],row['ino'])==(stat.st_dev,stat.st_ino)
++            intact=same and stat.st_size>=row['offset'] and self.anchor(handle,row['offset'])==row['anchor']
++            offset=row['offset'] if intact else 0
++            generation=row['generation'] if intact else (row['generation']+1 if row else 0)
++            skipping=bool(row['skipping']) if intact else False
++            handle.seek(offset)
++            data=handle.read(MAX_BATCH)
++            end=data.rfind(b'\n')+1
++            if final and len(data)<MAX_BATCH:end=len(data)
++            messages=[]
++            if end:
++                consumed=data[:end]
++                position=offset
++                for raw in consumed.splitlines(keepends=True):
++                    if skipping:skipping=False
++                    else:
++                        message=parse_message(raw)
++                        if message:
++                            result=db.execute('INSERT OR IGNORE INTO messages(server_name,time,player,message,type,source,generation,position,captured_at) VALUES(?,?,?,?,?,?,?,?,?)',
++                                (server,message['time'],message['player'],message['message'],message['type'],source,generation,position,datetime.now(timezone.utc).isoformat()))
++                            if result.rowcount:messages.append({'id':result.lastrowid,'server_name':server,**message})
++                    position+=len(raw)
++                offset+=end
++            elif len(data)==MAX_BATCH:
++                # Skip a pathological oversized log line without blocking all later chat.
++                offset+=len(data);skipping=True
++            # A normal incomplete UTF-8/log line is retried after its newline arrives.
++            anchor=self.anchor(handle,offset)
++            db.execute('INSERT INTO checkpoints VALUES(?,?,?,?,?,?,?) ON CONFLICT(source) DO UPDATE SET dev=excluded.dev,ino=excluded.ino,offset=excluded.offset,generation=excluded.generation,anchor=excluded.anchor,skipping=excluded.skipping',
++                       (source,stat.st_dev,stat.st_ino,offset,generation,anchor,int(skipping)))
 +            db.commit()
-+        return row[0] if row else None
++        return messages, offset>=os.fstat(handle.fileno()).st_size
 +
-+    def revoke(self,token):
-+        with self.connect() as db:db.execute('DELETE FROM sessions WHERE digest=?',(self.digest(token),))
++    def ingest(self,server,path):
++        path=Path(path);source=server+'\0'+str(path.absolute())
++        handle=self.handles.get(source)
++        try:current=path.stat()
++        except FileNotFoundError:current=None
++        result=[]
++        if handle is not None:
++            opened=os.fstat(handle.fileno())
++            if current is None or (opened.st_dev,opened.st_ino)!=(current.st_dev,current.st_ino):
++                messages,finished=self._ingest_handle(server,source,handle,final=True)
++                result.extend(messages)
++                if not finished:return result
++                handle.close();self.handles.pop(source,None);handle=None
++        if handle is None:
++            if current is None:return result
++            handle=path.open('rb');self.handles[source]=handle
++        messages,_=self._ingest_handle(server,source,handle)
++        return result+messages
++
++    def history(self,server,limit=100):
++        if server is None:return {'messages':[],'total':0,'returned':0}
++        with self.connect() as db:
++            db.execute('BEGIN')
++            total=db.execute('SELECT COUNT(*) FROM messages WHERE server_name=?',(server,)).fetchone()[0]
++            sql='SELECT id,time,player,message,type FROM messages WHERE server_name=? ORDER BY id DESC'
++            args=[server]
++            if limit>0:sql+=' LIMIT ?';args.append(limit)
++            rows=[dict(row) for row in db.execute(sql,args).fetchall()][::-1]
++        return {'messages':rows,'total':total,'returned':len(rows)}
++
++    def close(self):
++        for handle in self.handles.values():handle.close()
++        self.handles.clear()
 --- a/backend/main.py
 +++ b/backend/main.py
-@@ -83,6 +83,8 @@
- from app.controllers.mobile_oauth import router as mobile_oauth_router
- app.include_router(mobile_router)
- app.include_router(mobile_oauth_router)
-+from app.controllers.mobile_session import router as mobile_session_router
-+app.include_router(mobile_session_router)
- app.include_router(auth_router)
- app.include_router(log_router)  # 包含 /chat 和 /{server_name}/logs/ws WebSocket 路由，必须在 server_router 之前
- app.include_router(server_router)  # 包含 /status/ws WebSocket 路由和 /{server_name} 路由
+@@ -95,11 +95,17 @@
+ async def startup_event():
+     """应用启动时初始化数据库"""
+     init_db()
++    # DEERAFT_CHAT_HISTORY_START
++    from app.services.chat_history_service import chat_history_service
++    await chat_history_service.start()
+ 
+ 
+ @app.on_event("shutdown")
+ async def shutdown_event():
+     """应用关闭时清理资源"""
++    # DEERAFT_CHAT_HISTORY_STOP
++    from app.services.chat_history_service import chat_history_service
++    await chat_history_service.stop()
+     # 取消在线玩家监控任务
+     if online_players_monitor_task and not online_players_monitor_task.done():
+         online_players_monitor_task.cancel()
+--- a/backend/app/controllers/log_controller.py
++++ b/backend/app/controllers/log_controller.py
+@@ -87,150 +87,12 @@
+ @router.get("/chat", response_model=ChatMessageResponse)
+ async def get_chat_message(
+     permission_code: str = Query(..., description="权限码"),
+-    num: int = Query(0, description="返回最新的消息数量，0 代表全部")
++    num: int = Query(0, ge=0, description="返回最新的消息数量，0 代表全部"),
+ ):
+-    """获取服务器聊天消息
+-    
+-    Args:
+-        permission_code: 权限码（必填）
+-        num: 返回最新的消息数量，0 代表全部（默认0）
+-    
+-    Returns:
+-        聊天消息列表，每条消息包含时间、玩家名和消息内容
+-    """
+-    # 验证权限码
+     if permission_code != PERMISSION_CODE:
+-        raise HTTPException(
+-            status_code=status.HTTP_403_FORBIDDEN,
+-            detail="权限码错误"
+-        )
+-    
+-    # 获取正在运行的服务器
+-    server_name = server_service.get_running_server()
+-    if not server_name:
+-        print(f"[DEBUG] GET /chat: 没有服务器正在运行，返回空列表")
+-        # 没有服务器运行时，返回空列表而不是错误
+-        return ChatMessageResponse(
+-            messages=[],
+-            total=0,
+-            returned=0
+-        )
+-    
+-    # 检查服务器目录是否存在
+-    server_path = server_service.get_server_path(server_name)
+-    if not server_path.exists() or not server_path.is_dir():
+-        print(f"[DEBUG] GET /chat: 服务器目录不存在: {server_name}，返回空列表")
+-        return ChatMessageResponse(
+-            messages=[],
+-            total=0,
+-            returned=0
+-        )
+-    
+-    # 查找日志文件
+-    log_file = server_service.get_latest_log_path(server_name)
+-    
+-    if not log_file.exists():
+-        print(f"[DEBUG] GET /chat: 日志文件不存在: {log_file}，返回空列表")
+-        return ChatMessageResponse(
+-            messages=[],
+-            total=0,
+-            returned=0
+-        )
+-    
+-    try:
+-        # 只读取文件的最后N行，避免大文件性能问题
+-        all_lines = read_last_lines(log_file, LOG_READ_WINDOW)
+-        
+-        # 转换所有日志行的时间格式
+-        converted_lines = [convert_log_time_format(line) for line in all_lines]
+-        
+-        # 聊天消息的正则表达式：简化匹配，只关注核心格式 <玩家名> 消息内容
+-        # 匹配格式: ... <玩家名> 消息内容
+-        chat_pattern = re.compile(r'\[.*?\]\s+\[Server thread/INFO\].*?<([^>]+)>\s+(.+)')
+-        
+-        # 玩家上线消息正则：匹配 "玩家名 joined the game"
+-        join_pattern = re.compile(r'\[.*?\]\s+\[Server thread/INFO\].*?([^\s]+)\s+joined the game')
+-        
+-        # 玩家下线消息正则：匹配 "玩家名 left the game"
+-        leave_pattern = re.compile(r'\[.*?\]\s+\[Server thread/INFO\].*?([^\s]+)\s+left the game')
+-        
+-        # 时间提取正则：支持多种格式
+-        # 1. [121月2026 02:21:45.755] - 旧格式（月日年 时分秒）
+-        # 2. [2026-12-01 02:21:45] - 新格式（年-月-日 时分秒）
+-        # 3. [03:49:29] - 简化格式（只有时分秒）
+-        time_pattern = re.compile(r'\[(\d{2})(\d{1,2})月(\d{4})\s+(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?\]|\[(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2}):(\d{2})|\[(\d{2}):(\d{2}):(\d{2})\]')
+-        
+-        chat_messages = []
+-        
+-        # 遍历所有日志行，提取聊天消息和上下线消息
+-        for line in all_lines:
+-            # 提取时间（所有消息类型都需要）
+-            time_match = time_pattern.search(line)
+-            if time_match:
+-                # 检查是哪种格式
+-                if time_match.group(1) is not None:  # 旧格式 [121月2026 02:21:45.755]
+-                    time_str = f"{time_match.group(4)}:{time_match.group(5)}:{time_match.group(6)}"
+-                elif time_match.group(7) is not None:  # 新格式 [2026-12-01 02:21:45]
+-                    time_str = f"{time_match.group(8)}:{time_match.group(9)}:{time_match.group(10)}"
+-                elif time_match.group(11) is not None:  # 简化格式 [03:49:29]
+-                    time_str = f"{time_match.group(11)}:{time_match.group(12)}:{time_match.group(13)}"
+-                else:
+-                    time_str = "00:00:00"  # 默认时间
+-            else:
+-                time_str = "00:00:00"  # 默认时间
+-            
+-            # 尝试匹配聊天消息
+-            match = chat_pattern.search(line)
+-            if match:
+-                player_name = match.group(1)  # 玩家名
+-                message = match.group(2).strip()  # 消息内容
+-                
+-                chat_messages.append({
+-                    "time": time_str,
+-                    "player": player_name,
+-                    "message": message,
+-                    "type": "chat"
+-                })
+-            # 尝试匹配玩家上线消息
+-            elif join_pattern.search(line):
+-                join_match = join_pattern.search(line)
+-                if join_match:
+-                    player_name = join_match.group(1)  # 玩家名
+-                    chat_messages.append({
+-                        "time": time_str,
+-                        "player": player_name,
+-                        "message": "joined the game",
+-                        "type": "join"
+-                    })
+-            # 尝试匹配玩家下线消息
+-            elif leave_pattern.search(line):
+-                leave_match = leave_pattern.search(line)
+-                if leave_match:
+-                    player_name = leave_match.group(1)  # 玩家名
+-                    chat_messages.append({
+-                        "time": time_str,
+-                        "player": player_name,
+-                        "message": "left the game",
+-                        "type": "leave"
+-                    })
+-        
+-        # 如果 num 为 0，返回全部；否则返回最新的 num 条
+-        if num == 0:
+-            result = chat_messages
+-        else:
+-            result = chat_messages[-num:] if len(chat_messages) > num else chat_messages
+-        
+-        # 转换为响应模型
+-        return ChatMessageResponse(
+-            messages=[ChatMessage(**msg) for msg in result],
+-            total=len(chat_messages),
+-            returned=len(result)
+-        )
+-    except Exception as e:
+-        raise HTTPException(
+-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+-            detail=f"读取聊天消息失败: {str(e)}"
+-        )
++        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="权限码错误")
++    from app.services.chat_history_service import chat_history_service
++    return ChatMessageResponse(**(await chat_history_service.history(num)))
+ 
+ 
+ def read_last_lines(file_path: Path, num_lines: int) -> List[str]:
+@@ -1239,251 +1101,13 @@
+ 
+ 
+ @router.websocket("/chat/ws")
+-async def websocket_chat_messages(
+-    websocket: WebSocket,
+-    permission_code: Optional[str] = None
+-):
+-    """WebSocket 端点：实时推送服务器聊天消息
+-    
+-    自动获取当前正在运行的服务器，无需指定服务器名称。
+-    同时只会有一个服务器运行，因此不需要服务器名称参数。
+-    
+-    Args:
+-        websocket: WebSocket 连接
+-        permission_code: 权限码（从查询参数获取）
+-    """
+-    # 验证权限码（从查询参数获取）
+-    if not permission_code:
+-        # 尝试从查询参数获取
+-        query_params = dict(websocket.query_params)
+-        permission_code = query_params.get("permission_code")
+-    
+-    if not permission_code:
+-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="缺少权限码")
+-        return
+-    
+-    # 验证权限码
+-    if permission_code != PERMISSION_CODE:
++async def websocket_chat_messages(websocket: WebSocket, permission_code: Optional[str] = None):
++    permission_code = permission_code or websocket.query_params.get("permission_code")
++    if not permission_code or permission_code != PERMISSION_CODE:
+         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="权限码错误")
+         return
+-    
+-    # 获取当前正在运行的服务器
+-    server_name = server_service.get_running_server()
+-    if not server_name:
+-        await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA, reason="当前没有服务器正在运行")
+-        return
+-    
+-    # 检查服务器目录是否存在
+-    server_path = server_service.get_server_path(server_name)
+-    if not server_path.exists() or not server_path.is_dir():
+-        await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA, reason="服务器目录不存在")
+-        return
+-    
+-    # 检查日志文件是否存在
+-    log_file = server_service.get_latest_log_path(server_name)
+-    if not log_file.exists():
+-        await websocket.close(code=status.WS_1003_UNSUPPORTED_DATA, reason="日志文件不存在")
+-        return
+-    
+-    # 接受 WebSocket 连接
+-    await websocket.accept()
+-    
+-    # 检查是否已有监控任务在运行（可能监控的是其他服务器）
+-    # 如果有，检查是否监控的是当前服务器
+-    existing_task_server = None
+-    for task_server, task in chat_monitor_tasks.items():
+-        if not task.done():
+-            existing_task_server = task_server
+-            break
+-    
+-    # 如果已有监控任务但监控的不是当前服务器，需要迁移连接
+-    if existing_task_server and existing_task_server != server_name:
+-        print(f"[DEBUG] 检测到监控任务监控的是不同服务器: {existing_task_server} -> {server_name}")
+-        # 将新连接添加到当前服务器
+-        if server_name not in chat_websocket_connections:
+-            chat_websocket_connections[server_name] = set()
+-        chat_websocket_connections[server_name].add(websocket)
+-        # 监控任务会在下次循环中自动检测到服务器切换并更新
+-    else:
+-        # 添加到连接集合
+-        if server_name not in chat_websocket_connections:
+-            chat_websocket_connections[server_name] = set()
+-        chat_websocket_connections[server_name].add(websocket)
+-        
+-        # 如果还没有监控任务，启动一个
+-        if not existing_task_server or chat_monitor_tasks[existing_task_server].done():
+-            print(f"[DEBUG] 启动聊天消息监控任务: {server_name}")
+-            # 使用第一个连接的服务器名称作为任务键（任务会自动检测服务器切换）
+-            task_key = existing_task_server if existing_task_server else server_name
+-            chat_monitor_tasks[task_key] = asyncio.create_task(monitor_chat_messages(server_name))
+-        else:
+-            print(f"[DEBUG] 聊天消息监控任务已存在: {existing_task_server}")
+-    
+-    # 发送初始聊天消息（最后100条）
+-    # 使用线程池异步读取，避免阻塞事件循环
+-    try:
+-        def read_last_chat_messages_sync(file_path: Path, num_messages: int = 100):
+-            """同步读取文件的最后N条聊天消息（包括聊天、上线、下线消息）
+-            
+-            只读取文件的最后LOG_READ_WINDOW行，避免大文件性能问题
+-            """
+-            from collections import deque
+-            
+-            # 聊天消息的正则表达式：简化匹配，只关注核心格式 <玩家名> 消息内容
+-            chat_pattern = re.compile(r'\[.*?\]\s+\[Server thread/INFO\].*?<([^>]+)>\s+(.+)')
+-            
+-            # 玩家上线消息正则：匹配 "玩家名 joined the game"
+-            join_pattern = re.compile(r'\[.*?\]\s+\[Server thread/INFO\].*?([^\s]+)\s+joined the game')
+-            
+-            # 玩家下线消息正则：匹配 "玩家名 left the game"
+-            leave_pattern = re.compile(r'\[.*?\]\s+\[Server thread/INFO\].*?([^\s]+)\s+left the game')
+-            
+-            # 时间提取正则：支持多种格式
+-            # 1. [121月2026 02:21:45.755] - 旧格式（月日年 时分秒）
+-            # 2. [2026-12-01 02:21:45] - 新格式（年-月-日 时分秒）
+-            # 3. [03:49:29] - 简化格式（只有时分秒）
+-            time_pattern = re.compile(r'\[(\d{2})(\d{1,2})月(\d{4})\s+(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?\]|\[(\d{4}-\d{2}-\d{2})\s+(\d{2}):(\d{2}):(\d{2})|\[(\d{2}):(\d{2}):(\d{2})\]')
+-            
+-            chat_messages = deque(maxlen=num_messages)
+-            total_lines = 0
+-            matched_count = 0
+-            sample_lines = []  # 保存一些不匹配的行用于调试
+-            
+-            # 只读取文件的最后LOG_READ_WINDOW行
+-            last_lines = read_last_lines(file_path, LOG_READ_WINDOW)
+-            
+-            for line in last_lines:
+-                total_lines += 1
+-                
+-                # 提取时间（所有消息类型都需要）
+-                time_match = time_pattern.search(line)
+-                if time_match:
+-                    # 检查是哪种格式
+-                    if time_match.group(1) is not None:  # 旧格式 [121月2026 02:21:45.755]
+-                        time_str = f"{time_match.group(4)}:{time_match.group(5)}:{time_match.group(6)}"
+-                    elif time_match.group(7) is not None:  # 新格式 [2026-12-01 02:21:45]
+-                        time_str = f"{time_match.group(8)}:{time_match.group(9)}:{time_match.group(10)}"
+-                    elif time_match.group(11) is not None:  # 简化格式 [03:49:29]
+-                        time_str = f"{time_match.group(11)}:{time_match.group(12)}:{time_match.group(13)}"
+-                    else:
+-                        time_str = "00:00:00"  # 默认时间
+-                else:
+-                    time_str = "00:00:00"  # 默认时间
+-                
+-                # 尝试匹配聊天消息
+-                match = chat_pattern.search(line)
+-                if match:
+-                    player_name = match.group(1)  # 玩家名
+-                    message = match.group(2).strip()  # 消息内容
+-                    
+-                    chat_messages.append({
+-                        "time": time_str,
+-                        "player": player_name,
+-                        "message": message,
+-                        "type": "chat"
+-                    })
+-                    matched_count += 1
+-                # 尝试匹配玩家上线消息
+-                elif join_pattern.search(line):
+-                    join_match = join_pattern.search(line)
+-                    if join_match:
+-                        player_name = join_match.group(1)  # 玩家名
+-                        chat_messages.append({
+-                            "time": time_str,
+-                            "player": player_name,
+-                            "message": "joined the game",
+-                            "type": "join"
+-                        })
+-                        matched_count += 1
+-                # 尝试匹配玩家下线消息
+-                elif leave_pattern.search(line):
+-                    leave_match = leave_pattern.search(line)
+-                    if leave_match:
+-                        player_name = leave_match.group(1)  # 玩家名
+-                        chat_messages.append({
+-                            "time": time_str,
+-                            "player": player_name,
+-                            "message": "left the game",
+-                            "type": "leave"
+-                        })
+-                        matched_count += 1
+-                elif len(sample_lines) < 5 and "Server thread/INFO" in line and ("<" in line and ">" in line or "joined the game" in line or "left the game" in line):
+-                    # 保存一些可能匹配但未匹配的行用于调试
+-                    sample_lines.append(line[:200])  # 只保存前200个字符
+-            
+-            print(f"[DEBUG] 读取日志文件: 总行数={total_lines}, 匹配的聊天消息={matched_count}, 返回消息数={len(chat_messages)}")
+-            if sample_lines and matched_count == 0:
+-                print(f"[DEBUG] 示例未匹配的行（可能包含聊天消息）:")
+-                for i, line in enumerate(sample_lines, 1):
+-                    print(f"[DEBUG]   示例 {i}: {line}")
+-            
+-            return list(chat_messages), total_lines
+-        
+-        # 在线程池中执行文件读取操作
+-        loop = asyncio.get_event_loop()
+-        last_chat_messages, total_lines = await loop.run_in_executor(
+-            None, 
+-            read_last_chat_messages_sync, 
+-            log_file, 
+-            100
+-        )
+-        
+-        # 初始化已读取的行数（如果还没有设置）
+-        # 注意：不要覆盖监控任务可能已经设置的值
+-        if server_name not in server_chat_positions:
+-            server_chat_positions[server_name] = total_lines
+-            print(f"[DEBUG] 初始化 server_chat_positions[{server_name}] = {total_lines}")
+-        else:
+-            print(f"[DEBUG] server_chat_positions[{server_name}] 已存在: {server_chat_positions[server_name]}")
+-        
+-        # 发送初始聊天消息
+-        initial_message = {
+-            "type": "initial_chat_messages",
+-            "messages": [ChatMessage(**msg).model_dump() for msg in last_chat_messages],
+-            "count": len(last_chat_messages),
+-            "total_lines": total_lines
+-        }
+-        print(f"[DEBUG] 发送初始聊天消息: {len(last_chat_messages)} 条")
+-        await websocket.send_json(initial_message)
+-    except Exception as e:
+-        print(f"发送初始聊天消息失败: {e}")
+-        import traceback
+-        traceback.print_exc()
+-    
+-    # 保持连接，处理断开
+-    try:
+-        while True:
+-            # 接收客户端消息（用于保持连接活跃）
+-            data = await websocket.receive_text()
+-            # 可以处理客户端发送的心跳或其他消息
+-            if data == "ping":
+-                await websocket.send_text("pong")
+-    except WebSocketDisconnect:
+-        # 客户端断开连接
+-        chat_websocket_connections[server_name].discard(websocket)
+-        
+-        # 如果没有连接了，停止监控任务
+-        if server_name in chat_websocket_connections and len(chat_websocket_connections[server_name]) == 0:
+-            if server_name in chat_monitor_tasks:
+-                chat_monitor_tasks[server_name].cancel()
+-                try:
+-                    await chat_monitor_tasks[server_name]
+-                except asyncio.CancelledError:
+-                    pass
+-                del chat_monitor_tasks[server_name]
+-    except Exception as e:
+-        print(f"聊天消息 WebSocket 错误 ({server_name}): {e}")
+-        chat_websocket_connections[server_name].discard(websocket)
+-        
+-        # 如果没有连接了，停止监控任务
+-        if server_name in chat_websocket_connections and len(chat_websocket_connections[server_name]) == 0:
+-            if server_name in chat_monitor_tasks:
+-                chat_monitor_tasks[server_name].cancel()
+-                try:
+-                    await chat_monitor_tasks[server_name]
+-                except asyncio.CancelledError:
+-                    pass
+-                del chat_monitor_tasks[server_name]
++    from app.services.chat_history_service import chat_history_service
++    await chat_history_service.serve(websocket)
+ 
+ 
+ def remove_player_name_prefix(player_name: str) -> str:

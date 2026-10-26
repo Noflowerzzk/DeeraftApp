@@ -37,3 +37,22 @@ KOOK_FORMATTER = '''async def get_deep_kook_info(guild_id: str) -> Message:
     except Exception:
         return Message("⚠️ KOOK 查询暂不可用")
 '''
+
+CHAT_HTTP = '''async def get_chat_message(
+    permission_code: str = Query(..., description="权限码"),
+    num: int = Query(0, ge=0, description="返回最新的消息数量，0 代表全部"),
+):
+    if permission_code != PERMISSION_CODE:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="权限码错误")
+    from app.services.chat_history_service import chat_history_service
+    return ChatMessageResponse(**(await chat_history_service.history(num)))
+'''
+
+CHAT_WEBSOCKET = '''async def websocket_chat_messages(websocket: WebSocket, permission_code: Optional[str] = None):
+    permission_code = permission_code or websocket.query_params.get("permission_code")
+    if not permission_code or permission_code != PERMISSION_CODE:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="权限码错误")
+        return
+    from app.services.chat_history_service import chat_history_service
+    await chat_history_service.serve(websocket)
+'''

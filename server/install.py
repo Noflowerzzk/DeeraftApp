@@ -10,7 +10,7 @@ import os
 import shutil
 import time
 from pathlib import Path
-from formatters import MC_FORMATTER, KOOK_FORMATTER
+from formatters import MC_FORMATTER, KOOK_FORMATTER, CHAT_HTTP, CHAT_WEBSOCKET
 
 ROOT = Path(__file__).resolve().parent
 
@@ -44,7 +44,22 @@ def build_changes(backend, bot):
         source=source.replace('app.include_router(auth_router)',
             'from app.controllers.mobile_session import router as mobile_session_router\n'
             'app.include_router(mobile_session_router)\napp.include_router(auth_router)')
+    if '# DEERAFT_CHAT_HISTORY_START' not in source:
+        anchor='    init_db()'
+        if source.count(anchor)!=1:raise RuntimeError('Cannot locate startup database anchor')
+        source=source.replace(anchor,anchor+'\n    # DEERAFT_CHAT_HISTORY_START\n    from app.services.chat_history_service import chat_history_service\n    await chat_history_service.start()')
+    if '# DEERAFT_CHAT_HISTORY_STOP' not in source:
+        tree=ast.parse(source)
+        shutdown=next(node for node in tree.body if isinstance(node,ast.AsyncFunctionDef) and node.name=='shutdown_event')
+        doc=shutdown.body[0]
+        lines=source.splitlines(keepends=True)
+        lines.insert(doc.end_lineno,'    # DEERAFT_CHAT_HISTORY_STOP\n    from app.services.chat_history_service import chat_history_service\n    await chat_history_service.stop()\n')
+        source=''.join(lines)
     changes[main] = source
+    logs=backend/'app/controllers/log_controller.py'
+    source=logs.read_text(encoding='utf-8')
+    source=replace_function(source,'get_chat_message',CHAT_HTTP)
+    changes[logs]=replace_function(source,'websocket_chat_messages',CHAT_WEBSOCKET)
     auth = backend/'app/controllers/auth_controller.py'
     source = auth.read_text(encoding='utf-8')
     if '# DEERAFT_MOBILE_OAUTH' not in source:

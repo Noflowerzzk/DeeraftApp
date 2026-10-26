@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -7,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'models.dart';
 import 'state.dart';
 import 'theme.dart';
+import 'motion.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -50,7 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     Row(children: [const BrandMark(), const Spacer()]),
                     const SizedBox(height: 40),
-                    Text(
+                    AnimatedMetric(
                       _register ? '注册' : '登录',
                       style: Theme.of(context).textTheme.headlineLarge,
                     ),
@@ -101,17 +100,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 24),
                     SizedBox(
                       width: double.infinity,
-                      child: FilledButton(
-                        onPressed: state.busy ? null : _submit,
-                        child: state.busy
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              )
-                            : Text(_register ? '注册' : '登录'),
+                      child: PressFeedback(
+                        enabled: !state.busy,
+                        child: FilledButton(
+                          onPressed: state.busy ? null : _submit,
+                          child: state.busy
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : Text(_register ? '注册' : '登录'),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -232,17 +234,14 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
                   ),
                 ),
                 Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: KeyedSubtree(
-                      key: ValueKey(_tab),
-                      child: [
-                        const CommunityScreen(),
-                        const ServersScreen(),
-                        const ChatScreen(),
-                        const ProfileScreen(),
-                      ][_tab],
-                    ),
+                  child: MotionPageDeck(
+                    index: _tab,
+                    children: const [
+                      CommunityScreen(),
+                      ServersScreen(),
+                      ChatScreen(),
+                      ProfileScreen(),
+                    ],
                   ),
                 ),
               ],
@@ -250,83 +249,11 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
           ),
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(30, 0, 30, 12),
-        child: Center(
-          heightFactor: 1,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 340),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(40),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                child: Container(
-                  padding: const EdgeInsets.all(5),
-                  decoration: BoxDecoration(
-                    color: const Color(0xD9343434),
-                    borderRadius: BorderRadius.circular(40),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: .14),
-                    ),
-                  ),
-                  child: Row(
-                    children: List.generate(
-                      4,
-                      (i) => Expanded(
-                        child: Semantics(
-                          selected: _tab == i,
-                          button: true,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(32),
-                            onTap: () => setState(() => _tab = i),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: _tab == i
-                                    ? Colors.white.withValues(alpha: .13)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(32),
-                              ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    [
-                                      Icons.grid_view_rounded,
-                                      Icons.dns_outlined,
-                                      Icons.chat_bubble_outline_rounded,
-                                      Icons.person_outline_rounded,
-                                    ][i],
-                                    size: 20,
-                                    color: _tab == i
-                                        ? Colors.white
-                                        : AppColors.muted,
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    ['社区', '服务器', '聊天', '我的'][i],
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: _tab == i
-                                          ? Colors.white
-                                          : AppColors.muted,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
+      bottomNavigationBar: FloatingDock(
+        index: _tab,
+        onChanged: (i) {
+          if (i != _tab) setState(() => _tab = i);
+        },
       ),
     );
   }
@@ -369,6 +296,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
               '${state.communityError!}${community != null ? ' · 下方为上次数据' : ''}',
             ),
           SurfaceCard(
+            accent: AppColors.green,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -407,13 +335,14 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
+                    AnimatedMetric(
                       available ? '${mc['online_count'] ?? 0}' : '—',
                       style: const TextStyle(
                         fontSize: 48,
                         height: 1,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -2,
+                        fontFeatures: [FontFeature.tabularFigures()],
                       ),
                     ),
                     const Padding(
@@ -636,101 +565,112 @@ class ServersScreen extends ConsumerWidget {
             final cover = api.imageUrl(server['img']?.toString());
             return Padding(
               padding: const EdgeInsets.only(bottom: 18),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () => showModalBottomSheet<void>(
-                  context: context,
-                  isScrollControlled: true,
-                  backgroundColor: AppColors.surface,
-                  builder: (_) => ServerDetails(
-                    server: server,
-                    running: running,
-                    known: known,
-                    players: state.hostedPlayers,
-                  ),
-                ),
-                child: SurfaceCard(
-                  padding: EdgeInsets.zero,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: 142,
-                        width: double.infinity,
-                        child: cover == null
-                            ? WorldArtwork(accent: accent, index: entry.key)
-                            : Image.network(
-                                cover,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, _, _) => WorldArtwork(
-                                  accent: accent,
-                                  index: entry.key,
-                                ),
-                              ),
+              child: PressFeedback(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => showModalBottomSheet<void>(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: AppColors.surface,
+                    useSafeArea: true,
+                    sheetAnimationStyle: AnimationStyle(
+                      duration: AppMotion.duration(context, AppMotion.standard),
+                      reverseDuration: AppMotion.duration(
+                        context,
+                        AppMotion.fast,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    server['name']?.toString() ?? '',
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
+                    ),
+                    builder: (_) => ServerDetails(
+                      server: server,
+                      running: running,
+                      known: known,
+                      players: state.hostedPlayers,
+                    ),
+                  ),
+                  child: SurfaceCard(
+                    accent: accent,
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(
+                          height: 142,
+                          width: double.infinity,
+                          child: cover == null
+                              ? WorldArtwork(accent: accent, index: entry.key)
+                              : Image.network(
+                                  cover,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, _, _) => WorldArtwork(
+                                    accent: accent,
+                                    index: entry.key,
+                                  ),
+                                ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      server['name']?.toString() ?? '',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                BadgePill(
-                                  !known
-                                      ? '未知'
-                                      : running
-                                      ? '运行中'
-                                      : '已停止',
-                                  color: !known
-                                      ? AppColors.yellow
-                                      : running
-                                      ? AppColors.green
-                                      : AppColors.muted,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Text(
-                              cleanMotd(server['motd']?.toString() ?? ''),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppColors.muted,
-                                fontSize: 13,
+                                  BadgePill(
+                                    !known
+                                        ? '未知'
+                                        : running
+                                        ? '运行中'
+                                        : '已停止',
+                                    color: !known
+                                        ? AppColors.yellow
+                                        : running
+                                        ? AppColors.green
+                                        : AppColors.muted,
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 18),
-                            Row(
-                              children: [
-                                Text(
-                                  'JAVA ${server['version']}',
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    letterSpacing: 1,
+                              const SizedBox(height: 10),
+                              Text(
+                                cleanMotd(server['motd']?.toString() ?? ''),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Row(
+                                children: [
+                                  Text(
+                                    'JAVA ${server['version']}',
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      letterSpacing: 1,
+                                      color: AppColors.muted,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(
+                                    Icons.arrow_forward_rounded,
+                                    size: 18,
                                     color: AppColors.muted,
                                   ),
-                                ),
-                                const Spacer(),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 18,
-                                  color: AppColors.muted,
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -868,61 +808,64 @@ class ChatScreen extends ConsumerWidget {
                         ),
                       );
                     }
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 22),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          PlayerAvatar(msg.player, size: 34, minecraft: true),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        msg.player,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: AppColors.green,
+                    return MotionReveal(
+                      key: ValueKey(msg.id ?? identityHashCode(msg)),
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 22),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            PlayerAvatar(msg.player, size: 34, minecraft: true),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          msg.player,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color: AppColors.green,
+                                          ),
                                         ),
                                       ),
+                                      Text(
+                                        msg.time,
+                                        style: const TextStyle(
+                                          fontSize: 10,
+                                          color: AppColors.muted,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 15,
+                                      vertical: 12,
                                     ),
-                                    Text(
-                                      msg.time,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.surface,
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: SelectableText(
+                                      msg.message,
                                       style: const TextStyle(
-                                        fontSize: 10,
-                                        color: AppColors.muted,
+                                        fontSize: 14,
+                                        height: 1.6,
                                       ),
                                     ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 15,
-                                    vertical: 12,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.surface,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: SelectableText(
-                                    msg.message,
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      height: 1.6,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -1136,7 +1079,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 20),
         const Center(
           child: Text(
-            'DEERAFT  ·  v0.2.0',
+            'DEERAFT  ·  v0.3.0',
             style: TextStyle(
               fontSize: 10,
               letterSpacing: 2,
@@ -1243,18 +1186,43 @@ class SurfaceCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
+    this.accent,
   });
   final Widget child;
   final EdgeInsets padding;
+  final Color? accent;
   @override
-  Widget build(BuildContext context) => Container(
-    clipBehavior: Clip.antiAlias,
-    padding: padding,
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
+  Widget build(BuildContext context) => MotionReveal(
+    child: Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color.alphaBlend(
+              (accent ?? Colors.white).withValues(
+                alpha: accent == null ? .018 : .045,
+              ),
+              AppColors.surface,
+            ),
+            AppColors.surface,
+          ],
+        ),
+        border: Border.all(
+          color: (accent ?? Colors.white).withValues(
+            alpha: accent == null ? .045 : .10,
+          ),
+        ),
+      ),
+      child: AnimatedSize(
+        duration: AppMotion.duration(context, AppMotion.standard),
+        curve: AppMotion.curve,
+        alignment: Alignment.topCenter,
+        child: Padding(padding: padding, child: child),
+      ),
     ),
-    child: child,
   );
 }
 
@@ -1289,14 +1257,23 @@ class CircleAction extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: label,
-    onPressed: onTap,
-    icon: Icon(icon, size: 21),
-    style: IconButton.styleFrom(
-      backgroundColor: AppColors.raised,
-      side: const BorderSide(color: AppColors.border),
-      minimumSize: const Size(42, 42),
+  Widget build(BuildContext context) => PressFeedback(
+    enabled: onTap != null,
+    child: IconButton(
+      tooltip: label,
+      onPressed: onTap,
+      icon: onTap == null && icon == Icons.refresh_rounded
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 1.6),
+            )
+          : Icon(icon, size: 21),
+      style: IconButton.styleFrom(
+        backgroundColor: AppColors.raised,
+        side: const BorderSide(color: AppColors.border),
+        minimumSize: const Size(42, 42),
+      ),
     ),
   );
 }
@@ -1329,7 +1306,9 @@ class BadgePill extends StatelessWidget {
   final String text;
   final Color color;
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => AnimatedContainer(
+    duration: AppMotion.duration(context, AppMotion.fast),
+    curve: AppMotion.curve,
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
       color: color.withValues(alpha: .10),
@@ -1483,7 +1462,8 @@ class _MinecraftPlayersState extends State<MinecraftPlayers> {
     return Column(
       children: [
         AnimatedSize(
-          duration: const Duration(milliseconds: 200),
+          duration: AppMotion.duration(context, AppMotion.standard),
+          curve: AppMotion.curve,
           alignment: Alignment.topCenter,
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -1544,32 +1524,40 @@ class SegmentedToggle extends StatelessWidget {
   });
   final List<String> labels;
   final int selected;
-  final void Function(int) onChanged;
+  final ValueChanged<int> onChanged;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(3),
     decoration: BoxDecoration(
-      color: AppColors.surface,
+      color: AppColors.background.withValues(alpha: .55),
       borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: Colors.white.withValues(alpha: .035)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(
         labels.length,
-        (i) => InkWell(
-          onTap: () => onChanged(i),
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: selected == i ? AppColors.raised : Colors.transparent,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Text(
-              labels[i],
-              style: TextStyle(
-                fontSize: 11,
-                color: selected == i ? Colors.white : AppColors.muted,
+        (i) => PressFeedback(
+          child: InkWell(
+            onTap: () => onChanged(i),
+            borderRadius: BorderRadius.circular(14),
+            child: AnimatedContainer(
+              duration: AppMotion.duration(context, AppMotion.fast),
+              curve: AppMotion.curve,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: selected == i ? AppColors.raised : Colors.transparent,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: AnimatedDefaultTextStyle(
+                duration: AppMotion.duration(context, AppMotion.fast),
+                style: TextStyle(
+                  fontSize: 11,
+                  fontFamily: 'DMSans',
+                  fontFamilyFallback: const ['NotoSansSC'],
+                  color: selected == i ? Colors.white : AppColors.muted,
+                ),
+                child: Text(labels[i]),
               ),
             ),
           ),

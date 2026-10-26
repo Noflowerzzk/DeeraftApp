@@ -3,6 +3,22 @@ import 'package:deeraft/src/api.dart';
 import 'package:deeraft/src/models.dart';
 
 void main() {
+  test('durable chat IDs preserve identical messages from distinct events', () {
+    final one = ChatMessage.fromJson({
+      'id': 1,
+      'time': '12:00:00',
+      'player': 'A',
+      'message': 'hello',
+    });
+    final two = ChatMessage.fromJson({
+      'id': 2,
+      'time': '12:00:00',
+      'player': 'A',
+      'message': 'hello',
+    });
+    expect(mergeChat([one], [two]).length, 2);
+    expect(mergeChat([one], [one, two]).length, 2);
+  });
   test('playtime ranking selects top five without changing totals source', () {
     final rows = List.generate(
       8,

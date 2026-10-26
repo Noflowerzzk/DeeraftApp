@@ -14,6 +14,8 @@ Flutter Android 客户端。复用网站账号，提供服务器状态、在线�
 
 APK 输出至 `dist/Deeraft-test.apk`，使用本地测试签名。登录页的“演示模式”不请求服务器，所有演示页面均标明演示数据。
 
+v0.3.0 增加统一页面过渡、底栏滑动选中、卡片入场/展开、按压反馈和消息入场动画。各页保留滚动位置与展开状态，支持系统“移除动画”。设计来源及参数见 [UI 设计依据](docs/UI设计依据.md)；演示截图位于 `docs/screenshots/v0.3.0/`，动效视频为 `dist/Deeraft-motion.mp4`。
+
 工具链位于 `.toolchain/`；Gradle、Pub、Android/AVD、Java、临时文件和 Flutter 配置位于 `.cache/`。脚本只修改当前进程的环境变量，不改系统 PATH。固定版本与下载校验值见 `scripts/toolchain.json`。
 
 固定连接 `http://mc.ainfinitythecoder.cn`，不提供连接设置。当前登录和查询沿用网站的 HTTP 传输方式。

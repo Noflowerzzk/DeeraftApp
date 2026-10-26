@@ -64,6 +64,16 @@ final appTheme = ThemeData(
     ),
   ),
   dividerTheme: const DividerThemeData(color: AppColors.border, space: 28),
+  bottomSheetTheme: const BottomSheetThemeData(
+    backgroundColor: AppColors.surface,
+    modalBarrierColor: Color(0x99000000),
+    showDragHandle: true,
+    dragHandleColor: AppColors.border,
+    dragHandleSize: Size(32, 4),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+  ),
   snackBarTheme: SnackBarThemeData(
     backgroundColor: AppColors.raised,
     contentTextStyle: const TextStyle(color: Colors.white),

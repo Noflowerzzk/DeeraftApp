@@ -65,15 +65,19 @@ class ChatMessage {
     required this.player,
     required this.message,
     this.type = 'chat',
+    this.id,
   });
   final String time, player, message, type;
+  final int? id;
   factory ChatMessage.fromJson(Json json) => ChatMessage(
+    id: (json['id'] as num?)?.toInt(),
     time: json['time']?.toString() ?? '',
     player: json['player']?.toString() ?? '',
     message: json['message']?.toString() ?? '',
     type: json['type']?.toString() ?? 'chat',
   );
-  String get key => '$time\u0000$player\u0000$type\u0000$message';
+  String get key =>
+      id != null ? 'id:$id' : '$time\u0000$player\u0000$type\u0000$message';
 }
 
 List<ChatMessage> mergeChat(

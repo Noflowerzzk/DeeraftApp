@@ -35,6 +35,7 @@ class RouteTests(unittest.TestCase):
             UserService=SimpleNamespace(get_user_by_username=lambda db,name:SimpleNamespace() if name=='test-user' else None)),
           'app.utils':module('app.utils'),'app.utils.auth':module('app.utils.auth',get_current_user=current_user),
           'app.utils.jwt':module('app.utils.jwt',verify_token=lambda token:'test-user' if token=='valid' else None),
+          'app.services.mobile_environment':module('app.services.mobile_environment',load_environment=lambda:None),
         }
         self.modules=patch.dict(sys.modules,stubs);self.modules.start();self.addCleanup(self.modules.stop)
         spec=importlib.util.spec_from_file_location('mobile_test',ROOT/'backend/app/controllers/mobile_controller.py')

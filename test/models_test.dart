@@ -24,7 +24,10 @@ void main() {
   });
   test('origin validation rejects cleartext and credential-bearing URLs', () {
     expect(normalizeOrigin(' https://example.com/ '), 'https://example.com');
-    expect(normalizeOrigin('http://mc.ainfinitythecoder.cn/'), 'http://mc.ainfinitythecoder.cn');
+    expect(
+      normalizeOrigin('http://mc.ainfinitythecoder.cn/'),
+      'http://mc.ainfinitythecoder.cn',
+    );
     for (final value in [
       'http://example.com',
       'https://a:b@example.com',

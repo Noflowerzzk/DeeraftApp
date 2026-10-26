@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 
 import httpx
 from mcstatus import JavaServer
+from src.services.mobile_environment import load_environment
+
+load_environment()
 
 DATA = Path(__file__).resolve().parents[2] / 'data'
 

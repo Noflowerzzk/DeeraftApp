@@ -65,18 +65,8 @@ Json demoCommunity() => {
 };
 const demoServers = <Json>[
   {'name': 'SSCG26.3', 'version': '1.21.4', 'motd': '生存服务器', 'img': ''},
-  {
-    'name': 'BlockRacing_New',
-    'version': '1.20.4',
-    'motd': '跑酷服务器',
-    'img': '',
-  },
-  {
-    'name': 'Deeraft Creative',
-    'version': '1.21.4',
-    'motd': '创造服务器',
-    'img': '',
-  },
+  {'name': 'BlockRacing_New', 'version': '1.20.4', 'motd': '跑酷服务器', 'img': ''},
+  {'name': 'Deeraft Creative', 'version': '1.21.4', 'motd': '创造服务器', 'img': ''},
 ];
 const demoChat = [
   ChatMessage(

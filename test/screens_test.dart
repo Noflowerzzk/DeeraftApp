@@ -31,7 +31,8 @@ void main() {
     final loader = FontLoader('NotoSansSC')
       ..addFont(rootBundle.load('assets/fonts/NotoSansSC.ttf'));
     await loader.load();
-    final latin = FontLoader('DMSans')..addFont(rootBundle.load('assets/fonts/DMSans.ttf'));
+    final latin = FontLoader('DMSans')
+      ..addFont(rootBundle.load('assets/fonts/DMSans.ttf'));
     await latin.load();
     final icons = FontLoader('MaterialIcons')
       ..addFont(rootBundle.load('fonts/MaterialIcons-Regular.otf'));

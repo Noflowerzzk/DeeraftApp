@@ -18,6 +18,7 @@ final appTheme = ThemeData(
   scaffoldBackgroundColor: AppColors.background,
   colorScheme: const ColorScheme.dark(
     primary: AppColors.blue,
+    onPrimary: Colors.white,
     secondary: AppColors.green,
     surface: AppColors.surface,
     error: AppColors.coral,

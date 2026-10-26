@@ -6,6 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+from types import ModuleType
 
 ROOT=Path(__file__).resolve().parents[1]
 def module(name,path):
@@ -13,6 +15,9 @@ def module(name,path):
     result=importlib.util.module_from_spec(spec);spec.loader.exec_module(result)
     return result
 store_module=module('oauth_store','backend/app/services/mobile_oauth_store.py')
+environment=module('environment','environment.py')
+stub=ModuleType('src.services.mobile_environment');stub.load_environment=lambda:None
+sys.modules['src.services.mobile_environment']=stub
 queries=module('community_queries','qq_bot/src/services/community_query.py')
 installer=module('installer','formatters.py')
 

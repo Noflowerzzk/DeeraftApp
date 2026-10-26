@@ -1439,20 +1439,6 @@ class CircleAction extends StatelessWidget {
   );
 }
 
-class Eyebrow extends StatelessWidget {
-  const Eyebrow(this.text, {super.key});
-  final String text;
-  @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: const TextStyle(
-      fontSize: 9,
-      letterSpacing: 2,
-      color: AppColors.muted,
-    ),
-  );
-}
-
 class SectionTitle extends StatelessWidget {
   const SectionTitle(this.title, {super.key, this.trailing, this.action});
   final String title;

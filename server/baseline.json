@@ -1,4 +1,6 @@
 {
+  "backend/app/services/mobile_environment.py": null,
+  "qq_bot/src/services/mobile_environment.py": null,
   "backend/app/controllers/mobile_controller.py": null,
   "backend/app/controllers/mobile_oauth.py": null,
   "backend/app/services/mobile_oauth_store.py": null,

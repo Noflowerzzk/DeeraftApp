@@ -23,6 +23,9 @@ def replace_function(source, name, replacement):
 
 def build_changes(backend, bot):
     changes = {}
+    environment = (ROOT/'environment.py').read_text(encoding='utf-8')
+    changes[backend/'app/services/mobile_environment.py'] = environment
+    changes[bot/'src/services/mobile_environment.py'] = environment
     for src, target in ((ROOT/'backend', backend), (ROOT/'qq_bot', bot)):
         for file in src.rglob('*.py'):
             if '__pycache__' not in file.parts:

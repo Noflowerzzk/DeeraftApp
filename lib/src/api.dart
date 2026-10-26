@@ -18,7 +18,8 @@ const demoBuild = bool.fromEnvironment('DEMO_MODE');
 String normalizeOrigin(String input) {
   final uri = Uri.tryParse(input.trim());
   if (uri == null ||
-      !(uri.scheme == 'https' || (uri.scheme == 'http' && uri.host == 'mc.ainfinitythecoder.cn')) ||
+      !(uri.scheme == 'https' ||
+          (uri.scheme == 'http' && uri.host == 'mc.ainfinitythecoder.cn')) ||
       uri.host.isEmpty ||
       uri.userInfo.isNotEmpty ||
       uri.hasQuery ||
@@ -113,13 +114,18 @@ class ApiClient {
   }
 
   WebSocketChannel socket(String path) => WebSocketChannel.connect(
-    Uri.parse('$origin$path')
-        .replace(scheme: Uri.parse(origin).scheme == 'https' ? 'wss' : 'ws', queryParameters: {'token': token ?? ''}),
+    Uri.parse('$origin$path').replace(
+      scheme: Uri.parse(origin).scheme == 'https' ? 'wss' : 'ws',
+      queryParameters: {'token': token ?? ''},
+    ),
   );
   String? imageUrl(String? value) {
     if (value == null || value.isEmpty) return null;
     final uri = Uri.parse(origin).resolve(value);
-    return uri.scheme == 'https' || (uri.scheme == 'http' && uri.host == Uri.parse(origin).host) ? uri.toString() : null;
+    return uri.scheme == 'https' ||
+            (uri.scheme == 'http' && uri.host == Uri.parse(origin).host)
+        ? uri.toString()
+        : null;
   }
 }
 

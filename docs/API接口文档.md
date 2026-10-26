@@ -166,3 +166,48 @@
 ### 前端配套
 
 - 个人主页（`Profile.vue`）有“游玩时长统计”卡片：展示各服务器游玩时长列表、总时长统计，调用的即为上述接口。
+
+---
+
+## 10. Android App 扩展（2026-10-26）
+
+以下接口已兼容性加入现有后端，保留原网站接口与 QQ 群命令。
+
+| 方法 | 路径 | 说明 | 鉴权 |
+|---|---|---|---|
+| GET | `/api/v1/community/status` | Deeraft 主 MC 与 KOOK 聚合状态，15 秒缓存并合并并发刷新 | JWT |
+| GET | `/api/v1/mobile/chat?num=100` | 托管服务器聊天快照，`num` 为 1–300 | JWT |
+| WS | `/api/v1/mobile/chat/ws?token=<jwt>` | 复用网站聊天历史与增量广播 | JWT |
+| GET | `/api/v1/mobile/daily-playtime?date=YYYY-MM-DD` | 复用每日在线统计；不传共享权限码 | JWT |
+| POST | `/api/v1/mobile/auth/microsoft/start` | Body：`code_challenge`（S256，43 字符）、`client_state`；返回 `authorize_url` | 无 |
+| POST | `/api/v1/mobile/auth/microsoft/exchange` | Body：`code`、`code_verifier`；单次交换为 JWT | 一次性交换码 + PKCE |
+
+聚合响应的 `mc` 与 `kook` 允许独立为 `null`，必须结合 `sources` 判断状态；查询失败不表示服务器离线或频道无人。
+
+```json
+{
+  "fetched_at": "2026-10-26T07:48:12+00:00",
+  "mc": {
+    "online": true,
+    "motd": "Deeraft",
+    "version": "Java 1.21.4",
+    "latency_ms": 32,
+    "online_count": 2,
+    "max_players": 100,
+    "players": ["PlayerA", "Camera01"],
+    "human_players": ["PlayerA"]
+  },
+  "kook": {
+    "name": "Deeraft",
+    "channels": [{"id": "example", "name": "语音", "users": [{"id": "example-user", "name": "PlayerA"}]}]
+  },
+  "sources": {
+    "mc": {"available": true, "updated_at": "2026-10-26T07:48:12+00:00", "error": null},
+    "kook": {"available": true, "updated_at": "2026-10-26T07:48:12+00:00", "error": null}
+  }
+}
+```
+
+机器人新增内部 `GET /internal/deeraft/status`，仅接受本机调用并校验 `X-Deeraft-Internal`。该接口及服务凭据不提供给手机。真人名单沿用机器人已有 JSON 数据，不是入服白名单。
+
+移动端微软授权复用原回调 URI，以 `mobile.` state 分流。回到 App 的地址为 `deeraft://oauth/callback?code=<one_time_code>&state=<client_state>`；授权失败带 `error`。交换码 60 秒有效，客户端登录事务 5 分钟有效；网页登录流程不变。当前服务器缺少 Microsoft OAuth 配置，真实微软登录尚不可用。

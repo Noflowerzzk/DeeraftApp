@@ -14,6 +14,9 @@ from app.models.user import User
 from app.services.user_service import UserService
 from app.utils.auth import get_current_user
 from app.utils.jwt import verify_token
+from app.services.mobile_environment import load_environment
+
+load_environment()
 
 router = APIRouter(tags=['移动端'])
 _cache, _expires, _lock = None, 0.0, asyncio.Lock()

@@ -1,52 +1,29 @@
 # Deeraft
 
-Flutter Android 客户端。复用网站账号，提供服务器状态、在线玩家、KOOK 语音成员、只读 MC 聊天、个人资料和游玩时长。
+同一 Git 仓库内分开管理手机端与电脑端。
 
-## 运行与构建
-
-在项目目录打开 PowerShell：
-
-```powershell
-./scripts/setup.ps1                 # 首次安装工具链
-./scripts/flutter.ps1 run -d <设备ID>
-./scripts/build.ps1                 # 检查、测试并构建测试 APK
+```text
+Mobile/             现有 Flutter Android 项目及相关文件
+  android/          Android 工程
+  lib/              App 源码
+  server/           网站/机器人配套扩展及部署脚本
+  scripts/          工具链、运行与构建脚本
+  docs/             设计、接口、部署与验证记录
+  dist/             测试安装包（本地，不提交）
+  .toolchain/       本地工具链（不提交）
+  .cache/           本地缓存（不提交）
+Desktop/            电脑端项目目录（已预留）
+  app/              电脑端 App
+  launcher/         启动器
 ```
 
-APK 输出至 `dist/Deeraft-test.apk`，使用本地测试签名。登录页的“演示模式”不请求服务器，所有演示页面均标明演示数据。
+手机端说明见 [Mobile/README.md](Mobile/README.md)。电脑端目录说明见 [Desktop/README.md](Desktop/README.md)。现有后端配套文件暂随手机端一并保留，避免本次整理混入功能拆分。
 
-v0.5.1 修复社区滚动露黑边，MOTD在收起时保留；个人页“设置”集中提供资料编辑与浅色/深色/跟随系统，选择重启后保留。每日在线统计已兼容当前Paper日志并汇总各服务器。当前截图在 `docs/screenshots/v0.5.1/`，详见 [设计说明](docs/Material设计说明.md) 和 [验证记录](docs/验证记录.md)。v0.5.0的滚动录屏 `dist/Deeraft-community-scroll.mp4` 保留为历史效果，旧版截图不代表当前MOTD及设置布局。
-
-工具链位于 `.toolchain/`；Gradle、Pub、Android/AVD、Java、临时文件和 Flutter 配置位于 `.cache/`。脚本只修改当前进程的环境变量，不改系统 PATH。固定版本与下载校验值见 `scripts/toolchain.json`。
-
-固定连接 `http://mc.ainfinitythecoder.cn`，不提供连接设置。当前登录和查询沿用网站的 HTTP 传输方式。
-
-App 安全存储登录会话，自动续期 24 小时访问 Token；刷新会话闲置 90 天失效，正常使用会自动延长，最长持续 1 年。退出登录撤销对应会话。短暂断网不会清空登录状态。旧版未过期的登录可自动迁移，已经失效的旧登录需重新登录一次。
-
-可选模拟器：
+在仓库根目录运行：
 
 ```powershell
-./scripts/setup.ps1 -WithEmulator
-./scripts/start-emulator.ps1
-./scripts/flutter.ps1 run -d emulator-5554
+./Mobile/scripts/flutter.ps1 analyze
+./Mobile/scripts/build.ps1
 ```
 
-## 后端
-
-`server/` 包含兼容现有网站和 QQ 命令的扩展、安装/回滚脚本及测试。查看 [部署说明](docs/部署说明.md) 和 [API 文档](docs/API接口文档.md)。安装前校验基线，备份现有文件，不重置远程 Git 工作区。
-
-Microsoft 移动端登录流程已实现，但当前服务器未配置 Microsoft OAuth 客户端，不能完成真实微软登录。账号密码登录可用。App 不包含机器人凭据或共享权限码。
-
-首版没有服务器管理操作、双向聊天或后台推送。App 在前台更新，进入后台断开连接，恢复时重新获取数据。
-
-## 检查
-
-```powershell
-./scripts/flutter.ps1 analyze
-./scripts/flutter.ps1 test
-. ./scripts/env.ps1
-./.toolchain/python/Scripts/python.exe -m unittest discover -s server/tests -v
-```
-
-Python 测试依赖可安装在 `.toolchain/python` 的 venv 中：`httpx mcstatus fastapi sqlalchemy python-jose`。
-
-设计数据见 [UI设计依据](docs/UI设计依据.md)，测试记录见 [验证记录](docs/验证记录.md)。源码使用本地 Git 管理；工具链、缓存、密钥、临时测试资料和 APK 不提交。
+也可以先进入 `Mobile`，继续使用原有命令。所有新工具链和缓存仍放在本工作目录内，不修改系统 PATH；目前工具链与缓存位于 `Mobile/.toolchain`、`Mobile/.cache`。Git 仓库保留在根目录，统一管理两个项目。

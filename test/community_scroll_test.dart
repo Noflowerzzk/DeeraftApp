@@ -159,6 +159,14 @@ void main() {
         28,
       );
       expect(find.byKey(const Key('community-world-title')), findsOneWidget);
+      final motd = find.byKey(const Key('community-motd'));
+      expect(tester.widget<Text>(motd).data, 'Deeraft');
+      expect(
+        tester.getBottomLeft(motd).dy,
+        lessThan(
+          tester.getTopLeft(find.byKey(const Key('community-sheet-lip'))).dy,
+        ),
+      );
       await tester.tap(find.text('聊天').last);
       await tester.pumpAndSettle();
       await tester.tap(find.text('社区').last);

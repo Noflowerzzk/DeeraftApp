@@ -79,6 +79,10 @@ def build_changes(backend, bot):
         changes[path] = replace_function(path.read_text(encoding='utf-8'), function, body)
     for path, source in changes.items():
         compile(source, str(path), 'exec')
+    from daily_patch import DAILY_ROUTE
+    log_controller = backend/'app/controllers/log_controller.py'
+    source = changes.get(log_controller, log_controller.read_text(encoding='utf-8'))
+    changes[log_controller] = replace_function(source, 'get_daily_playtime', DAILY_ROUTE)
     return changes
 
 

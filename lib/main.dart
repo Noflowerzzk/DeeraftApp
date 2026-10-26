@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'src/state.dart';
 import 'src/screens.dart';
 import 'src/theme.dart';
+import 'src/appearance.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,15 +16,15 @@ final _router = GoRouter(
   routes: [GoRoute(path: '/', builder: (_, _) => const AppGate())],
 );
 
-class DeeraftApp extends StatelessWidget {
+class DeeraftApp extends ConsumerWidget {
   const DeeraftApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp.router(
+  Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
     title: 'Deeraft',
     debugShowCheckedModeBanner: false,
     theme: appTheme,
     darkTheme: appDarkTheme,
-    themeMode: ThemeMode.system,
+    themeMode: ref.watch(appearanceProvider),
     routerConfig: _router,
   );
 }

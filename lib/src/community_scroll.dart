@@ -97,11 +97,6 @@ class CommunityStatusHeader extends SliverPersistentHeaderDelegate {
     final detailOpacity = (1 - progress / .65).clamp(0.0, 1.0);
     final mc = community?.mc ?? <String, dynamic>{};
     final available = community?.mcSource.available ?? false;
-    final status = !available
-        ? '状态未知'
-        : mc['online'] == true
-        ? '在线'
-        : '离线';
     final statusColor = !available
         ? h.tertiary
         : mc['online'] == true
@@ -149,7 +144,7 @@ class CommunityStatusHeader extends SliverPersistentHeaderDelegate {
             ),
             Positioned(
               left: 24,
-              right: 122,
+              right: MediaQuery.sizeOf(context).width.clamp(0.0, 720.0) * .52,
               top: lerpDouble(54, 12, progress),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
@@ -165,25 +160,24 @@ class CommunityStatusHeader extends SliverPersistentHeaderDelegate {
               ),
             ),
             Positioned(
+              left: MediaQuery.sizeOf(context).width.clamp(0.0, 720.0) * .52,
               right: 24,
               top: lerpDouble(58, 14, progress),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      shape: BoxShape.circle,
-                    ),
+              child: Tooltip(
+                message: motd,
+                triggerMode: TooltipTriggerMode.tap,
+                child: Text(
+                  motd.isEmpty ? (available ? '—' : '状态未知') : motd,
+                  key: const Key('community-motd'),
+                  textAlign: TextAlign.right,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.bodyMedium?.copyWith(
+                    color: available && mc['online'] == true
+                        ? h.onSurface
+                        : statusColor,
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    status,
-                    style: t.labelLarge?.copyWith(color: statusColor),
-                  ),
-                ],
+                ),
               ),
             ),
             Positioned(
@@ -230,16 +224,6 @@ class CommunityStatusHeader extends SliverPersistentHeaderDelegate {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Tooltip(
-                          message: motd,
-                          child: Text(
-                            motd,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: t.bodyLarge?.copyWith(color: h.onSurface),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
                         Wrap(
                           spacing: 20,
                           runSpacing: 8,

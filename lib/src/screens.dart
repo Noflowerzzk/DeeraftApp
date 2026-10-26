@@ -7,6 +7,7 @@ import 'state.dart';
 import 'motion.dart';
 import 'community_scroll.dart';
 import 'theme.dart';
+import 'appearance.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -271,7 +272,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
             (scale - 1).clamp(0.0, 2.0) * 210;
         final collapsed = 92 * scale + CommunityStatusHeader.sheetRadius;
         return ColoredBox(
-          color: appDarkTheme.colorScheme.surface,
+          color: sheetColor,
           child: ScrollConfiguration(
             behavior: const MaterialScrollBehavior().copyWith(
               overscroll: false,
@@ -830,9 +831,13 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   IconButton.filledTonal(
-                    tooltip: '编辑资料',
-                    onPressed: () => showEditProfile(context, ref),
-                    icon: const Icon(Icons.edit_outlined),
+                    tooltip: '设置',
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SettingsScreen(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.settings_outlined),
                   ),
                 ],
               ),
@@ -953,7 +958,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 24),
         Center(
           child: Text(
-            'Deeraft · v0.5.0',
+            'Deeraft · v0.5.1',
             style: t.labelMedium?.copyWith(color: c.onSurfaceVariant),
           ),
         ),
@@ -1389,4 +1394,64 @@ class SegmentedToggle extends StatelessWidget {
     onSelectionChanged: (v) => onChanged(v.first),
     style: const ButtonStyle(visualDensity: VisualDensity.compact),
   );
+}
+
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final mode = ref.watch(appearanceProvider);
+    return Scaffold(
+      appBar: AppBar(title: const Text('设置')),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('编辑资料'),
+                onTap: () => showEditProfile(context, ref),
+              ),
+              const Divider(),
+              const Padding(padding: EdgeInsets.all(16), child: Text('外观')),
+              RadioGroup<ThemeMode>(
+                groupValue: mode,
+                onChanged: (selected) async {
+                  if (selected == null || selected == mode) return;
+                  try {
+                    await ref
+                        .read(appearanceProvider.notifier)
+                        .select(selected);
+                  } catch (_) {
+                    if (context.mounted) showMessage(context, '外观设置保存失败，请重试');
+                  }
+                },
+                child: const Column(
+                  children: [
+                    RadioListTile<ThemeMode>(
+                      value: ThemeMode.system,
+                      title: Text('跟随系统'),
+                      secondary: Icon(Icons.brightness_auto_outlined),
+                    ),
+                    RadioListTile<ThemeMode>(
+                      value: ThemeMode.light,
+                      title: Text('浅色'),
+                      secondary: Icon(Icons.light_mode_outlined),
+                    ),
+                    RadioListTile<ThemeMode>(
+                      value: ThemeMode.dark,
+                      title: Text('深色'),
+                      secondary: Icon(Icons.dark_mode_outlined),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

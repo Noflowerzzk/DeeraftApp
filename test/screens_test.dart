@@ -176,7 +176,9 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('我的'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('编辑资料'));
+      await tester.tap(find.byTooltip('设置'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('编辑资料'));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, 'NewPlayer');
       await tester.enterText(find.byType(TextField).last, '新签名');
@@ -189,10 +191,14 @@ void main() {
       await tester.tap(find.text('保存修改'));
       await tester.pumpAndSettle();
       expect(find.text('编辑个人资料'), findsNothing);
+      await tester.pageBack();
+      await tester.pumpAndSettle();
       expect(find.text('NewPlayer'), findsOneWidget);
       expect(find.text('新签名'), findsOneWidget);
       // Reopening reads the current profile rather than a stale form snapshot.
-      await tester.tap(find.byTooltip('编辑资料'));
+      await tester.tap(find.byTooltip('设置'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('编辑资料'));
       await tester.pumpAndSettle();
       expect(
         tester.widget<TextField>(find.byType(TextField).first).controller!.text,

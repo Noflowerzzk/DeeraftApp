@@ -206,38 +206,25 @@ class FloatingDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SafeArea(
     top: false,
-    minimum: const EdgeInsets.fromLTRB(28, 0, 28, 12),
+    minimum: const EdgeInsets.fromLTRB(30, 0, 30, 12),
     child: Center(
       heightFactor: 1,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 340),
         child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(34),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .28),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(40)),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(34),
+            borderRadius: BorderRadius.circular(40),
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
               child: Container(
                 height: 64,
                 padding: const EdgeInsets.all(5),
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(34),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [const Color(0xF2353535), const Color(0xEF252525)],
-                  ),
+                  borderRadius: BorderRadius.circular(40),
+                  color: const Color(0xD9343434),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: .11),
+                    color: Colors.white.withValues(alpha: .14),
                   ),
                 ),
                 child: LayoutBuilder(
@@ -257,11 +244,8 @@ class FloatingDock extends StatelessWidget {
                           width: width,
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .12),
-                              borderRadius: BorderRadius.circular(28),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: .045),
-                              ),
+                              color: Colors.white.withValues(alpha: .13),
+                              borderRadius: BorderRadius.circular(32),
                             ),
                           ),
                         ),
@@ -274,7 +258,7 @@ class FloatingDock extends StatelessWidget {
                                 button: true,
                                 child: PressFeedback(
                                   child: InkWell(
-                                    borderRadius: BorderRadius.circular(28),
+                                    borderRadius: BorderRadius.circular(32),
                                     onTap: () => onChanged(i),
                                     child: SizedBox(
                                       height: 54,

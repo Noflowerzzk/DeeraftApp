@@ -296,7 +296,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
               '${state.communityError!}${community != null ? ' · 下方为上次数据' : ''}',
             ),
           SurfaceCard(
-            accent: AppColors.green,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -588,7 +587,6 @@ class ServersScreen extends ConsumerWidget {
                     ),
                   ),
                   child: SurfaceCard(
-                    accent: accent,
                     padding: EdgeInsets.zero,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1079,7 +1077,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 20),
         const Center(
           child: Text(
-            'DEERAFT  ·  v0.3.0',
+            'DEERAFT  ·  v0.3.1',
             style: TextStyle(
               fontSize: 10,
               letterSpacing: 2,
@@ -1186,35 +1184,16 @@ class SurfaceCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.accent,
   });
   final Widget child;
   final EdgeInsets padding;
-  final Color? accent;
   @override
   Widget build(BuildContext context) => MotionReveal(
     child: Container(
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color.alphaBlend(
-              (accent ?? Colors.white).withValues(
-                alpha: accent == null ? .018 : .045,
-              ),
-              AppColors.surface,
-            ),
-            AppColors.surface,
-          ],
-        ),
-        border: Border.all(
-          color: (accent ?? Colors.white).withValues(
-            alpha: accent == null ? .045 : .10,
-          ),
-        ),
       ),
       child: AnimatedSize(
         duration: AppMotion.duration(context, AppMotion.standard),
@@ -1529,9 +1508,8 @@ class SegmentedToggle extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(3),
     decoration: BoxDecoration(
-      color: AppColors.background.withValues(alpha: .55),
+      color: AppColors.surface,
       borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: Colors.white.withValues(alpha: .035)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,

@@ -4,3 +4,4 @@
 *.otf binary
 *.jar binary
 *.patch text eol=lf
+*.patch whitespace=-blank-at-eol

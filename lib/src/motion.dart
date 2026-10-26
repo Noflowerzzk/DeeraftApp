@@ -9,6 +9,31 @@ abstract final class AppMotion {
       MediaQuery.disableAnimationsOf(context) ? Duration.zero : value;
 }
 
+/// A zero-duration AnimatedSize can relayout itself inside a sliver layout.
+/// Skip the render animation entirely when the system removes animations.
+class MotionSize extends StatelessWidget {
+  const MotionSize({
+    super.key,
+    required this.child,
+    this.duration = AppMotion.standard,
+    this.curve = AppMotion.curve,
+    this.alignment = Alignment.topCenter,
+  });
+  final Widget child;
+  final Duration duration;
+  final Curve curve;
+  final AlignmentGeometry alignment;
+  @override
+  Widget build(BuildContext context) => MediaQuery.disableAnimationsOf(context)
+      ? child
+      : AnimatedSize(
+          duration: duration,
+          curve: curve,
+          alignment: alignment,
+          child: child,
+        );
+}
+
 /// Pointer feedback without taking taps or scroll gestures from the child.
 class PressFeedback extends StatefulWidget {
   const PressFeedback({super.key, required this.child, this.enabled = true});

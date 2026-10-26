@@ -14,7 +14,7 @@ Flutter Android 客户端。复用网站账号，提供服务器状态、在线�
 
 APK 输出至 `dist/Deeraft-test.apk`，使用本地测试签名。登录页的“演示模式”不请求服务器，所有演示页面均标明演示数据。
 
-v0.4.0 已整体改为 Material 3：系统深浅色、标准顶栏和底部导航、分段筛选、服务器详情和资料编辑面板，并统一切页、列表展开和数字更新动效。设计依据见 [Material 设计说明](docs/Material设计说明.md)，当前演示截图位于 `docs/screenshots/v0.4.0/`，视频为 `dist/Deeraft-material-motion.mp4`。v0.3.x 截图和视频保留为历史版本。
+v0.5.0 社区首页采用深色状态概览与连续上移的圆角内容面板，支持状态重排/淡出、双锚点吸附、边界回弹、固定筛选栏及点击查看完整玩家名。继续使用 Material 3 系统深浅主题。设计与评审边界见 [Material 设计说明](docs/Material设计说明.md)，当前社区截图在 `docs/screenshots/v0.5.0/`，手势视频为 `dist/Deeraft-community-scroll.mp4`。其他页面基础样式见 v0.4.0 截图；旧版证据保留为历史记录。
 
 工具链位于 `.toolchain/`；Gradle、Pub、Android/AVD、Java、临时文件和 Flutter 配置位于 `.cache/`。脚本只修改当前进程的环境变量，不改系统 PATH。固定版本与下载校验值见 `scripts/toolchain.json`。
 

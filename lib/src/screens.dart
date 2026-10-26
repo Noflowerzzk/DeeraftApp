@@ -5,6 +5,8 @@ import 'package:intl/intl.dart';
 import 'models.dart';
 import 'state.dart';
 import 'motion.dart';
+import 'community_scroll.dart';
+import 'theme.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -189,6 +191,8 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
     final state = ref.watch(appProvider);
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: _tab == 0 ? appDarkTheme.colorScheme.surface : null,
+        foregroundColor: _tab == 0 ? appDarkTheme.colorScheme.onSurface : null,
         title: Text(_titles[_tab]),
         actions: [
           if (state.demo)
@@ -239,173 +243,151 @@ class CommunityScreen extends ConsumerStatefulWidget {
 }
 
 class _CommunityScreenState extends ConsumerState<CommunityScreen> {
+  final _scroll = ScrollController();
   bool _allPlayers = false;
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appProvider), community = state.community;
-    final mc = community?.mc ?? {},
-        c = Theme.of(context).colorScheme,
-        t = Theme.of(context).textTheme;
-    final available = community?.mcSource.available ?? false;
+    final c = Theme.of(context).colorScheme, t = Theme.of(context).textTheme;
     final players = _allPlayers
         ? (community?.allPlayers ?? <String>[])
         : (community?.humanPlayers ?? <String>[]);
-    return RefreshIndicator(
-      onRefresh: ref.read(appProvider.notifier).refresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('服务器状态', style: t.headlineMedium),
-                const SizedBox(height: 6),
-                Text(
-                  community == null
-                      ? '正在加载…'
-                      : '${DateFormat('HH:mm:ss').format(community.fetchedAt.toLocal())} 更新',
-                  style: t.bodyMedium?.copyWith(color: c.onSurfaceVariant),
-                ),
-              ],
+    final available = community?.mcSource.available ?? false;
+    final sheetColor = c.brightness == Brightness.dark
+        ? c.surfaceContainerLow
+        : c.surface;
+    final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final expanded =
+            (constraints.maxHeight * .56).clamp(350.0, 400.0) +
+            (scale - 1).clamp(0.0, 2.0) * 210;
+        final collapsed = 92 * scale + CommunityStatusHeader.sheetRadius;
+        return ColoredBox(
+          color: appDarkTheme.colorScheme.surface,
+          child: ScrollConfiguration(
+            behavior: const MaterialScrollBehavior().copyWith(
+              overscroll: false,
             ),
-          ),
-          if (state.communityError != null)
-            ErrorNotice(
-              '${state.communityError!}${community != null ? ' · 下方为上次数据' : ''}',
-            ),
-          SurfaceCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.public, color: c.onSurface),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Minecraft',
-                        style: t.titleLarge?.copyWith(color: c.onSurface),
-                      ),
-                    ),
-                    BadgePill(
-                      !available
-                          ? '状态未知'
-                          : mc['online'] == true
-                          ? '在线'
-                          : '离线',
-                      color: c.onSurface,
-                    ),
-                  ],
+            child: RefreshIndicator(
+              color: appDarkTheme.colorScheme.primary,
+              backgroundColor: appDarkTheme.colorScheme.surfaceContainerHigh,
+              onRefresh: ref.read(appProvider.notifier).refresh,
+              child: CustomScrollView(
+                key: const PageStorageKey('community-scroll'),
+                controller: _scroll,
+                physics: CommunitySnapPhysics(
+                  snapExtent: expanded - collapsed,
+                  reduceMotion: reduce,
+                  parent: reduce
+                      ? const ClampingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        )
+                      : const BouncingScrollPhysics(
+                          parent: AlwaysScrollableScrollPhysics(),
+                        ),
                 ),
-                const SizedBox(height: 24),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.end,
-                  spacing: 16,
-                  runSpacing: 8,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        AnimatedMetric(
-                          available ? '${mc['online_count'] ?? 0}' : '—',
-                          style: t.displayLarge?.copyWith(
-                            color: c.primary,
-                            fontFeatures: [const FontFeature.tabularFigures()],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(left: 10, bottom: 12),
-                          child: Text('在线', style: t.titleMedium),
-                        ),
-                      ],
+                slivers: [
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: CommunityStatusHeader(
+                      community: community,
+                      expandedExtent: expanded,
+                      collapsedExtent: collapsed,
+                      sheetColor: sheetColor,
                     ),
-                    if (available)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                  ),
+                  PinnedHeaderSliver(
+                    child: ColoredBox(
+                      color: sheetColor,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                        child: Column(
+                          key: const Key('community-player-controls'),
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Icon(
-                              Icons.network_check,
-                              size: 18,
-                              color: c.onSurfaceVariant,
+                            Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 16,
+                              runSpacing: 12,
+                              children: [
+                                Text('在线玩家', style: t.titleLarge),
+                                SegmentedToggle(
+                                  labels: const ['真人', '全部'],
+                                  selected: _allPlayers ? 1 : 0,
+                                  onChanged: (i) =>
+                                      setState(() => _allPlayers = i == 1),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${(mc['latency_ms'] as num?)?.round() ?? '—'} ms',
-                              style: TextStyle(color: c.onSurfaceVariant),
-                            ),
+                            const SizedBox(height: 24),
                           ],
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  available
-                      ? cleanMotd(mc['motd']?.toString() ?? '')
-                      : (community?.mcSource.error ?? '等待服务器状态'),
-                  style: t.bodyLarge?.copyWith(color: c.onSurface),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  mc['version']?.toString() ?? 'Java Edition',
-                  style: t.bodyMedium?.copyWith(color: c.onSurface),
-                ),
-                const Divider(),
-                Wrap(
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 16,
-                  runSpacing: 12,
-                  children: [
-                    Text('在线玩家', style: t.titleMedium),
-                    SegmentedToggle(
-                      labels: const ['真人', '全部'],
-                      selected: _allPlayers ? 1 : 0,
-                      onChanged: (i) => setState(() => _allPlayers = i == 1),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                MinecraftPlayers(
-                  key: ValueKey(_allPlayers),
-                  players: players,
-                  available: available,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 28),
-          const SectionTitle('KOOK'),
-          if (community == null || !community.kookSource.available)
-            SurfaceCard(
-              child: EmptyContent(
-                icon: Icons.headset_off_outlined,
-                text: community?.kookSource.error ?? '正在获取语音状态',
-              ),
-            )
-          else if (community.channels.isEmpty)
-            const SurfaceCard(
-              child: EmptyContent(icon: Icons.headset_outlined, text: '暂无语音频道'),
-            )
-          else
-            SurfaceCard(
-              padding: EdgeInsets.zero,
-              child: Column(
-                children: [
-                  for (final channel in community.channels)
-                    _VoiceChannel(channel: channel),
+                  ),
+                  SliverToBoxAdapter(
+                    child: ColoredBox(
+                      color: sheetColor,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: (constraints.maxHeight - collapsed).clamp(
+                            0.0,
+                            double.infinity,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (state.communityError != null)
+                                ErrorNotice(
+                                  '${state.communityError!}${community != null ? ' · 上次数据' : ''}',
+                                ),
+                              MinecraftPlayers(
+                                key: ValueKey(_allPlayers),
+                                players: players,
+                                available: available,
+                              ),
+                              const SizedBox(height: 32),
+                              Text('KOOK', style: t.titleLarge),
+                              const SizedBox(height: 12),
+                              if (community == null ||
+                                  !community.kookSource.available)
+                                EmptyContent(
+                                  icon: Icons.headset_off_outlined,
+                                  text:
+                                      community?.kookSource.error ?? '正在获取语音状态',
+                                )
+                              else if (community.channels.isEmpty)
+                                const EmptyContent(
+                                  icon: Icons.headset_outlined,
+                                  text: '暂无语音频道',
+                                )
+                              else
+                                for (final channel in community.channels)
+                                  _VoiceChannel(channel: channel),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
-        ],
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -418,7 +400,7 @@ class _VoiceChannel extends StatelessWidget {
     final users = List<Json>.from(channel['users'] as List? ?? []),
         c = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -971,7 +953,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 24),
         Center(
           child: Text(
-            'Deeraft · v0.4.0',
+            'Deeraft · v0.5.0',
             style: t.labelMedium?.copyWith(color: c.onSurfaceVariant),
           ),
         ),
@@ -1121,7 +1103,7 @@ class SurfaceCard extends StatelessWidget {
   Widget build(BuildContext context) => MotionReveal(
     child: Card(
       color: color,
-      child: AnimatedSize(
+      child: MotionSize(
         duration: AppMotion.duration(context, AppMotion.standard),
         curve: AppMotion.curve,
         alignment: Alignment.topCenter,
@@ -1329,7 +1311,7 @@ class _MinecraftPlayersState extends State<MinecraftPlayers> {
     final visible = expanded ? widget.players : widget.players.take(8).toList();
     return Column(
       children: [
-        AnimatedSize(
+        MotionSize(
           duration: AppMotion.duration(context, AppMotion.standard),
           curve: AppMotion.curve,
           alignment: Alignment.topCenter,
@@ -1347,6 +1329,7 @@ class _MinecraftPlayersState extends State<MinecraftPlayers> {
                         width: width,
                         child: Tooltip(
                           message: name,
+                          triggerMode: TooltipTriggerMode.tap,
                           child: Column(
                             children: [
                               PlayerAvatar(name, size: 40, minecraft: true),

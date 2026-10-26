@@ -1,4 +1,6 @@
-# Material 3 界面改版 · v0.4.0
+# Material 3 界面设计
+
+以下先保留v0.4.0基础改版记录，当前社区布局见文末v0.5.0。
 
 ## 方向与范围
 
@@ -55,3 +57,34 @@ Qwen 独立静态视觉评审1轮，初版7/10。指出玩家头像空白，已�
 截图为 Android 16 模拟器1080×2340实际渲染；显式演示模式，不是线上数据。正式截图在 `docs/screenshots/v0.4.0/`；原生 screenrecord 视频在 `dist/Deeraft-material-motion.mp4`。自动化路径覆盖导航、全部/真人筛选、玩家展开及详情面板，日志无崩溃或布局溢出。独立UX走查与最终验证结果记录在《验证记录》。
 
 独立UX走查1轮（`/root/material_ux_review`）实际操作模拟器，修正卡片外链图标暗示与详情面板行为不一致。服务器连接地址/加入功能不在现有数据及本次改版范围，保留为状态浏览的能力边界。
+
+## v0.5.0：社区滚动面板（当前）
+
+用户给定方向：初始深底浅字突出 Minecraft 状态；向上拖动时概览连续重排、部分淡出，固定圆角的内容面板上移，露出玩家及 KOOK。参考附图只取上下分区、主要数据突出和圆角面板的组织方式，不复制黄紫配色、番茄钟或日历。产品和字体沿用 Material 3 基础改版。
+
+### 参考资料与实现边界
+
+- 读取 [SliverAppBar 官方文档和交互示例](https://api.flutter.dev/flutter/material/SliverAppBar-class.html)、[FlexibleSpaceBar 示例](https://api.flutter.dev/flutter/material/FlexibleSpaceBar-class.html) 的 HTML 正文。
+- 读取 [官方大顶栏 Dart 样例](https://github.com/flutter/flutter/blob/stable/examples/api/lib/material/app_bar/sliver_app_bar.3.dart)，以及项目 Flutter SDK 的 `app_bar.dart`、`sliver_persistent_header.dart` 和 `pinned_header_sliver.dart`。过程副本在 `work/community-scroll/`，不是只按截图仿画。
+- 使用 [SliverPersistentHeader](https://api.flutter.dev/flutter/widgets/SliverPersistentHeader-class.html) 这一 Material 折叠顶栏使用的底层结构。标准 `SliverAppBar.snap` 要求 floating，本页需要整段状态的展开/收起锚点，故增加局部 ScrollPhysics，并保留框架的弹性滚动。
+
+### 布局与动效
+
+- 同一 `CustomScrollView` 承载全部内容。首屏深色状态区约占可用高度56%，上限400dp；大字体增加所需高度。显示服务器状态、更新时间、Minecraft 名称、在线数、MOTD、版本和延迟。
+- 深底来自同一 Material 种子色的 dark surface；主数字使用其 primary 浅色。其他页面和底栏不重排。
+- 一组原位元素随 scroll offset 连续布局，不在两个独立页面之间切换。Minecraft 24→18sp、人数88→28sp并向上移动；MOTD、版本、延迟与更新时间在前65%的收起过程中淡出。隐藏信息同时退出可访问性树。
+- 圆角始终32dp；圆角顶沿属于固定状态区的底部，玩家内容与语音内容同色相接。玩家标题/筛选使用原生 PinnedHeaderSliver，继续滚动时完整停靠，避免半个控件被遮挡。其余内容连续向上滚动。
+- 松手落在两个锚点之间时，按当前位置和方向吸附；弹簧 mass=1、stiffness=250、damping=30。大幅快速甩动继续正常浏览，不把整张列表强行拉回顶部。边界使用框架 BouncingScrollPhysics，可随时由新手势中断。
+- “移除动画”时取消自动吸附的过渡及边界回弹，拖动仍控制布局；直接采用目标锚点。修正了零时长 AnimatedSize 在滚动布局中可能自触发布局的问题，改为直接返回内容。
+- 真人/全部、超过8人的展开、下拉刷新及切页位置保留均延续。长玩家名仍采用省略号，但点击即可显示完整名字的 Material Tooltip。
+- 没有新增宣传文案；错误提示改为“上次数据”，以覆盖错误提示上方的状态区也可能是缓存数据这一情况。
+
+### 评审
+
+主Agent依据oil-ui锚点自评 **8.0/10**，先将评审写入 `work/community-scroll/self-review.md`，再发起独立 Qwen 评审。剩余视觉差距为展开态留白仍可结合真实 MOTD 密度继续打磨，长名字需要点按补充阅读。未声称实测帧率或真机触觉。
+
+Qwen 本次网络请求超时，随后用户明确取消 Qwen 评分。本次仅保留主Agent自评8.0/10，未计算双人平均分；不再等待或重试Qwen。
+
+独立UX走查1轮，执行者 `/root/community_scroll_ux` 从真实模拟器推断目标并完成“在线人员→KOOK→全部/展开12人”浏览路径。指出筛选被部分遮挡和截断名字点击无反馈；两项均修正，并用控件可见范围、点按Tooltip和原生手势回归验证。报告及截图在 `work/community-scroll/ux/`；主Agent自评与外部独立走查不是同一种评审。
+
+证据：`docs/screenshots/v0.5.0/` 包含展开、拖动中、收起、短拖回位、展开玩家及深色状态；`dist/Deeraft-community-scroll.mp4` 是模拟器原生录屏。演示入口有明确标记，数值不代表线上活动。具体检查见《验证记录》。

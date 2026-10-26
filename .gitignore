@@ -1,0 +1,16 @@
+.toolchain/
+.cache/
+work/
+build/
+.dart_tool/
+.flutter-plugins*
+android/local.properties
+android/key.properties
+*.jks
+*.keystore
+.env
+__pycache__/
+.pytest_cache/
+.idea/
+*.iml
+dist/

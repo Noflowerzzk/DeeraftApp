@@ -1,0 +1,11 @@
+{
+  "backend/app/controllers/mobile_controller.py": null,
+  "backend/app/controllers/mobile_oauth.py": null,
+  "backend/app/services/mobile_oauth_store.py": null,
+  "qq_bot/src/plugins/mobile_api.py": null,
+  "qq_bot/src/services/community_query.py": null,
+  "backend/main.py": "cb36431c0c71355a43746b162bac11b75c46ca4d24d6b95f71fe61bf9170e677",
+  "backend/app/controllers/auth_controller.py": "3b668c3f47b775b6c451900eaea0466c970df3dcf1b6c87275d0293597b22621",
+  "qq_bot/src/plugins/mc_query.py": "5f59410dc89f57c065fdbde7e6e320e0ab03f54d28a022463cd6643121e5374d",
+  "qq_bot/src/plugins/kook.py": "b335d85b5141ebcdcd3a4c7ba8d36fe46b938ff33849e108c4079f350e388144"
+}

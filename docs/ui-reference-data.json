@@ -1,0 +1,960 @@
+{
+  "reference_url": "https://www.kolejain.com/resources?scrollTo=mobile-app-ui",
+  "figma_url": "https://www.figma.com/design/WwEtNcIqpDNxYZx4ZpiE7m/Mobile-App-UI",
+  "source_download": "https://www.kolejain.com/images/uploads/Mobile%20App%20UI.fig",
+  "method": "HTML serialized resource metadata -> ZIP canvas.fig range -> Kiwi schema + Zstandard message decode",
+  "decoded_node_count": 2588,
+  "solid_fill_frequency": [
+    [
+      "#FFFFFF",
+      574
+    ],
+    [
+      "#646464",
+      148
+    ],
+    [
+      "#808080",
+      117
+    ],
+    [
+      "#3F3F3F",
+      44
+    ],
+    [
+      "#AEB3BE",
+      44
+    ],
+    [
+      "#000000",
+      35
+    ],
+    [
+      "#FFDD55",
+      28
+    ],
+    [
+      "#242424",
+      27
+    ],
+    [
+      "#B4B4B4",
+      23
+    ],
+    [
+      "#999999",
+      21
+    ],
+    [
+      "#7373FF",
+      18
+    ],
+    [
+      "#FF8573",
+      18
+    ],
+    [
+      "#0F77F0",
+      18
+    ],
+    [
+      "#1F1F1F",
+      17
+    ],
+    [
+      "#141414",
+      16
+    ],
+    [
+      "#D3D3D3",
+      16
+    ],
+    [
+      "#2995FF",
+      9
+    ],
+    [
+      "#1D1D1D",
+      8
+    ],
+    [
+      "#515151",
+      7
+    ],
+    [
+      "#FF4538",
+      6
+    ]
+  ],
+  "font_size_frequency": [
+    [
+      12,
+      116
+    ],
+    [
+      16,
+      82
+    ],
+    [
+      18,
+      35
+    ],
+    [
+      14,
+      25
+    ],
+    [
+      10,
+      25
+    ],
+    [
+      13,
+      21
+    ],
+    [
+      17.130767822265625,
+      10
+    ],
+    [
+      27,
+      8
+    ],
+    [
+      24,
+      7
+    ],
+    [
+      13.200000762939453,
+      6
+    ],
+    [
+      17,
+      5
+    ],
+    [
+      22,
+      5
+    ],
+    [
+      21,
+      5
+    ],
+    [
+      23,
+      4
+    ]
+  ],
+  "radius_frequency": [
+    [
+      5,
+      378
+    ],
+    [
+      100,
+      53
+    ],
+    [
+      9,
+      45
+    ],
+    [
+      16,
+      39
+    ],
+    [
+      6,
+      19
+    ],
+    [
+      3,
+      16
+    ],
+    [
+      47,
+      10
+    ],
+    [
+      2.6734695434570312,
+      10
+    ],
+    [
+      1.3367347717285156,
+      10
+    ],
+    [
+      24.052875518798828,
+      8
+    ],
+    [
+      95.16128540039062,
+      6
+    ],
+    [
+      10,
+      4
+    ]
+  ],
+  "stack_spacing_frequency": [
+    [
+      8,
+      52
+    ],
+    [
+      12,
+      48
+    ],
+    [
+      4,
+      45
+    ],
+    [
+      2,
+      43
+    ],
+    [
+      6,
+      37
+    ],
+    [
+      16,
+      30
+    ],
+    [
+      7,
+      28
+    ],
+    [
+      72,
+      21
+    ],
+    [
+      166,
+      18
+    ],
+    [
+      135,
+      18
+    ],
+    [
+      10,
+      15
+    ],
+    [
+      24,
+      15
+    ]
+  ],
+  "selected_nodes": [
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 2
+      },
+      "type": "FRAME",
+      "name": "Home - Bottom",
+      "size": {
+        "x": 393,
+        "y": 852
+      },
+      "cornerRadius": 47,
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 0.0784313753247261,
+            "g": 0.0784313753247261,
+            "b": 0.0784313753247261,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 39
+      },
+      "type": "TEXT",
+      "name": "Notes",
+      "size": {
+        "x": 51,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 48
+      },
+      "type": "TEXT",
+      "name": "Calendar",
+      "size": {
+        "x": 78,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 140
+      },
+      "type": "TEXT",
+      "name": "Overview",
+      "size": {
+        "x": 43,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 150
+      },
+      "type": "TEXT",
+      "name": "Notes",
+      "size": {
+        "x": 28,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 158
+      },
+      "type": "TEXT",
+      "name": "Calendar",
+      "size": {
+        "x": 42,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 227
+      },
+      "type": "TEXT",
+      "name": "Notes",
+      "size": {
+        "x": 51,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 236
+      },
+      "type": "TEXT",
+      "name": "Calendar",
+      "size": {
+        "x": 78,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 328
+      },
+      "type": "TEXT",
+      "name": "Overview",
+      "size": {
+        "x": 43,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 338
+      },
+      "type": "TEXT",
+      "name": "Notes",
+      "size": {
+        "x": 28,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 346
+      },
+      "type": "TEXT",
+      "name": "Calendar",
+      "size": {
+        "x": 42,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 462
+      },
+      "type": "TEXT",
+      "name": "Notes",
+      "size": {
+        "x": 51,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 471
+      },
+      "type": "TEXT",
+      "name": "Calendar",
+      "size": {
+        "x": 78,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 563
+      },
+      "type": "TEXT",
+      "name": "Overview",
+      "size": {
+        "x": 43,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 573
+      },
+      "type": "TEXT",
+      "name": "Notes",
+      "size": {
+        "x": 28,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 581
+      },
+      "type": "TEXT",
+      "name": "Calendar",
+      "size": {
+        "x": 42,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 1550
+      },
+      "type": "TEXT",
+      "name": "Notes",
+      "size": {
+        "x": 51,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 1559
+      },
+      "type": "TEXT",
+      "name": "Calendar",
+      "size": {
+        "x": 78,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 1572
+      },
+      "type": "TEXT",
+      "name": "Daily Tasks",
+      "size": {
+        "x": 94,
+        "y": 23
+      },
+      "fontSize": 18,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "SemiBold",
+        "postscript": "DMSans-SemiBold"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    },
+    {
+      "guid": {
+        "sessionID": 2,
+        "localID": 1633
+      },
+      "type": "TEXT",
+      "name": "Overview",
+      "size": {
+        "x": 43,
+        "y": 13
+      },
+      "fontSize": 10,
+      "fontName": {
+        "family": "DM Sans",
+        "style": "Regular",
+        "postscript": "DMSans-Regular"
+      },
+      "lineHeight": {
+        "value": 100,
+        "units": "PERCENT"
+      },
+      "fillPaints": [
+        {
+          "type": "SOLID",
+          "color": {
+            "r": 1,
+            "g": 1,
+            "b": 1,
+            "a": 1
+          },
+          "opacity": 1,
+          "visible": true,
+          "blendMode": "NORMAL"
+        }
+      ]
+    }
+  ]
+}

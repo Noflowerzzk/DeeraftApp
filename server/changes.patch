@@ -1,0 +1,518 @@
+--- a/backend/app/controllers/mobile_controller.py
++++ b/backend/app/controllers/mobile_controller.py
+@@ -0,0 +1,76 @@
++"""JWT mobile adapters. Existing web routes and permission checks are unchanged."""
++import asyncio
++import os
++import json
++import urllib.request
++from datetime import datetime, timezone
++from urllib.parse import urlparse
++
++from fastapi import APIRouter, Depends, Query, WebSocket, status
++from sqlalchemy.orm import Session
++from app.config.database import get_db
++from app.controllers import log_controller as logs
++from app.models.user import User
++from app.services.user_service import UserService
++from app.utils.auth import get_current_user
++from app.utils.jwt import verify_token
++
++router = APIRouter(tags=['移动端'])
++_cache, _expires, _lock = None, 0.0, asyncio.Lock()
++
++
++@router.get('/api/v1/community/status')
++async def community_status(current_user: User = Depends(get_current_user)):
++    import time
++    global _cache, _expires
++    if _cache is not None and time.monotonic() < _expires:
++        return _cache
++    async with _lock:
++        if _cache is not None and time.monotonic() < _expires:
++            return _cache
++        origin = os.environ.get('DEERAFT_BOT_ORIGIN', 'http://127.0.0.1:8080')
++        parsed = urlparse(origin)
++        if parsed.hostname not in {'127.0.0.1', '::1'} or parsed.scheme != 'http' or parsed.username:
++            raise RuntimeError('DEERAFT_BOT_ORIGIN must be a loopback HTTP origin')
++        secret = os.environ.get('DEERAFT_INTERNAL_TOKEN', '')
++        try:
++            if not secret:
++                raise RuntimeError('Missing internal token')
++            def fetch():
++                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
++                request = urllib.request.Request(f'{origin.rstrip("/")}/internal/deeraft/status',
++                                                  headers={'X-Deeraft-Internal': secret})
++                with opener.open(request, timeout=12) as response:
++                    return json.load(response)
++            value = await asyncio.to_thread(fetch)
++            if not isinstance(value, dict) or not isinstance(value.get('sources'), dict):
++                raise ValueError('Invalid bot response')
++        except Exception:
++            value = {'mc': None, 'kook': None, 'fetched_at': datetime.now(timezone.utc).isoformat(),
++                     'sources': {name: {'available': False, 'updated_at': None, 'error': '社区查询服务暂不可用'}
++                                 for name in ('mc', 'kook')}}
++        _cache, _expires = value, time.monotonic() + 15
++        return value
++
++
++@router.get('/api/v1/mobile/chat')
++async def chat(num: int = Query(100, ge=1, le=300), current_user: User = Depends(get_current_user)):
++    return await logs.get_chat_message(permission_code=logs.PERMISSION_CODE, num=num)
++
++
++@router.get('/api/v1/mobile/daily-playtime')
++async def daily_playtime(date: str | None = Query(None),
++                         current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
++    return await logs.get_daily_playtime(permission_code=logs.PERMISSION_CODE, date=date, db=db)
++
++
++@router.websocket('/api/v1/mobile/chat/ws')
++async def chat_socket(websocket: WebSocket, token: str | None = None, db: Session = Depends(get_db)):
++    username = verify_token(token) if token else None
++    if not username or not UserService.get_user_by_username(db, username):
++        # Accept + close ensures mobile clients receive the policy close code.
++        await websocket.accept()
++        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason='登录已过期')
++        return
++    # Reuse the same history and broadcaster as the website, no second log reader.
++    await logs.websocket_chat_messages(websocket, permission_code=logs.PERMISSION_CODE)
+--- a/backend/app/controllers/mobile_oauth.py
++++ b/backend/app/controllers/mobile_oauth.py
+@@ -0,0 +1,58 @@
++"""Uses the existing registered Microsoft callback URI; no Azure change required."""
++from datetime import timedelta
++from urllib.parse import urlencode
++from fastapi import APIRouter, HTTPException
++from fastapi.responses import RedirectResponse
++from pydantic import BaseModel, Field
++from app.services import microsoft_auth_service
++from app.services.mobile_oauth_store import OAuthStore
++from app.services.user_service import UserService
++from app.utils.jwt import create_access_token
++
++router = APIRouter(prefix='/api/v1/mobile/auth/microsoft', tags=['移动端认证'])
++store = OAuthStore()
++
++
++class StartRequest(BaseModel):
++    code_challenge: str = Field(pattern=r'^[A-Za-z0-9_-]{43}$')
++    client_state: str = Field(pattern=r'^[A-Za-z0-9_-]{32,128}$')
++
++
++class ExchangeRequest(BaseModel):
++    code: str = Field(pattern=r'^[A-Za-z0-9_-]{32,128}$')
++    code_verifier: str = Field(pattern=r'^[A-Za-z0-9._~-]{43,128}$')
++
++
++@router.post('/start')
++def start(payload: StartRequest):
++    if not microsoft_auth_service.is_configured():
++        raise HTTPException(503, '尚未配置 Microsoft 登录')
++    state = store.start(payload.code_challenge, payload.client_state)
++    return {'authorize_url': microsoft_auth_service.build_authorize_url(state)}
++
++
++@router.post('/exchange')
++def exchange(payload: ExchangeRequest):
++    token = store.exchange(payload.code, payload.code_verifier)
++    if not token:
++        raise HTTPException(400, '交换码无效或已过期')
++    return {'access_token': token, 'token_type': 'bearer'}
++
++
++def complete_callback(*, code, state, error, db):
++    client_state = store.begin_callback(state)
++    if client_state is None:
++        raise HTTPException(400, '登录事务无效或已过期，请重新发起')
++    params = {'state': client_state}
++    try:
++        if error or not code:
++            raise ValueError('Authorization cancelled')
++        profile = microsoft_auth_service.authenticate_with_code(code)
++        user = UserService.get_or_create_by_minecraft(db, profile.uuid, profile.name)
++        token = create_access_token(data={'sub': user.username, 'role': user.role},
++                                    expires_delta=timedelta(days=1))
++        params['code'] = store.complete(state, token)
++    except Exception:
++        params['error'] = 'login_failed'
++    return RedirectResponse('deeraft://oauth/callback?' + urlencode(params), status_code=302,
++                            headers={'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer'})
+--- a/backend/app/services/mobile_oauth_store.py
++++ b/backend/app/services/mobile_oauth_store.py
+@@ -0,0 +1,73 @@
++"""Process-safe, short-lived, single-use mobile OAuth transactions."""
++import base64
++import hashlib
++import hmac
++import os
++import secrets
++import sqlite3
++import time
++from contextlib import contextmanager
++from pathlib import Path
++
++
++class OAuthStore:
++    def __init__(self, path=None, clock=time.time):
++        self.path = Path(path or os.environ.get('DEERAFT_OAUTH_DB',
++                         str(Path(__file__).resolve().parents[2] / 'data' / 'mobile_oauth.sqlite3')))
++        self.clock = clock
++
++    @contextmanager
++    def _connect(self):
++        self.path.parent.mkdir(parents=True, exist_ok=True)
++        conn = sqlite3.connect(self.path, timeout=5, isolation_level=None)
++        conn.execute('CREATE TABLE IF NOT EXISTS transactions '
++                     '(state TEXT PRIMARY KEY, client_state TEXT, challenge TEXT, expires REAL, code TEXT UNIQUE, token TEXT)')
++        conn.execute('DELETE FROM transactions WHERE expires < ?', (self.clock(),))
++        os.chmod(self.path, 0o600)
++        try:
++            yield conn
++        finally:
++            conn.close()
++
++    @staticmethod
++    def digest(value):
++        return hashlib.sha256(value.encode('ascii')).hexdigest()
++
++    def start(self, challenge, client_state):
++        state = 'mobile.' + secrets.token_urlsafe(32)
++        with self._connect() as conn:
++            conn.execute('INSERT INTO transactions VALUES (?,?,?,?,NULL,NULL)',
++                         (self.digest(state), client_state, challenge, self.clock() + 300))
++        return state
++
++    def begin_callback(self, state):
++        """Claim the pending transaction, rejecting concurrent/repeated callbacks."""
++        with self._connect() as conn:
++            conn.execute('BEGIN IMMEDIATE')
++            row = conn.execute('SELECT client_state FROM transactions WHERE state=? AND code IS NULL AND token IS NULL AND expires>?',
++                               (self.digest(state), self.clock())).fetchone()
++            if row:
++                conn.execute('UPDATE transactions SET token=? WHERE state=?', ('pending', self.digest(state)))
++            conn.commit()
++        return row[0] if row else None
++
++    def complete(self, state, token):
++        code = secrets.token_urlsafe(32)
++        with self._connect() as conn:
++            result = conn.execute('UPDATE transactions SET code=?,token=?,expires=? WHERE state=? AND token=? AND expires>?',
++                                  (self.digest(code), token, self.clock()+60, self.digest(state), 'pending', self.clock()))
++            if result.rowcount != 1:
++                raise ValueError('Expired transaction')
++        return code
++
++    def exchange(self, code, verifier):
++        challenge = base64.urlsafe_b64encode(hashlib.sha256(verifier.encode('ascii')).digest()).decode().rstrip('=')
++        with self._connect() as conn:
++            conn.execute('BEGIN IMMEDIATE')
++            row = conn.execute('SELECT token,challenge FROM transactions WHERE code=? AND expires>?', (self.digest(code), self.clock())).fetchone()
++            if not row or not hmac.compare_digest(row[1], challenge):
++                conn.rollback()
++                return None
++            conn.execute('DELETE FROM transactions WHERE code=?', (self.digest(code),))
++            conn.commit()
++        return row[0]
+--- a/qq_bot/src/plugins/mobile_api.py
++++ b/qq_bot/src/plugins/mobile_api.py
+@@ -0,0 +1,21 @@
++"""Internal bot API: local callers only, authenticated even on loopback."""
++import hmac
++import os
++
++from fastapi import HTTPException, Request
++from nonebot import get_driver
++from src.services.community_query import StatusCache
++
++cache = StatusCache()
++app = get_driver().server_app
++
++
++@app.get('/internal/deeraft/status', include_in_schema=False)
++async def community_status(request: Request):
++    expected = os.environ.get('DEERAFT_INTERNAL_TOKEN', '')
++    supplied = request.headers.get('X-Deeraft-Internal', '')
++    # Deliberately ignore forwarded headers: only actual local peer is trusted.
++    peer = request.client.host if request.client else ''
++    if peer not in {'127.0.0.1', '::1'} or not expected or not hmac.compare_digest(expected, supplied):
++        raise HTTPException(status_code=403, detail='Forbidden')
++    return await cache.get()
+--- a/qq_bot/src/services/community_query.py
++++ b/qq_bot/src/services/community_query.py
+@@ -0,0 +1,104 @@
++"""Structured queries shared by QQ formatting and the mobile gateway.
++
++No NoneBot imports: this module can be tested without registering matchers.
++"""
++import asyncio
++import json
++import os
++from pathlib import Path
++from datetime import datetime, timezone
++
++import httpx
++from mcstatus import JavaServer
++
++DATA = Path(__file__).resolve().parents[2] / 'data'
++
++
++def now():
++    return datetime.now(timezone.utc).isoformat()
++
++
++def human_ids():
++    # Do not create or reset the bot's existing data on a read request.
++    with (DATA / 'mc_human_players.json').open(encoding='utf-8') as handle:
++        value = json.load(handle)
++    if not isinstance(value, list):
++        raise ValueError('真人名单格式无效')
++    return {str(name).strip().casefold() for name in value if str(name).strip()}
++
++
++async def query_mc():
++    host = os.environ.get('DEERAFT_MC_HOST', 'mc.ainfinitythecoder.cn')
++    query_port = int(os.environ.get('DEERAFT_MC_QUERY_PORT', '25555'))
++    status_address = os.environ.get('DEERAFT_MC_STATUS_ADDRESS', host)
++    # DNS / TCP / UDP operations stay off the event loop; use bounded socket timeouts.
++    def blocking():
++        query = JavaServer(host, query_port, timeout=3).query()
++        status = JavaServer.lookup(status_address, timeout=3).status()
++        players = sorted(query.players.list or [], key=str.casefold)
++        humans = human_ids()
++        return {'online': True, 'motd': status.motd.to_plain(), 'version': status.version.name,
++                'latency_ms': round(status.latency), 'online_count': query.players.online,
++                'max_players': query.players.max, 'players': players,
++                'human_players': [name for name in players if name.casefold() in humans]}
++    return await asyncio.to_thread(blocking)
++
++
++async def query_kook(guild_id=None, token=None):
++    token = token or os.environ.get('DEERAFT_KOOK_TOKEN')
++    guild = guild_id or os.environ.get('DEERAFT_KOOK_GUILD_ID')
++    if not token or not guild:
++        raise ValueError('尚未配置社区 KOOK 查询')
++    async with httpx.AsyncClient(timeout=3, headers={'Authorization': f'Bot {token}'}) as client:
++        async def request(path, **params):
++            response = await client.get(f'https://www.kookapp.cn/api/v3/{path}', params=params)
++            response.raise_for_status()
++            body = response.json()
++            if body.get('code') != 0:
++                raise ValueError('KOOK 查询暂不可用')
++            return body.get('data')
++        info, channels = await asyncio.gather(request('guild/view', guild_id=guild),
++                                             request('channel/list', guild_id=guild))
++        voices = [channel for channel in channels.get('items', []) if channel['type'] == 2]
++        semaphore = asyncio.Semaphore(4)
++        async def members(channel):
++            async with semaphore:
++                users = await request('channel/user-list', channel_id=channel['id'])
++                return {'id': str(channel['id']), 'name': channel['name'],
++                        'users': [{'id': str(user['id']), 'name': user.get('nickname') or user.get('username') or '?'}
++                                  for user in (users or [])]}
++        return {'name': info['name'], 'channels': await asyncio.gather(*(members(c) for c in voices))}
++
++
++async def collect_status(mc_query=query_mc, kook_query=query_kook):
++    async def one(name, query):
++        try:
++            data = await asyncio.wait_for(query(), timeout=10)
++            return name, data, {'available': True, 'updated_at': now(), 'error': None}
++        except Exception:
++            # Do not expose upstream exception text, addresses or credentials.
++            return name, None, {'available': False, 'updated_at': now(),
++                                'error': 'MC 查询暂不可用' if name == 'mc' else 'KOOK 查询暂不可用'}
++    results = await asyncio.gather(one('mc', mc_query), one('kook', kook_query))
++    response = {'fetched_at': now(), 'sources': {}}
++    for name, data, source in results:
++        response[name] = data
++        response['sources'][name] = source
++    return response
++
++
++class StatusCache:
++    def __init__(self, loader=collect_status, ttl=15, clock=None):
++        import time
++        self.loader, self.ttl, self.clock = loader, ttl, clock or time.monotonic
++        self.value, self.expires = None, 0
++        self.lock = asyncio.Lock()
++
++    async def get(self):
++        if self.value is not None and self.clock() < self.expires:
++            return self.value
++        async with self.lock:
++            if self.value is None or self.clock() >= self.expires:
++                self.value = await self.loader()
++                self.expires = self.clock() + self.ttl
++            return self.value
+--- a/backend/main.py
++++ b/backend/main.py
+@@ -79,6 +79,10 @@
+ # 注意：WebSocket 路由应该在 HTTP 路由之前注册，或者确保更具体的路由在更通用的路由之前
+ # 重要：log_router 必须在 server_router 之前注册，因为 log_router 有具体的路由（如 /chat），
+ # 而 server_router 有参数化路由（如 /{server_name}），如果 server_router 先注册会拦截具体路由
++from app.controllers.mobile_controller import router as mobile_router
++from app.controllers.mobile_oauth import router as mobile_oauth_router
++app.include_router(mobile_router)
++app.include_router(mobile_oauth_router)
+ app.include_router(auth_router)
+ app.include_router(log_router)  # 包含 /chat 和 /{server_name}/logs/ws WebSocket 路由，必须在 server_router 之前
+ app.include_router(server_router)  # 包含 /status/ws WebSocket 路由和 /{server_name} 路由
+--- a/backend/app/controllers/auth_controller.py
++++ b/backend/app/controllers/auth_controller.py
+@@ -409,6 +409,11 @@
+     本接口故意写成同步 def：里面会调一连串 requests，让 FastAPI 在 threadpool 跑，
+     避免阻塞事件循环。
+     """
++    # DEERAFT_MOBILE_OAUTH: preserve the existing browser flow.
++    if state and state.startswith("mobile."):
++        from app.controllers.mobile_oauth import complete_callback
++        return complete_callback(code=code, state=state, error=error, db=db)
++
+     # 1) Microsoft 端直接报错（用户拒绝授权等）
+     if error:
+         msg = error_description or error
+--- a/qq_bot/src/plugins/mc_query.py
++++ b/qq_bot/src/plugins/mc_query.py
+@@ -157,39 +157,15 @@
+ 
+ 
+ async def get_mc_info(show_all_players: bool = False) -> Message:
+-    """获取 MC 服务器状态"""
++    from src.services.community_query import query_mc
+     try:
+-        # 服务器地址
+-        server = JavaServer(MC_SERVER_ADDR, MC_SERVER_PORT)
+-
+-        # 使用 query 方法查询
+-        query = await asyncio.to_thread(server.query)
+-
+-        # motd专属
+-        server_motd = JavaServer.lookup(MC_SERVER_ADDR)
+-        status = await asyncio.to_thread(server_motd.status)
+-
+-        # 获取信息
+-        players_online = query.players.online
+-        players_max = query.players.max
+-        player_list = query.players.list or []
+-
++        data = await query_mc()
+         msg = (
+-            f"🖥️ MC 服务器: {status.motd.to_plain()}\n"
+-            f"🎮 版本: {status.version.name}\n"
+-            # f"🕹️ 游戏模式: {query.game_type}\n"
+-            f"📶 延迟: {int(status.latency)} ms\n"
+-            f"🫃 人数: {players_online} / {players_max}\n"
++            f"🖥️ MC 服务器: {data['motd']}\n"
++            f"🎮 版本: {data['version']}\n"
++            f"📶 延迟: {data['latency_ms']} ms\n"
++            f"🫃 人数: {data['online_count']} / {data['max_players']}\n"
+         )
+-
+-        msg += _format_player_list(player_list, players_online, show_all_players)
+-
+-        return Message(msg)
+-
+-    # 捕捉 DNS
+-    except Exception as e:
+-        error_msg = str(e).lower()
+-        if "dns" in error_msg:
+-            return Message("⚠️ DNS 查询超时，正常现象，稍后重试")
+-        else:
+-            return Message(f"⚠️ MC 查询失败: \n{e}")
++        return Message(msg + _format_player_list(data['players'], data['online_count'], show_all_players))
++    except Exception as exc:
++        return Message(f"⚠️ MC 查询失败: \n{exc}")
+--- a/qq_bot/src/plugins/kook.py
++++ b/qq_bot/src/plugins/kook.py
+@@ -116,69 +116,24 @@
+ 
+ 
+ async def get_deep_kook_info(guild_id: str) -> Message:
+-    headers = {"Authorization": f"Bot {KOOK_TOKEN}"}
+-    msg = Message()  # 创建 NoneBot 消息对象
+-    user_icons = USER_ICON_CONFIG.get() or {}
+-
+-    async with httpx.AsyncClient() as client:
+-        try:
+-            # 1. 获取服务器基本信息
+-            guild_resp = await client.get(
+-                f"https://www.kookapp.cn/api/v3/guild/view?guild_id={guild_id}",
+-                headers=headers
+-            )
+-            g_data = guild_resp.json()
+-            if g_data["code"] != 0:
+-                return Message(f"❌ 查询失败: {g_data.get('message')}")
+-
+-            info = g_data["data"]
+-            msg.append(f"🎮 KOOK 服务器：{info['name']}\n")
+-            # msg.append("----- 语音频道 -----\n")
+-
+-            # 2. 获取所有频道列表
+-            chan_resp = await client.get(
+-                f"https://www.kookapp.cn/api/v3/channel/list?guild_id={guild_id}",
+-                headers=headers
+-            )
+-            channels = chan_resp.json().get("data", {}).get("items", [])
+-            voice_channels = [c for c in channels if c["type"] == 2]
+-
+-            # 3. 遍历语音频道
+-            has_user = False
+-            voice_output = Message()  # 暂存语音部分的消息
+-
+-            for vc in voice_channels:
+-                user_resp = await client.get(
+-                    f"https://www.kookapp.cn/api/v3/channel/user-list?channel_id={vc['id']}",
+-                    headers=headers
+-                )
+-                users = user_resp.json().get("data", [])
+-
+-                if users:
+-                    has_user = True
+-                    # 如果之前已经有内容了，先换行再加频道名
+-                    if len(voice_output) > 0:
+-                        voice_output.append("\n")
+-
+-                    voice_output.append(f"🎙️ 【{vc['name']}】")
+-
+-                    for u in users:
+-                        name = u.get("nickname") or u.get("username")
+-                        items = user_icons.get(name, ["🗣️"])
+-
+-                        # 换行并缩进
+-                        voice_output.append(f"\n  └ {name} ")
+-
+-                        # 统一转为列表处理：单值包一层，列表直接遍历
+-                        for item in items:
+-                            voice_output.append(_build_icon(item))
+-
+-            if not has_user:
+-                msg.append("Nobody here. 💔")
+-            else:
+-                msg.extend(voice_output)  # 将处理好的语音列表合并进去
+-
+-            return msg
+-
+-        except Exception as e:
+-            return Message(f"⚠️ 查询出错: {str(e)}")
++    from src.services.community_query import query_kook
++    try:
++        data = await query_kook(guild_id=guild_id, token=KOOK_TOKEN)
++        msg = Message(f"🎮 KOOK 服务器：{data['name']}\n")
++        user_icons = USER_ICON_CONFIG.get() or {}
++        occupied = [channel for channel in data['channels'] if channel['users']]
++        if not occupied:
++            msg.append("Nobody here. 💔")
++        for index, channel in enumerate(occupied):
++            if index:
++                msg.append("\n")
++            msg.append(f"🎙️ 【{channel['name']}】")
++            for user in channel['users']:
++                name = user['name']
++                msg.append(f"\n  └ {name} ")
++                items = user_icons.get(name, ["🗣️"])
++                for item in items:
++                    msg.append(_build_icon(item))
++        return msg
++    except Exception:
++        return Message("⚠️ KOOK 查询暂不可用")

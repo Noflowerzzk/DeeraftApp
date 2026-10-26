@@ -181,6 +181,10 @@
 | GET | `/api/v1/mobile/daily-playtime?date=YYYY-MM-DD` | 复用每日在线统计；不传共享权限码 | JWT |
 | POST | `/api/v1/mobile/auth/microsoft/start` | Body：`code_challenge`（S256，43 字符）、`client_state`；返回 `authorize_url` | 无 |
 | POST | `/api/v1/mobile/auth/microsoft/exchange` | Body：`code`、`code_verifier`；单次交换为 JWT | 一次性交换码 + PKCE |
+| POST | `/api/v1/mobile/auth/login` | Body：`username`、`password`；返回访问 Token 和刷新凭据 | 账号密码 |
+| POST | `/api/v1/mobile/auth/session` | 将旧版仍有效的登录升级为持久会话 | JWT |
+| POST | `/api/v1/mobile/auth/refresh` | Body：`refresh_token`；返回新访问 Token | 刷新凭据 |
+| POST | `/api/v1/mobile/auth/logout` | Body：`refresh_token`；撤销该持久会话 | 刷新凭据 |
 
 聚合响应的 `mc` 与 `kook` 允许独立为 `null`，必须结合 `sources` 判断状态；查询失败不表示服务器离线或频道无人。
 
@@ -211,3 +215,11 @@
 机器人新增内部 `GET /internal/deeraft/status`，仅接受本机调用并校验 `X-Deeraft-Internal`。该接口及服务凭据不提供给手机。真人名单沿用机器人已有 JSON 数据，不是入服白名单。
 
 移动端微软授权复用原回调 URI，以 `mobile.` state 分流。回到 App 的地址为 `deeraft://oauth/callback?code=<one_time_code>&state=<client_state>`；授权失败带 `error`。交换码 60 秒有效，客户端登录事务 5 分钟有效；网页登录流程不变。当前服务器缺少 Microsoft OAuth 配置，真实微软登录尚不可用。
+
+### 持久登录（v0.2.0）
+
+移动端账号密码登录和微软交换成功后返回 `{access_token, refresh_token, token_type}`。刷新成功返回 `{access_token, token_type}`；刷新凭据保持不变，以允许并发请求及网络失败后的重试。客户端在安全存储中保存会话，不保存密码。
+
+访问 Token 有效期 24 小时，App 提前续期，遇到 401 也会续期并重试一次；同一时间只发起一次续期请求。刷新凭据使用随机不透明字符串，服务器只保存 SHA-256 摘要和用户 ID。闲置 90 天失效；续期延长闲置期限，绝对上限为首次登录后 1 年。每次签发访问 Token 都重新读取用户的当前名称与角色。删除账号或主动退出后无法再续期。
+
+服务重启不清空会话。会话数据库为 `backend/data/mobile_sessions.sqlite3`，权限 0600。网页登录有效期及接口行为保持原样。

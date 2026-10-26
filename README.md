@@ -16,7 +16,9 @@ APK 输出至 `dist/Deeraft-test.apk`，使用本地测试签名。登录页的�
 
 工具链位于 `.toolchain/`；Gradle、Pub、Android/AVD、Java、临时文件和 Flutter 配置位于 `.cache/`。脚本只修改当前进程的环境变量，不改系统 PATH。固定版本与下载校验值见 `scripts/toolchain.json`。
 
-默认地址为 `http://mc.ainfinitythecoder.cn`。HTTP 例外仅对这个域名开放；其它站点使用 HTTPS。连接设置可修改地址，修改后需重新登录。当前登录和查询沿用网站的 HTTP 传输方式。
+固定连接 `http://mc.ainfinitythecoder.cn`，不提供连接设置。当前登录和查询沿用网站的 HTTP 传输方式。
+
+App 安全存储登录会话，自动续期 24 小时访问 Token；刷新会话闲置 90 天失效，正常使用会自动延长，最长持续 1 年。退出登录撤销对应会话。短暂断网不会清空登录状态。旧版未过期的登录可自动迁移，已经失效的旧登录需重新登录一次。
 
 可选模拟器：
 

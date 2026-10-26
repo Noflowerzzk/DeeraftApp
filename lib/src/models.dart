@@ -106,3 +106,18 @@ String cleanMotd(String text) =>
 String durationLabel(num minutes) => minutes < 60
     ? '${minutes.round()} 分钟'
     : '${(minutes / 60).toStringAsFixed(1)} 小时';
+
+List<Json> topPlaytime(List<Json> rows) {
+  final ranked = [...rows]
+    ..sort((a, b) {
+      final byMinutes = (b['playtime_minutes'] as num? ?? 0).compareTo(
+        a['playtime_minutes'] as num? ?? 0,
+      );
+      return byMinutes != 0
+          ? byMinutes
+          : (a['server_name']?.toString() ?? '').compareTo(
+              b['server_name']?.toString() ?? '',
+            );
+    });
+  return ranked.take(5).toList();
+}

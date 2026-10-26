@@ -1,13 +1,16 @@
 """Uses the existing registered Microsoft callback URI; no Azure change required."""
 from datetime import timedelta
 from urllib.parse import urlencode
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 from app.services import microsoft_auth_service
 from app.services.mobile_oauth_store import OAuthStore
 from app.services.user_service import UserService
 from app.utils.jwt import create_access_token
+from app.utils.jwt import verify_token
+from app.config.database import get_db
+from sqlalchemy.orm import Session
 
 router = APIRouter(prefix='/api/v1/mobile/auth/microsoft', tags=['移动端认证'])
 store = OAuthStore()
@@ -32,11 +35,15 @@ def start(payload: StartRequest):
 
 
 @router.post('/exchange')
-def exchange(payload: ExchangeRequest):
+def exchange(payload: ExchangeRequest, db: Session = Depends(get_db)):
     token = store.exchange(payload.code, payload.code_verifier)
     if not token:
         raise HTTPException(400, '交换码无效或已过期')
-    return {'access_token': token, 'token_type': 'bearer'}
+    username=verify_token(token)
+    user=UserService.get_user_by_username(db,username) if username else None
+    if not user:raise HTTPException(401,'登录已失效，请重试')
+    from app.controllers.mobile_session import session_for
+    return session_for(user)
 
 
 def complete_callback(*, code, state, error, db):

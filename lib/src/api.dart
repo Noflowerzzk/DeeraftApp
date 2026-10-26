@@ -59,26 +59,124 @@ class ApiClient {
   final Dio http;
   final FlutterSecureStorage storage;
   String origin = defaultApiBase;
-  String? token;
+  String? token, refreshToken;
+  Json? cachedProfile;
+  Future<bool>? _refreshing;
+  int _generation = 0;
+  void Function()? onTokenChanged;
+
   Future<void> restore() async {
-    origin = await storage.read(key: 'origin') ?? defaultApiBase;
-    token = await storage.read(key: 'token');
+    final raw = await storage.read(key: 'session');
+    if (raw != null) {
+      final data = jsonDecode(raw) as Json;
+      token = data['access_token'] as String?;
+      refreshToken = data['refresh_token'] as String?;
+      cachedProfile = data['profile'] as Json?;
+    } else {
+      token = await storage.read(key: 'token');
+    }
   }
 
-  Future<void> setOrigin(String value) async {
-    origin = normalizeOrigin(value);
-    await storage.write(key: 'origin', value: origin);
-    await clearToken();
+  Future<void> _persist() => storage.write(
+    key: 'session',
+    value: jsonEncode({
+      'access_token': token,
+      'refresh_token': refreshToken,
+      'profile': cachedProfile,
+    }),
+  );
+  Future<void> setSession(Json data) async {
+    _generation++;
+    token = data['access_token'] as String;
+    refreshToken = data['refresh_token'] as String? ?? refreshToken;
+    await _persist();
+    await storage.delete(key: 'token');
   }
 
   Future<void> setToken(String value) async {
     token = value;
-    await storage.write(key: 'token', value: value);
+    await _persist();
+  }
+
+  Future<void> saveProfile(Json profile) async {
+    cachedProfile = profile;
+    await _persist();
   }
 
   Future<void> clearToken() async {
+    _generation++;
     token = null;
+    refreshToken = null;
+    cachedProfile = null;
+    await storage.delete(key: 'session');
     await storage.delete(key: 'token');
+  }
+
+  Future<void> signOut() async {
+    final old = refreshToken;
+    await clearToken();
+    if (old != null) {
+      unawaited(
+        http
+            .post<dynamic>(
+              '$origin/api/v1/mobile/auth/logout',
+              data: {'refresh_token': old},
+              options: Options(receiveTimeout: const Duration(seconds: 4)),
+            )
+            .then<void>((_) {}, onError: (Object _, StackTrace _) {}),
+      );
+    }
+  }
+
+  bool get _expiring {
+    if (token == null) return true;
+    try {
+      final payload = jsonDecode(
+        utf8.decode(
+          base64Url.decode(base64Url.normalize(token!.split('.')[1])),
+        ),
+      ) as Json;
+      return (payload['exp'] as num).toInt() <=
+          DateTime.now().millisecondsSinceEpoch ~/ 1000 + 60;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> ensureSession({bool forceRefresh = false}) async {
+    if (refreshToken != null && (forceRefresh || _expiring)) {
+      await refreshSession();
+    }
+  }
+
+  Future<bool> refreshSession() {
+    if (_refreshing != null) return _refreshing!;
+    final task = _refreshAccess();
+    _refreshing = task;
+    return task.whenComplete(() {
+      if (identical(_refreshing, task)) _refreshing = null;
+    });
+  }
+
+  Future<bool> _refreshAccess() async {
+    final credential = refreshToken, generation = _generation;
+    if (credential == null) return false;
+    try {
+      final response = await http.post<dynamic>(
+        '$origin/api/v1/mobile/auth/refresh',
+        data: {'refresh_token': credential},
+      );
+      if (generation != _generation || credential != refreshToken) return false;
+      token = (response.data as Json)['access_token'] as String;
+      await _persist();
+      onTokenChanged?.call();
+      return true;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw const ApiFailure('登录已失效，请重新登录', unauthorized: true);
+      }
+      throw const ApiFailure('连接失败，请稍后重试');
+    }
   }
 
   Future<dynamic> request(
@@ -86,11 +184,16 @@ class ApiClient {
     String method = 'GET',
     dynamic data,
     Json? query,
+    bool retried = false,
   }) async {
+    if (!retried && !path.startsWith('/api/v1/mobile/auth/') && token != null) {
+      await ensureSession();
+    }
+    final usedToken = token;
     try {
       final response = await http.request<dynamic>(
         '$origin$path',
-        data: data,
+        data: data is FormData ? data.clone() : data,
         queryParameters: query,
         options: Options(
           method: method,
@@ -100,16 +203,30 @@ class ApiClient {
       return response.data;
     } on DioException catch (error) {
       final status = error.response?.statusCode;
+      if (status == 401 &&
+          !retried &&
+          refreshToken != null &&
+          !path.startsWith('/api/v1/mobile/auth/')) {
+        if ((token != usedToken && token != null) || await refreshSession()) {
+          return request(
+            path,
+            method: method,
+            data: data,
+            query: query,
+            retried: true,
+          );
+        }
+      }
       if (status == 401) {
-        throw const ApiFailure('登录已过期，请重新登录', unauthorized: true);
+        throw const ApiFailure('登录已失效，请重新登录', unauthorized: true);
       }
       final body = error.response?.data;
       final detail = body is Map ? body['detail'] : null;
       if (detail is String) throw ApiFailure(detail);
       if (detail is List) throw const ApiFailure('请检查输入内容的格式和长度');
-      if (status == 404) throw const ApiFailure('此服务尚未安装 App 接口，请联系管理员');
+      if (status == 404) throw const ApiFailure('服务接口不可用');
       if (status == 403) throw const ApiFailure('当前账号无权访问此内容');
-      throw const ApiFailure('连接失败，请检查网站地址、证书和网络');
+      throw const ApiFailure('连接失败，请检查网络');
     }
   }
 

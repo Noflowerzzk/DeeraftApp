@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import 'api.dart';
 import 'models.dart';
 import 'state.dart';
 import 'theme.dart';
@@ -49,17 +48,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        const BrandMark(),
-                        const Spacer(),
-                        IconButton(
-                          tooltip: '连接设置',
-                          onPressed: () => showConnectionSettings(context, ref),
-                          icon: const Icon(Icons.tune_rounded),
-                        ),
-                      ],
-                    ),
+                    Row(children: [const BrandMark(), const Spacer()]),
                     const SizedBox(height: 40),
                     Text(
                       _register ? '注册' : '登录',
@@ -239,12 +228,6 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
                             ? null
                             : () => ref.read(appProvider.notifier).refresh(),
                       ),
-                      const SizedBox(width: 8),
-                      CircleAction(
-                        icon: Icons.more_horiz_rounded,
-                        label: '连接与账号',
-                        onTap: () => showConnectionSettings(context, ref),
-                      ),
                     ],
                   ),
                 ),
@@ -269,17 +252,17 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
       ),
       bottomNavigationBar: SafeArea(
         top: false,
-        minimum: const EdgeInsets.fromLTRB(22, 0, 22, 18),
+        minimum: const EdgeInsets.fromLTRB(30, 0, 30, 12),
         child: Center(
           heightFactor: 1,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 460),
+            constraints: const BoxConstraints(maxWidth: 340),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(40),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
                 child: Container(
-                  padding: const EdgeInsets.all(7),
+                  padding: const EdgeInsets.all(5),
                   decoration: BoxDecoration(
                     color: const Color(0xD9343434),
                     borderRadius: BorderRadius.circular(40),
@@ -299,7 +282,7 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
                             onTap: () => setState(() => _tab = i),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(vertical: 11),
+                              padding: const EdgeInsets.symmetric(vertical: 8),
                               decoration: BoxDecoration(
                                 color: _tab == i
                                     ? Colors.white.withValues(alpha: .13)
@@ -316,16 +299,16 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
                                       Icons.chat_bubble_outline_rounded,
                                       Icons.person_outline_rounded,
                                     ][i],
-                                    size: 23,
+                                    size: 20,
                                     color: _tab == i
                                         ? Colors.white
                                         : AppColors.muted,
                                   ),
-                                  const SizedBox(height: 4),
+                                  const SizedBox(height: 3),
                                   Text(
                                     ['社区', '服务器', '聊天', '我的'][i],
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: 10,
                                       color: _tab == i
                                           ? Colors.white
                                           : AppColors.muted,
@@ -369,7 +352,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
       onRefresh: ref.read(appProvider.notifier).refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 22, 24, 132),
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 104),
         children: [
           Text('服务器状态', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 8),
@@ -380,7 +363,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 30),
-          const SectionTitle('Minecraft', trailing: '主服务器'),
+          const SectionTitle('Minecraft'),
           if (state.communityError != null)
             ErrorNotice(
               '${state.communityError!}${community != null ? ' · 下方为上次数据' : ''}',
@@ -427,7 +410,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     Text(
                       available ? '${mc['online_count'] ?? 0}' : '—',
                       style: const TextStyle(
-                        fontSize: 56,
+                        fontSize: 48,
                         height: 1,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -2,
@@ -436,7 +419,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     const Padding(
                       padding: EdgeInsets.only(left: 10, bottom: 5),
                       child: Text(
-                        '位玩家在线',
+                        '在线',
                         style: TextStyle(color: AppColors.muted, fontSize: 13),
                       ),
                     ),
@@ -486,65 +469,34 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     ),
                   ],
                 ),
+                const Divider(),
+                Row(
+                  children: [
+                    const Text(
+                      '在线玩家',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const Spacer(),
+                    SegmentedToggle(
+                      labels: const ['真人', '全部'],
+                      selected: _allPlayers ? 1 : 0,
+                      onChanged: (i) => setState(() => _allPlayers = i == 1),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                MinecraftPlayers(
+                  key: ValueKey(_allPlayers),
+                  players: players,
+                  available: available,
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 30),
-          SectionTitle(
-            '在线玩家',
-            action: SegmentedToggle(
-              labels: const ['真人', '全部'],
-              selected: _allPlayers ? 1 : 0,
-              onChanged: (i) => setState(() => _allPlayers = i == 1),
-            ),
-          ),
-          if (players.isEmpty)
-            SurfaceCard(
-              child: EmptyContent(
-                icon: Icons.people_outline_rounded,
-                text: available
-                    ? '暂时没有${_allPlayers ? '玩家' : '真人玩家'}在线'
-                    : '玩家列表暂不可用',
-              ),
-            )
-          else
-            SurfaceCard(
-              child: Column(
-                children: List.generate(
-                  players.length,
-                  (i) => Padding(
-                    padding: EdgeInsets.only(top: i == 0 ? 0 : 16),
-                    child: Row(
-                      children: [
-                        PlayerAvatar(players[i], size: 36),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            players[i],
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: AppColors.green,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          const SizedBox(height: 10),
-          const Text(
-            '真人名单用于玩家分类。',
-            style: TextStyle(fontSize: 10, color: AppColors.muted),
-          ),
-          const SizedBox(height: 30),
+          const SizedBox(height: 26),
           const SectionTitle('KOOK'),
           if (community == null || !community.kookSource.available)
             SurfaceCard(
@@ -661,7 +613,7 @@ class ServersScreen extends ConsumerWidget {
       onRefresh: ref.read(appProvider.notifier).refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 22, 24, 132),
+        padding: const EdgeInsets.fromLTRB(24, 18, 24, 104),
         children: [
           Text('服务器列表', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 28),
@@ -883,21 +835,6 @@ class ChatScreen extends ConsumerWidget {
             children: [
               Text('聊天消息', style: Theme.of(context).textTheme.headlineMedium),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  BadgePill(
-                    state.chatConnection,
-                    color: state.chatConnection == '实时连接'
-                        ? AppColors.green
-                        : AppColors.yellow,
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    'MC · 只读',
-                    style: TextStyle(fontSize: 12, color: AppColors.muted),
-                  ),
-                ],
-              ),
               if (state.chatError != null) ErrorNotice(state.chatError!),
             ],
           ),
@@ -912,7 +849,7 @@ class ChatScreen extends ConsumerWidget {
                 )
               : ListView.builder(
                   reverse: true,
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 140),
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 108),
                   itemCount: state.chat.length,
                   itemBuilder: (context, index) {
                     final msg = state.chat[state.chat.length - 1 - index];
@@ -936,7 +873,7 @@ class ChatScreen extends ConsumerWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          PlayerAvatar(msg.player, size: 34),
+                          PlayerAvatar(msg.player, size: 34, minecraft: true),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -1005,9 +942,10 @@ class ProfileScreen extends ConsumerWidget {
       0,
       (sum, row) => sum + (row['playtime_minutes'] as num? ?? 0),
     );
+    final rankedPlaytime = topPlaytime(state.playtime);
     final avatar = ref.read(apiProvider).imageUrl(user.avatarUrl);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 22, 24, 132),
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 104),
       children: [
         Text('个人资料', style: Theme.of(context).textTheme.headlineMedium),
         const SizedBox(height: 28),
@@ -1105,7 +1043,7 @@ class ProfileScreen extends ConsumerWidget {
                   '还没有存档游玩记录',
                   style: TextStyle(fontSize: 13, color: AppColors.muted),
                 ),
-              ...state.playtime.map(
+              ...rankedPlaytime.map(
                 (p) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 7),
                   child: Row(
@@ -1163,7 +1101,11 @@ class ProfileScreen extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(vertical: 9),
                   child: Row(
                     children: [
-                      PlayerAvatar(p['player']?.toString() ?? '?', size: 30),
+                      PlayerAvatar(
+                        p['player']?.toString() ?? '?',
+                        size: 30,
+                        minecraft: true,
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -1186,11 +1128,6 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
         ),
-        const SizedBox(height: 10),
-        const Text(
-          '累计时长：存档统计；每日在线：日志统计。',
-          style: TextStyle(color: AppColors.muted, fontSize: 10),
-        ),
         const SizedBox(height: 28),
         OutlinedButton(
           onPressed: () => ref.read(appProvider.notifier).logout(),
@@ -1199,7 +1136,7 @@ class ProfileScreen extends ConsumerWidget {
         const SizedBox(height: 20),
         const Center(
           child: Text(
-            'DEERAFT  ·  v0.1.0',
+            'DEERAFT  ·  v0.2.0',
             style: TextStyle(
               fontSize: 10,
               letterSpacing: 2,
@@ -1214,81 +1151,6 @@ class ProfileScreen extends ConsumerWidget {
 
 void showMessage(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-Future<void> showConnectionSettings(BuildContext context, WidgetRef ref) async {
-  final controller = TextEditingController(text: ref.read(apiProvider).origin);
-  String? error;
-  await showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: AppColors.surface,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setLocal) => Padding(
-        padding: EdgeInsets.fromLTRB(
-          24,
-          24,
-          24,
-          MediaQuery.viewInsetsOf(context).bottom + 28,
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text('连接设置', style: Theme.of(context).textTheme.titleLarge),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: '关闭',
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                '更换地址后需重新登录。',
-                style: TextStyle(color: AppColors.muted, fontSize: 13),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: controller,
-                keyboardType: TextInputType.url,
-                decoration: InputDecoration(
-                  labelText: '网站地址',
-                  hintText: 'https://example.com',
-                  errorText: error,
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () async {
-                    try {
-                      normalizeOrigin(controller.text);
-                      await ref.read(appProvider.notifier).logout();
-                      await ref
-                          .read(appProvider.notifier)
-                          .configureOrigin(controller.text);
-                      if (context.mounted) Navigator.pop(context);
-                    } catch (e) {
-                      setLocal(() => error = e.toString());
-                    }
-                  },
-                  child: const Text('保存地址'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ),
-  );
-  // The sheet's closing animation still owns the field for a frame.
-}
-
 Future<void> showEditProfile(BuildContext context, WidgetRef ref) async {
   final user = ref.read(appProvider).user!,
       name = TextEditingController(),
@@ -1450,12 +1312,6 @@ class SectionTitle extends StatelessWidget {
     child: Row(
       children: [
         Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(width: 6),
-        const Icon(
-          Icons.chevron_right_rounded,
-          size: 20,
-          color: AppColors.muted,
-        ),
         const Spacer(),
         if (trailing != null)
           Text(
@@ -1535,12 +1391,41 @@ class ErrorNotice extends StatelessWidget {
 }
 
 class PlayerAvatar extends StatelessWidget {
-  const PlayerAvatar(this.name, {super.key, this.size = 36, this.color});
+  const PlayerAvatar(
+    this.name, {
+    super.key,
+    this.size = 36,
+    this.color,
+    this.minecraft = false,
+  });
   final String name;
   final double size;
   final Color? color;
+  final bool minecraft;
   @override
   Widget build(BuildContext context) {
+    if (minecraft) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(5),
+        child: Image.network(
+          'https://minotar.net/avatar/${Uri.encodeComponent(name)}/64',
+          width: size,
+          height: size,
+          fit: BoxFit.cover,
+          filterQuality: FilterQuality.none,
+          errorBuilder: (_, _, _) => Container(
+            width: size,
+            height: size,
+            color: AppColors.raised,
+            child: Icon(
+              Icons.person_outline_rounded,
+              size: size * .6,
+              color: AppColors.muted,
+            ),
+          ),
+        ),
+      );
+    }
     final accent =
         color ??
         [
@@ -1565,6 +1450,87 @@ class PlayerAvatar extends StatelessWidget {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+}
+
+class MinecraftPlayers extends StatefulWidget {
+  const MinecraftPlayers({
+    super.key,
+    required this.players,
+    required this.available,
+  });
+  final List<String> players;
+  final bool available;
+  @override
+  State<MinecraftPlayers> createState() => _MinecraftPlayersState();
+}
+
+class _MinecraftPlayersState extends State<MinecraftPlayers> {
+  bool expanded = false;
+  @override
+  Widget build(BuildContext context) {
+    if (widget.players.isEmpty) {
+      return SizedBox(
+        width: double.infinity,
+        child: EmptyContent(
+          icon: Icons.people_outline_rounded,
+          text: widget.available ? '暂无在线玩家' : '玩家列表暂不可用',
+        ),
+      );
+    }
+    final visible = expanded ? widget.players : widget.players.take(8).toList();
+    return Column(
+      children: [
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          alignment: Alignment.topCenter,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth < 260 ? 3 : 4;
+              final width =
+                  (constraints.maxWidth - (columns - 1) * 12) / columns;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 16,
+                children: visible
+                    .map(
+                      (name) => SizedBox(
+                        width: width,
+                        child: Tooltip(
+                          message: name,
+                          child: Column(
+                            children: [
+                              PlayerAvatar(name, size: 36, minecraft: true),
+                              const SizedBox(height: 7),
+                              Text(
+                                name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.muted,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+        ),
+        if (widget.players.length > 8)
+          TextButton(
+            onPressed: () => setState(() => expanded = !expanded),
+            child: Text(
+              expanded ? '收起' : '展开（${widget.players.length}）',
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+      ],
     );
   }
 }

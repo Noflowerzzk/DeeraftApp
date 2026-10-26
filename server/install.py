@@ -40,6 +40,10 @@ def build_changes(backend, bot):
             'from app.controllers.mobile_controller import router as mobile_router\n'
             'from app.controllers.mobile_oauth import router as mobile_oauth_router\n'
             'app.include_router(mobile_router)\napp.include_router(mobile_oauth_router)\n' + anchor)
+    if 'from app.controllers.mobile_session import router' not in source:
+        source=source.replace('app.include_router(auth_router)',
+            'from app.controllers.mobile_session import router as mobile_session_router\n'
+            'app.include_router(mobile_session_router)\napp.include_router(auth_router)')
     changes[main] = source
     auth = backend/'app/controllers/auth_controller.py'
     source = auth.read_text(encoding='utf-8')

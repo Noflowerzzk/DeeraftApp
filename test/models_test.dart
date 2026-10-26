@@ -3,6 +3,19 @@ import 'package:deeraft/src/api.dart';
 import 'package:deeraft/src/models.dart';
 
 void main() {
+  test('playtime ranking selects top five without changing totals source', () {
+    final rows = List.generate(
+      8,
+      (i) => <String, dynamic>{
+        'server_name': 'server-$i',
+        'playtime_minutes': i * 10,
+      },
+    );
+    final ranked = topPlaytime(rows);
+    expect(ranked.map((r) => r['playtime_minutes']), [70, 60, 50, 40, 30]);
+    expect(rows.first['playtime_minutes'], 0);
+    expect(rows.length, 8);
+  });
   test(
     'history/live overlap does not duplicate, genuine repeated messages remain',
     () {

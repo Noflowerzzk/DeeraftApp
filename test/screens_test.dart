@@ -59,6 +59,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('服务器状态'), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsNothing);
+    expect(find.text('主服务器'), findsNothing);
+    expect(find.byTooltip('连接设置'), findsNothing);
+    expect(find.text('在线玩家'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await expectLater(
       find.byKey(const Key('screen')),
@@ -84,6 +88,31 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('用户名'), findsOneWidget);
+    expect(find.byTooltip('连接设置'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('large player list folds and expands inside MC card', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: appTheme,
+        home: Scaffold(
+          body: MinecraftPlayers(
+            players: List.generate(12, (i) => 'Player$i'),
+            available: true,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(PlayerAvatar), findsNWidgets(8));
+    await tester.tap(find.text('展开（12）'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PlayerAvatar), findsNWidgets(12));
+    await tester.tap(find.text('收起'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PlayerAvatar), findsNWidgets(8));
     expect(tester.takeException(), isNull);
   });
 }

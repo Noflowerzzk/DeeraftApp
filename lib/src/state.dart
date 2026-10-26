@@ -60,15 +60,23 @@ class AppController extends Notifier<AppState> {
   Timer? _poll;
   StreamSubscription<Uri>? _links;
   bool _disposed = false, _foreground = true;
+  bool _startingLive = false, _recovering = false;
   int _session = 0;
   AppLinks? _appLinks;
   @override
   AppState build() {
     api = ref.read(apiProvider);
+    api.onTokenChanged = () {
+      if (!_disposed && state.user != null) {
+        _stopLive();
+        _startLive();
+      }
+    };
     ref.onDispose(() {
       _disposed = true;
       _stopLive();
       _links?.cancel();
+      api.onTokenChanged = null;
     });
     Future.microtask(_bootstrap);
     return AppState();
@@ -91,16 +99,33 @@ class AppController extends Notifier<AppState> {
       _appLinks = AppLinks();
       _links = _appLinks!.uriLinkStream.listen(_handleLink, onError: (_) {});
       if (api.token != null) {
-        final user = UserProfile.fromJson(
-          await api.request('/api/v1/auth/me') as Json,
-        );
+        if (api.refreshToken == null) {
+          await api.setSession(
+            await api.request('/api/v1/mobile/auth/session', method: 'POST')
+                as Json,
+          );
+        }
+        await api.ensureSession();
+        final profile = await api.request('/api/v1/auth/me') as Json;
+        final user = UserProfile.fromJson(profile);
+        await api.saveProfile(profile);
         _emit((s) => s.user = user);
         unawaited(refresh());
         _startLive();
       }
     } catch (e) {
-      if (e is ApiFailure && e.unauthorized) await api.clearToken();
-      _emit((s) => s.error = e.toString());
+      if (e is ApiFailure && e.unauthorized) {
+        await api.clearToken();
+        _emit((s) => s.error = e.toString());
+      } else if (api.cachedProfile != null) {
+        _emit((s) {
+          s.user = UserProfile.fromJson(api.cachedProfile!);
+          s.communityError = e.toString();
+        });
+        _startLive();
+      } else {
+        _emit((s) => s.error = e.toString());
+      }
     } finally {
       _emit((s) => s.booting = false);
     }
@@ -152,11 +177,11 @@ class AppController extends Notifier<AppState> {
         );
       }
       final data = await api.request(
-        '/api/v1/auth/login',
+        '/api/v1/mobile/auth/login',
         method: 'POST',
         data: {'username': username, 'password': password},
       ) as Json;
-      await _acceptToken(data['access_token'] as String);
+      await _acceptSession(data);
     } catch (e) {
       _emit((s) => s.error = e.toString());
     } finally {
@@ -164,12 +189,12 @@ class AppController extends Notifier<AppState> {
     }
   }
 
-  Future<void> _acceptToken(String token) async {
+  Future<void> _acceptSession(Json data) async {
     _session++;
-    await api.setToken(token);
-    final user = UserProfile.fromJson(
-      await api.request('/api/v1/auth/me') as Json,
-    );
+    await api.setSession(data);
+    final profile = await api.request('/api/v1/auth/me') as Json;
+    final user = UserProfile.fromJson(profile);
+    await api.saveProfile(profile);
     _emit((s) {
       s.user = user;
       s.demo = false;
@@ -179,16 +204,11 @@ class AppController extends Notifier<AppState> {
     _startLive();
   }
 
-  Future<void> configureOrigin(String value) async {
-    await api.setOrigin(value);
-    _emit((s) => s.error = null);
-  }
-
   Future<void> logout({String? reason}) async {
     _session++;
     _stopLive();
     try {
-      await api.clearToken();
+      await api.signOut();
       await api.storage.delete(key: 'oauth_pending');
     } catch (_) {
       /* UI still logs out if storage unavailable. */
@@ -304,13 +324,35 @@ class AppController extends Notifier<AppState> {
     }
   }
 
-  void _startLive() {
-    if (!_foreground || state.demo || state.user == null || _feeds.isNotEmpty) {
+  Future<void> _startLive() async {
+    if (_disposed ||
+        _startingLive ||
+        !_foreground ||
+        state.demo ||
+        state.user == null ||
+        _feeds.isNotEmpty) {
+      return;
+    }
+    _startingLive = true;
+    final startingSession = _session;
+    try {
+      await api.ensureSession();
+    } catch (e) {
+      await _failure(e, (s, e) => s.communityError = e);
+      return;
+    } finally {
+      _startingLive = false;
+    }
+    if (_disposed ||
+        startingSession != _session ||
+        !_foreground ||
+        state.user == null ||
+        _feeds.isNotEmpty) {
       return;
     }
     final session = _session;
     void unauthorized() {
-      if (session == _session) unawaited(logout(reason: '登录已过期，请重新登录'));
+      if (session == _session) unawaited(_recoverSession());
     }
 
     _feeds.addAll([
@@ -368,6 +410,23 @@ class AppController extends Notifier<AppState> {
     );
   }
 
+  Future<void> _recoverSession() async {
+    if (_recovering) return;
+    _recovering = true;
+    try {
+      if (!await api.refreshSession()) {
+        await logout(reason: '请重新登录');
+        return;
+      }
+      _stopLive();
+      await _startLive();
+    } catch (e) {
+      await _failure(e, (s, e) => s.communityError = e);
+    } finally {
+      _recovering = false;
+    }
+  }
+
   Future<void> _refreshCommunity(int session) async {
     if (state.refreshing || session != _session) return;
     await _load(
@@ -403,6 +462,7 @@ class AppController extends Notifier<AppState> {
       ) as Json;
       await api.setToken(d['access_token'] as String);
       _emit((s) => s.user = UserProfile.fromJson(d['profile'] as Json));
+      await api.saveProfile(d['profile'] as Json);
       _stopLive();
       _startLive();
     }
@@ -497,7 +557,7 @@ class AppController extends Notifier<AppState> {
         method: 'POST',
         data: {'code': code, 'code_verifier': parts[1]},
       ) as Json;
-      await _acceptToken(d['access_token'] as String);
+      await _acceptSession(d);
     } catch (e) {
       _emit((s) => s.error = e.toString());
     }

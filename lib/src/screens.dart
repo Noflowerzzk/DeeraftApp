@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import 'models.dart';
 import 'state.dart';
-import 'theme.dart';
 import 'motion.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -34,134 +33,121 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(appProvider);
+    final state = ref.watch(appProvider), c = Theme.of(context).colorScheme;
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 480),
+            constraints: const BoxConstraints(maxWidth: 440),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(28),
-              child: Form(
-                key: _form,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [const BrandMark(), const Spacer()]),
-                    const SizedBox(height: 40),
-                    AnimatedMetric(
-                      _register ? '注册' : '登录',
-                      style: Theme.of(context).textTheme.headlineLarge,
-                    ),
-                    const SizedBox(height: 36),
-                    TextFormField(
-                      controller: _name,
-                      autofillHints: const [AutofillHints.username],
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: '用户名',
-                        prefixIcon: Icon(Icons.person_outline_rounded),
-                      ),
-                      validator: (v) =>
-                          (v?.trim().isEmpty ?? true) ? '请输入用户名' : null,
-                    ),
-                    const SizedBox(height: 14),
-                    TextFormField(
-                      controller: _password,
-                      obscureText: _obscure,
-                      autofillHints: [
-                        _register
-                            ? AutofillHints.newPassword
-                            : AutofillHints.password,
-                      ],
-                      onFieldSubmitted: (_) {
-                        if (!state.busy) _submit();
-                      },
-                      decoration: InputDecoration(
-                        labelText: '密码',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
-                        suffixIcon: IconButton(
-                          tooltip: '显示或隐藏密码',
-                          onPressed: () => setState(() => _obscure = !_obscure),
-                          icon: Icon(
-                            _obscure
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
+              padding: const EdgeInsets.all(24),
+              child: AutofillGroup(
+                child: Form(
+                  key: _form,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: const EdgeInsets.all(18),
+                          decoration: BoxDecoration(
+                            color: c.primaryContainer,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Icon(
+                            Icons.forest,
+                            color: c.onPrimaryContainer,
+                            size: 40,
                           ),
                         ),
                       ),
-                      validator: (v) => (v?.isEmpty ?? true) ? '请输入密码' : null,
-                    ),
-                    if (state.error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: ErrorNotice(state.error!),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Deeraft',
+                        style: Theme.of(context).textTheme.displaySmall,
                       ),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: PressFeedback(
-                        enabled: !state.busy,
-                        child: FilledButton(
-                          onPressed: state.busy ? null : _submit,
-                          child: state.busy
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : Text(_register ? '注册' : '登录'),
+                      const SizedBox(height: 8),
+                      AnimatedMetric(
+                        _register ? '注册' : '登录',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 32),
+                      TextFormField(
+                        controller: _name,
+                        autofillHints: const [AutofillHints.username],
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: '用户名',
+                          prefixIcon: Icon(Icons.person_outline),
                         ),
+                        validator: (v) =>
+                            (v?.trim().isEmpty ?? true) ? '请输入用户名' : null,
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
+                      const SizedBox(height: 20),
+                      TextFormField(
+                        controller: _password,
+                        obscureText: _obscure,
+                        autofillHints: [
+                          _register
+                              ? AutofillHints.newPassword
+                              : AutofillHints.password,
+                        ],
+                        onFieldSubmitted: (_) {
+                          if (!state.busy) _submit();
+                        },
+                        decoration: InputDecoration(
+                          labelText: '密码',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            tooltip: '显示或隐藏密码',
+                            onPressed: () =>
+                                setState(() => _obscure = !_obscure),
+                            icon: Icon(
+                              _obscure
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                          ),
+                        ),
+                        validator: (v) => (v?.isEmpty ?? true) ? '请输入密码' : null,
+                      ),
+                      if (state.error != null) ErrorNotice(state.error!),
+                      const SizedBox(height: 28),
+                      FilledButton(
+                        onPressed: state.busy ? null : _submit,
+                        child: state.busy
+                            ? const SizedBox.square(
+                                dimension: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(_register ? '注册' : '登录'),
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
                         onPressed: state.busy
                             ? null
                             : ref.read(appProvider.notifier).microsoftLogin,
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(48, 52),
-                          side: const BorderSide(color: AppColors.border),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        icon: const Icon(Icons.window_rounded, size: 19),
-                        label: const Text(
-                          'Microsoft / Minecraft 登录',
-                          style: TextStyle(color: Colors.white),
-                        ),
+                        icon: const Icon(Icons.window_outlined),
+                        label: const Text('Microsoft / Minecraft 登录'),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Center(
-                      child: TextButton(
+                      const SizedBox(height: 12),
+                      TextButton(
                         onPressed: state.busy
                             ? null
                             : () => setState(() => _register = !_register),
                         child: Text(_register ? '已有账号？去登录' : '还没有账号？注册'),
                       ),
-                    ),
-                    const SizedBox(height: 28),
-                    Center(
-                      child: TextButton(
+                      TextButton(
                         onPressed: state.busy
                             ? null
                             : ref.read(appProvider.notifier).enterDemo,
-                        child: const Text(
-                          '演示模式',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                          ),
-                        ),
+                        child: const Text('演示模式'),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -181,6 +167,7 @@ class CommunityShell extends ConsumerStatefulWidget {
 class _CommunityShellState extends ConsumerState<CommunityShell>
     with WidgetsBindingObserver {
   int _tab = 0;
+  static const _titles = ['Deeraft', '服务器', '聊天消息', '个人资料'];
   @override
   void initState() {
     super.initState();
@@ -201,49 +188,37 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
   Widget build(BuildContext context) {
     final state = ref.watch(appProvider);
     return Scaffold(
-      extendBody: true,
+      appBar: AppBar(
+        title: Text(_titles[_tab]),
+        actions: [
+          if (state.demo)
+            const Padding(
+              padding: EdgeInsets.only(right: 8),
+              child: BadgePill('演示数据'),
+            ),
+          CircleAction(
+            icon: Icons.refresh,
+            label: '刷新',
+            onTap: state.refreshing
+                ? null
+                : () => ref.read(appProvider.notifier).refresh(),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
+        top: false,
         bottom: false,
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 18, 20, 8),
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: BrandMark(),
-                        ),
-                      ),
-                      if (state.demo)
-                        const BadgePill('演示数据', color: AppColors.yellow),
-                      const SizedBox(width: 10),
-                      CircleAction(
-                        icon: Icons.refresh_rounded,
-                        label: '刷新',
-                        onTap: state.refreshing
-                            ? null
-                            : () => ref.read(appProvider.notifier).refresh(),
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: MotionPageDeck(
-                    index: _tab,
-                    children: const [
-                      CommunityScreen(),
-                      ServersScreen(),
-                      ChatScreen(),
-                      ProfileScreen(),
-                    ],
-                  ),
-                ),
+            child: MotionPageDeck(
+              index: _tab,
+              children: const [
+                CommunityScreen(),
+                ServersScreen(),
+                ChatScreen(),
+                ProfileScreen(),
               ],
             ),
           ),
@@ -251,9 +226,7 @@ class _CommunityShellState extends ConsumerState<CommunityShell>
       ),
       bottomNavigationBar: FloatingDock(
         index: _tab,
-        onChanged: (i) {
-          if (i != _tab) setState(() => _tab = i);
-        },
+        onChanged: (i) => setState(() => _tab = i),
       ),
     );
   }
@@ -270,27 +243,35 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(appProvider), community = state.community;
-    final mc = community?.mc ?? {};
+    final mc = community?.mc ?? {},
+        c = Theme.of(context).colorScheme,
+        t = Theme.of(context).textTheme;
     final available = community?.mcSource.available ?? false;
     final players = _allPlayers
-        ? (community?.allPlayers ?? [])
-        : (community?.humanPlayers ?? []);
+        ? (community?.allPlayers ?? <String>[])
+        : (community?.humanPlayers ?? <String>[]);
     return RefreshIndicator(
       onRefresh: ref.read(appProvider.notifier).refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 104),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          Text('服务器状态', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 8),
-          Text(
-            community == null
-                ? '正在加载…'
-                : '${DateFormat('MM.dd · EEE').format(community.fetchedAt.toLocal())}   /   ${DateFormat('HH:mm:ss').format(community.fetchedAt.toLocal())} 更新',
-            style: Theme.of(context).textTheme.bodySmall,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('服务器状态', style: t.headlineMedium),
+                const SizedBox(height: 6),
+                Text(
+                  community == null
+                      ? '正在加载…'
+                      : '${DateFormat('HH:mm:ss').format(community.fetchedAt.toLocal())} 更新',
+                  style: t.bodyMedium?.copyWith(color: c.onSurfaceVariant),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 30),
-          const SectionTitle('Minecraft'),
           if (state.communityError != null)
             ErrorNotice(
               '${state.communityError!}${community != null ? ' · 下方为上次数据' : ''}',
@@ -301,19 +282,12 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(
-                      Icons.public_rounded,
-                      color: AppColors.green,
-                      size: 22,
-                    ),
+                    Icon(Icons.public, color: c.onSurface),
                     const SizedBox(width: 10),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Deeraft',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 16,
-                        ),
+                        'Minecraft',
+                        style: t.titleLarge?.copyWith(color: c.onSurface),
                       ),
                     ),
                     BadgePill(
@@ -322,92 +296,75 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                           : mc['online'] == true
                           ? '在线'
                           : '离线',
-                      color: !available
-                          ? AppColors.yellow
-                          : mc['online'] == true
-                          ? AppColors.green
-                          : AppColors.coral,
+                      color: c.onSurface,
                     ),
                   ],
                 ),
                 const SizedBox(height: 24),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.end,
+                  spacing: 16,
+                  runSpacing: 8,
                   children: [
-                    AnimatedMetric(
-                      available ? '${mc['online_count'] ?? 0}' : '—',
-                      style: const TextStyle(
-                        fontSize: 48,
-                        height: 1,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -2,
-                        fontFeatures: [FontFeature.tabularFigures()],
-                      ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        AnimatedMetric(
+                          available ? '${mc['online_count'] ?? 0}' : '—',
+                          style: t.displayLarge?.copyWith(
+                            color: c.primary,
+                            fontFeatures: [const FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 10, bottom: 12),
+                          child: Text('在线', style: t.titleMedium),
+                        ),
+                      ],
                     ),
-                    const Padding(
-                      padding: EdgeInsets.only(left: 10, bottom: 5),
-                      child: Text(
-                        '在线',
-                        style: TextStyle(color: AppColors.muted, fontSize: 13),
-                      ),
-                    ),
-                    const Spacer(),
                     if (available)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: BadgePill(
-                          '${(mc['latency_ms'] as num?)?.round() ?? '—'} ms',
-                          color: AppColors.green,
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.network_check,
+                              size: 18,
+                              color: c.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              '${(mc['latency_ms'] as num?)?.round() ?? '—'} ms',
+                              style: TextStyle(color: c.onSurfaceVariant),
+                            ),
+                          ],
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 8),
                 Text(
                   available
                       ? cleanMotd(mc['motd']?.toString() ?? '')
                       : (community?.mcSource.error ?? '等待服务器状态'),
-                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                  style: t.bodyLarge?.copyWith(color: c.onSurface),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  mc['version']?.toString() ?? 'Java Edition',
+                  style: t.bodyMedium?.copyWith(color: c.onSurface),
                 ),
                 const Divider(),
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 12,
                   children: [
-                    const Icon(
-                      Icons.extension_outlined,
-                      color: AppColors.muted,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        mc['version']?.toString() ?? 'Java Edition',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
-                        ),
-                      ),
-                    ),
-                    const Text(
-                      'DEERAFT',
-                      style: TextStyle(
-                        fontSize: 10,
-                        letterSpacing: 2,
-                        color: AppColors.muted,
-                      ),
-                    ),
-                  ],
-                ),
-                const Divider(),
-                Row(
-                  children: [
-                    const Text(
-                      '在线玩家',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const Spacer(),
+                    Text('在线玩家', style: t.titleMedium),
                     SegmentedToggle(
                       labels: const ['真人', '全部'],
                       selected: _allPlayers ? 1 : 0,
@@ -415,7 +372,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 MinecraftPlayers(
                   key: ValueKey(_allPlayers),
                   players: players,
@@ -424,7 +381,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
               ],
             ),
           ),
-          const SizedBox(height: 26),
+          const SizedBox(height: 28),
           const SectionTitle('KOOK'),
           if (community == null || !community.kookSource.available)
             SurfaceCard(
@@ -438,94 +395,78 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
               child: EmptyContent(icon: Icons.headset_outlined, text: '暂无语音频道'),
             )
           else
-            ...community.channels.map((channel) {
-              final users = List<Json>.from(channel['users'] as List? ?? []);
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: SurfaceCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+            SurfaceCard(
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  for (final channel in community.channels)
+                    _VoiceChannel(channel: channel),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VoiceChannel extends StatelessWidget {
+  const _VoiceChannel({required this.channel});
+  final Json channel;
+  @override
+  Widget build(BuildContext context) {
+    final users = List<Json>.from(channel['users'] as List? ?? []),
+        c = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.volume_up_outlined,
+                color: users.isEmpty ? c.onSurfaceVariant : c.primary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  channel['name']?.toString() ?? '',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Text(
+                '${users.length}',
+                style: TextStyle(color: c.onSurfaceVariant),
+              ),
+            ],
+          ),
+          if (users.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 12,
+                children: users
+                    .map(
+                      (u) => Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.volume_up_outlined,
-                            color: users.isEmpty
-                                ? AppColors.muted
-                                : AppColors.purple,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
+                          PlayerAvatar(u['name']?.toString() ?? '?', size: 28),
+                          const SizedBox(width: 8),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 160),
                             child: Text(
-                              channel['name']?.toString() ?? '',
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
-                          Text(
-                            '${users.length}',
-                            style: const TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
+                              u['name']?.toString() ?? '',
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
                       ),
-                      if (users.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 12),
-                          child: Text(
-                            '暂无成员',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 12,
-                            ),
-                          ),
-                        )
-                      else
-                        Padding(
-                          padding: const EdgeInsets.only(top: 16),
-                          child: Wrap(
-                            spacing: 16,
-                            runSpacing: 12,
-                            children: users
-                                .map(
-                                  (u) => Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      PlayerAvatar(
-                                        u['name']?.toString() ?? '?',
-                                        size: 26,
-                                        color: AppColors.purple,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      ConstrainedBox(
-                                        constraints: const BoxConstraints(
-                                          maxWidth: 150,
-                                        ),
-                                        child: Text(
-                                          u['name']?.toString() ?? '',
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: AppColors.muted,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                                .toList(),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              );
-            }),
+                    )
+                    .toList(),
+              ),
+            ),
         ],
       ),
     );
@@ -536,75 +477,75 @@ class ServersScreen extends ConsumerWidget {
   const ServersScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(appProvider), api = ref.read(apiProvider);
+    final state = ref.watch(appProvider),
+        api = ref.read(apiProvider),
+        c = Theme.of(context).colorScheme;
     return RefreshIndicator(
       onRefresh: ref.read(appProvider.notifier).refresh,
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(24, 18, 24, 104),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          Text('服务器列表', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 28),
           if (state.serversError != null) ErrorNotice(state.serversError!),
           if (state.servers.isEmpty && state.serversError == null)
-            const SurfaceCard(
-              child: EmptyContent(icon: Icons.dns_outlined, text: '暂无托管服务器'),
-            ),
+            const EmptyContent(icon: Icons.dns_outlined, text: '暂无托管服务器'),
           ...state.servers.asMap().entries.map((entry) {
-            final server = entry.value,
+            final s = entry.value,
                 running =
                     state.hostedStatus['is_running'] == true &&
-                    state.hostedStatus['server_name'] == server['name'];
-            final known = state.hostedStatus.containsKey('is_running');
-            final accent = [
-              AppColors.green,
-              AppColors.purple,
-              AppColors.yellow,
-            ][entry.key % 3];
-            final cover = api.imageUrl(server['img']?.toString());
+                    state.hostedStatus['server_name'] == s['name'];
+            final known = state.hostedStatus.containsKey('is_running'),
+                cover = api.imageUrl(s['img']?.toString());
             return Padding(
-              padding: const EdgeInsets.only(bottom: 18),
-              child: PressFeedback(
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => showModalBottomSheet<void>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: AppColors.surface,
-                    useSafeArea: true,
-                    sheetAnimationStyle: AnimationStyle(
-                      duration: AppMotion.duration(context, AppMotion.standard),
-                      reverseDuration: AppMotion.duration(
-                        context,
-                        AppMotion.fast,
+              padding: const EdgeInsets.only(bottom: 16),
+              child: MotionReveal(
+                child: Card(
+                  child: InkWell(
+                    onTap: () => showModalBottomSheet<void>(
+                      context: context,
+                      isScrollControlled: true,
+                      useSafeArea: true,
+                      sheetAnimationStyle: AnimationStyle(
+                        duration: AppMotion.duration(
+                          context,
+                          AppMotion.standard,
+                        ),
+                        reverseDuration: AppMotion.duration(
+                          context,
+                          AppMotion.fast,
+                        ),
+                      ),
+                      builder: (_) => ServerDetails(
+                        server: s,
+                        running: running,
+                        known: known,
+                        players: state.hostedPlayers,
                       ),
                     ),
-                    builder: (_) => ServerDetails(
-                      server: server,
-                      running: running,
-                      known: known,
-                      players: state.hostedPlayers,
-                    ),
-                  ),
-                  child: SurfaceCard(
-                    padding: EdgeInsets.zero,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(
-                          height: 142,
-                          width: double.infinity,
-                          child: cover == null
-                              ? WorldArtwork(accent: accent, index: entry.key)
-                              : Image.network(
-                                  cover,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => WorldArtwork(
-                                    accent: accent,
-                                    index: entry.key,
-                                  ),
-                                ),
-                        ),
+                        if (cover != null)
+                          SizedBox(
+                            height: 156,
+                            width: double.infinity,
+                            child: Ink.image(
+                              image: NetworkImage(cover),
+                              fit: BoxFit.cover,
+                              onImageError: (_, _) {},
+                            ),
+                          )
+                        else
+                          Container(
+                            height: 104,
+                            color: c.secondaryContainer,
+                            alignment: Alignment.center,
+                            child: Icon(
+                              Icons.landscape_outlined,
+                              size: 48,
+                              color: c.onSecondaryContainer,
+                            ),
+                          ),
                         Padding(
                           padding: const EdgeInsets.all(20),
                           child: Column(
@@ -614,53 +555,45 @@ class ServersScreen extends ConsumerWidget {
                                 children: [
                                   Expanded(
                                     child: Text(
-                                      server['name']?.toString() ?? '',
-                                      style: const TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      s['name']?.toString() ?? '',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleLarge,
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   BadgePill(
                                     !known
                                         ? '未知'
                                         : running
                                         ? '运行中'
                                         : '已停止',
-                                    color: !known
-                                        ? AppColors.yellow
-                                        : running
-                                        ? AppColors.green
-                                        : AppColors.muted,
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 8),
                               Text(
-                                cleanMotd(server['motd']?.toString() ?? ''),
+                                cleanMotd(s['motd']?.toString() ?? ''),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppColors.muted,
-                                  fontSize: 13,
-                                ),
+                                style: TextStyle(color: c.onSurfaceVariant),
                               ),
-                              const SizedBox(height: 18),
+                              const SizedBox(height: 20),
                               Row(
                                 children: [
-                                  Text(
-                                    'JAVA ${server['version']}',
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      letterSpacing: 1,
-                                      color: AppColors.muted,
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  const Icon(
-                                    Icons.arrow_forward_rounded,
+                                  Icon(
+                                    Icons.extension_outlined,
                                     size: 18,
-                                    color: AppColors.muted,
+                                    color: c.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text('Java ${s['version'] ?? '—'}'),
+                                  ),
+                                  Icon(
+                                    Icons.info_outline,
+                                    size: 20,
+                                    color: c.primary,
                                   ),
                                 ],
                               ),
@@ -693,8 +626,9 @@ class ServerDetails extends StatelessWidget {
   final List<String> players;
   @override
   Widget build(BuildContext context) => SafeArea(
-    child: Padding(
-      padding: const EdgeInsets.all(28),
+    top: false,
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -704,54 +638,37 @@ class ServerDetails extends StatelessWidget {
               Expanded(
                 child: Text(
                   server['name']?.toString() ?? '',
-                  style: Theme.of(context).textTheme.titleLarge,
+                  style: Theme.of(context).textTheme.headlineSmall,
                 ),
               ),
               IconButton(
                 tooltip: '关闭',
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.close_rounded),
+                icon: const Icon(Icons.close),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           BadgePill(
             !known
                 ? '等待运行状态'
                 : running
                 ? '正在运行'
                 : '已停止',
-            color: running ? AppColors.green : AppColors.muted,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Text(cleanMotd(server['motd']?.toString() ?? '')),
           const SizedBox(height: 12),
-          Text(
-            '版本 ${server['version']}',
-            style: const TextStyle(color: AppColors.muted),
-          ),
+          Text('版本 ${server['version'] ?? '—'}'),
           if (running) ...[
             const Divider(),
             Text(
               '在线玩家 · ${players.length}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 220),
-              child: SingleChildScrollView(
-                child: Text(
-                  players.isEmpty ? '暂无在线玩家' : players.join('、'),
-                  style: const TextStyle(color: AppColors.muted),
-                ),
-              ),
-            ),
+            const SizedBox(height: 20),
+            MinecraftPlayers(players: players, available: true),
           ],
-          const SizedBox(height: 24),
-          const Text(
-            '服务器管理操作请使用网站。',
-            style: TextStyle(fontSize: 12, color: AppColors.muted),
-          ),
         ],
       ),
     ),
@@ -762,46 +679,38 @@ class ChatScreen extends ConsumerWidget {
   const ChatScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(appProvider);
+    final state = ref.watch(appProvider),
+        c = Theme.of(context).colorScheme,
+        t = Theme.of(context).textTheme;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('聊天消息', style: Theme.of(context).textTheme.headlineMedium),
-              const SizedBox(height: 12),
-              if (state.chatError != null) ErrorNotice(state.chatError!),
-            ],
+        if (state.chatError != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: ErrorNotice(state.chatError!),
           ),
-        ),
         Expanded(
           child: state.chat.isEmpty
               ? const Center(
                   child: EmptyContent(
-                    icon: Icons.forum_outlined,
+                    icon: Icons.chat_bubble_outline,
                     text: '暂无聊天消息',
                   ),
                 )
               : ListView.builder(
                   reverse: true,
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 108),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
                   itemCount: state.chat.length,
                   itemBuilder: (context, index) {
                     final msg = state.chat[state.chat.length - 1 - index];
                     if (msg.type == 'join' || msg.type == 'leave') {
                       return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        child: Center(
-                          child: Text(
-                            '${msg.player} ${msg.type == 'join' ? '加入了游戏' : '离开了游戏'}  ·  ${msg.time}',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.muted,
-                            ),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Text(
+                          '${msg.player} ${msg.type == 'join' ? '加入了游戏' : '离开了游戏'} · ${msg.time}',
+                          textAlign: TextAlign.center,
+                          style: t.labelMedium?.copyWith(
+                            color: c.onSurfaceVariant,
                           ),
                         ),
                       );
@@ -809,34 +718,31 @@ class ChatScreen extends ConsumerWidget {
                     return MotionReveal(
                       key: ValueKey(msg.id ?? identityHashCode(msg)),
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: 22),
+                        padding: const EdgeInsets.only(bottom: 24),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            PlayerAvatar(msg.player, size: 34, minecraft: true),
+                            PlayerAvatar(msg.player, size: 36, minecraft: true),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
+                                  Wrap(
+                                    spacing: 10,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
                                     children: [
-                                      Expanded(
-                                        child: Text(
-                                          msg.player,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w500,
-                                            color: AppColors.green,
-                                          ),
+                                      Text(
+                                        msg.player,
+                                        style: t.labelLarge?.copyWith(
+                                          color: c.primary,
                                         ),
                                       ),
                                       Text(
                                         msg.time,
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          color: AppColors.muted,
+                                        style: t.labelSmall?.copyWith(
+                                          color: c.onSurfaceVariant,
                                         ),
                                       ),
                                     ],
@@ -844,19 +750,20 @@ class ChatScreen extends ConsumerWidget {
                                   const SizedBox(height: 8),
                                   Container(
                                     padding: const EdgeInsets.symmetric(
-                                      horizontal: 15,
+                                      horizontal: 16,
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.surface,
-                                      borderRadius: BorderRadius.circular(16),
+                                      color: c.surfaceContainer,
+                                      borderRadius: const BorderRadius.only(
+                                        topRight: Radius.circular(20),
+                                        bottomLeft: Radius.circular(20),
+                                        bottomRight: Radius.circular(20),
+                                      ),
                                     ),
                                     child: SelectableText(
                                       msg.message,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        height: 1.6,
-                                      ),
+                                      style: t.bodyLarge,
                                     ),
                                   ),
                                 ],
@@ -878,82 +785,79 @@ class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(appProvider), user = state.user!;
+    final state = ref.watch(appProvider),
+        user = state.user!,
+        c = Theme.of(context).colorScheme,
+        t = Theme.of(context).textTheme;
     final total = state.playtime.fold<num>(
       0,
       (sum, row) => sum + (row['playtime_minutes'] as num? ?? 0),
     );
-    final rankedPlaytime = topPlaytime(state.playtime);
     final avatar = ref.read(apiProvider).imageUrl(user.avatarUrl);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 104),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        Text('个人资料', style: Theme.of(context).textTheme.headlineMedium),
-        const SizedBox(height: 28),
         SurfaceCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  InkWell(
-                    borderRadius: BorderRadius.circular(50),
-                    onTap: () async {
-                      try {
-                        await ref.read(appProvider.notifier).uploadAvatar();
-                      } catch (e) {
-                        if (context.mounted) showMessage(context, e.toString());
-                      }
-                    },
-                    child: avatar == null
-                        ? PlayerAvatar(user.username, size: 64)
-                        : ClipOval(
-                            child: Image.network(
-                              avatar,
-                              width: 64,
-                              height: 64,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) =>
-                                  PlayerAvatar(user.username, size: 64),
+                  Semantics(
+                    button: true,
+                    label: '更换头像',
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(40),
+                      onTap: () async {
+                        try {
+                          await ref.read(appProvider.notifier).uploadAvatar();
+                        } catch (e) {
+                          if (context.mounted) {
+                            showMessage(context, e.toString());
+                          }
+                        }
+                      },
+                      child: avatar == null
+                          ? PlayerAvatar(user.username, size: 64)
+                          : ClipOval(
+                              child: Image.network(
+                                avatar,
+                                width: 64,
+                                height: 64,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) =>
+                                    PlayerAvatar(user.username, size: 64),
+                              ),
                             ),
-                          ),
+                    ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text(user.username, style: t.titleLarge),
+                        const SizedBox(height: 4),
                         Text(
-                          user.username,
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        BadgePill(
                           user.role == 'admin' ? '社区管理员' : 'Deeraft 成员',
-                          color: AppColors.purple,
+                          style: t.bodyMedium?.copyWith(
+                            color: c.onSurfaceVariant,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  CircleAction(
-                    icon: Icons.edit_outlined,
-                    label: '编辑资料',
-                    onTap: () => showEditProfile(context, ref),
+                  IconButton.filledTonal(
+                    tooltip: '编辑资料',
+                    onPressed: () => showEditProfile(context, ref),
+                    icon: const Icon(Icons.edit_outlined),
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Text(
-                user.bio.isEmpty ? '还没有留下签名。' : user.bio,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.muted,
-                  height: 1.7,
-                ),
-              ),
+              if (user.bio.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text(user.bio, style: t.bodyLarge),
+              ],
             ],
           ),
         ),
@@ -963,56 +867,67 @@ class ProfileScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 '累计游玩',
-                style: TextStyle(fontSize: 12, color: AppColors.muted),
+                style: t.labelLarge?.copyWith(color: c.onSurfaceVariant),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 8),
               Text(
                 durationLabel(total),
-                style: const TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: -1,
-                ),
+                style: t.headlineLarge?.copyWith(color: c.primary),
               ),
               if (state.playtimeError != null)
                 ErrorNotice(state.playtimeError!),
-              const Divider(),
+              const SizedBox(height: 20),
               if (state.playtime.isEmpty)
-                const Text(
-                  '还没有存档游玩记录',
-                  style: TextStyle(fontSize: 13, color: AppColors.muted),
-                ),
-              ...rankedPlaytime.map(
-                (p) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 7),
-                  child: Row(
+                const EmptyContent(icon: Icons.schedule, text: '还没有存档游玩记录'),
+              ...topPlaytime(state.playtime).asMap().entries.map((entry) {
+                final p = entry.value;
+                final fraction = total > 0
+                    ? (p['playtime_minutes'] as num? ?? 0) / total
+                    : 0.0;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: Text(
-                          p['server_name']?.toString() ?? '',
-                          style: const TextStyle(fontSize: 13),
-                        ),
+                      Row(
+                        children: [
+                          Text(
+                            '${entry.key + 1}',
+                            style: t.labelLarge?.copyWith(color: c.primary),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(p['server_name']?.toString() ?? ''),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            durationLabel(p['playtime_minutes'] as num? ?? 0),
+                            style: t.labelLarge,
+                          ),
+                        ],
                       ),
-                      Text(
-                        durationLabel(p['playtime_minutes'] as num? ?? 0),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.muted,
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: fraction.clamp(0, 1),
+                          minHeight: 4,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
+                );
+              }),
             ],
           ),
         ),
-        const SizedBox(height: 28),
+        const SizedBox(height: 24),
         SectionTitle(
           '每日在线',
-          action: TextButton(
+          action: TextButton.icon(
+            icon: const Icon(Icons.calendar_today_outlined, size: 18),
+            label: Text(DateFormat('MM.dd').format(state.dailyDate)),
             onPressed: () async {
               final day = await showDatePicker(
                 context: context,
@@ -1022,47 +937,25 @@ class ProfileScreen extends ConsumerWidget {
               );
               if (day != null) ref.read(appProvider.notifier).loadDaily(day);
             },
-            child: Text(
-              DateFormat('MM.dd').format(state.dailyDate),
-              style: const TextStyle(color: AppColors.muted),
-            ),
           ),
         ),
         SurfaceCard(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
           child: Column(
             children: [
               if (state.dailyError != null) ErrorNotice(state.dailyError!),
               if (state.daily.isEmpty)
-                const EmptyContent(
-                  icon: Icons.schedule_rounded,
-                  text: '这一天还没有在线记录',
-                ),
+                const EmptyContent(icon: Icons.schedule, text: '这一天还没有在线记录'),
               ...state.daily.map(
-                (p) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                  child: Row(
-                    children: [
-                      PlayerAvatar(
-                        p['player']?.toString() ?? '?',
-                        size: 30,
-                        minecraft: true,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          p['player']?.toString() ?? '',
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                      Text(
-                        durationLabel(p['playtime_minutes'] as num? ?? 0),
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.yellow,
-                        ),
-                      ),
-                    ],
+                (p) => ListTile(
+                  leading: PlayerAvatar(
+                    p['player']?.toString() ?? '?',
+                    minecraft: true,
+                  ),
+                  title: Text(p['player']?.toString() ?? ''),
+                  trailing: Text(
+                    durationLabel(p['playtime_minutes'] as num? ?? 0),
+                    style: t.labelLarge,
                   ),
                 ),
               ),
@@ -1070,19 +963,16 @@ class ProfileScreen extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 28),
-        OutlinedButton(
+        OutlinedButton.icon(
+          icon: const Icon(Icons.logout),
           onPressed: () => ref.read(appProvider.notifier).logout(),
-          child: Text(state.demo ? '退出演示' : '退出登录'),
+          label: Text(state.demo ? '退出演示' : '退出登录'),
         ),
-        const SizedBox(height: 20),
-        const Center(
+        const SizedBox(height: 24),
+        Center(
           child: Text(
-            'DEERAFT  ·  v0.3.1',
-            style: TextStyle(
-              fontSize: 10,
-              letterSpacing: 2,
-              color: AppColors.muted,
-            ),
+            'Deeraft · v0.4.0',
+            style: t.labelMedium?.copyWith(color: c.onSurfaceVariant),
           ),
         ),
       ],
@@ -1092,87 +982,125 @@ class ProfileScreen extends ConsumerWidget {
 
 void showMessage(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-Future<void> showEditProfile(BuildContext context, WidgetRef ref) async {
-  final user = ref.read(appProvider).user!,
-      name = TextEditingController(),
-      bio = TextEditingController();
-  name.text = user.username;
-  bio.text = user.bio;
+Future<void> showEditProfile(BuildContext context, WidgetRef ref) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      sheetAnimationStyle: AnimationStyle(
+        duration: AppMotion.duration(context, AppMotion.standard),
+        reverseDuration: AppMotion.duration(context, AppMotion.fast),
+      ),
+      builder: (_) => const _EditProfileSheet(),
+    );
+
+class _EditProfileSheet extends ConsumerStatefulWidget {
+  const _EditProfileSheet();
+  @override
+  ConsumerState<_EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends ConsumerState<_EditProfileSheet> {
+  late final TextEditingController name, bio;
   bool saving = false;
   String? error;
-  await showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: AppColors.surface,
-    builder: (context) => StatefulBuilder(
-      builder: (context, setLocal) => Padding(
+  @override
+  void initState() {
+    super.initState();
+    final user = ref.read(appProvider).user!;
+    name = TextEditingController(text: user.username);
+    bio = TextEditingController(text: user.bio);
+  }
+
+  @override
+  void dispose() {
+    name.dispose();
+    bio.dispose();
+    super.dispose();
+  }
+
+  Future<void> save() async {
+    if (name.text.trim().length < 2 ||
+        name.text.trim().length > 32 ||
+        RegExp(r'\s').hasMatch(name.text.trim())) {
+      setState(() => error = '用户名需为 2–32 位且不含空白');
+      return;
+    }
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
+      await ref
+          .read(appProvider.notifier)
+          .updateProfile(name.text.trim(), bio.text.trim());
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          saving = false;
+          error = e.toString();
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope(
+    canPop: !saving,
+    child: SafeArea(
+      top: false,
+      child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(
           24,
+          0,
           24,
-          24,
-          MediaQuery.viewInsetsOf(context).bottom + 28,
+          MediaQuery.viewInsetsOf(context).bottom + 24,
         ),
-        child: SafeArea(
-          top: false,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text('编辑个人资料', style: Theme.of(context).textTheme.titleLarge),
-                const SizedBox(height: 24),
-                TextField(
-                  controller: name,
-                  maxLength: 32,
-                  decoration: const InputDecoration(labelText: '用户名'),
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: bio,
-                  maxLength: 280,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: '个人签名'),
-                ),
-                if (error != null) ErrorNotice(error!),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: saving
-                        ? null
-                        : () async {
-                            if (name.text.trim().length < 2 ||
-                                RegExp(r'\s').hasMatch(name.text.trim())) {
-                              setLocal(() => error = '用户名需为 2–32 位且不含空白');
-                              return;
-                            }
-                            setLocal(() {
-                              saving = true;
-                              error = null;
-                            });
-                            try {
-                              await ref
-                                  .read(appProvider.notifier)
-                                  .updateProfile(
-                                    name.text.trim(),
-                                    bio.text.trim(),
-                                  );
-                              if (context.mounted) Navigator.pop(context);
-                            } catch (e) {
-                              if (context.mounted) {
-                                setLocal(() {
-                                  saving = false;
-                                  error = e.toString();
-                                });
-                              }
-                            }
-                          },
-                    child: Text(saving ? '保存中…' : '保存修改'),
+                Expanded(
+                  child: Text(
+                    '编辑个人资料',
+                    style: Theme.of(context).textTheme.headlineSmall,
                   ),
+                ),
+                IconButton(
+                  tooltip: '关闭',
+                  onPressed: saving ? null : () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 24),
+            TextField(
+              controller: name,
+              enabled: !saving,
+              maxLength: 32,
+              decoration: const InputDecoration(labelText: '用户名'),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: bio,
+              enabled: !saving,
+              maxLength: 280,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: '个人签名'),
+            ),
+            if (error != null) ErrorNotice(error!),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: saving ? null : save,
+                child: Text(saving ? '保存中…' : '保存修改'),
+              ),
+            ),
+          ],
         ),
       ),
     ),
@@ -1183,18 +1111,16 @@ class SurfaceCard extends StatelessWidget {
   const SurfaceCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsets.all(20),
+    this.color,
   });
   final Widget child;
-  final EdgeInsets padding;
+  final EdgeInsetsGeometry padding;
+  final Color? color;
   @override
   Widget build(BuildContext context) => MotionReveal(
-    child: Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
+    child: Card(
+      color: color,
       child: AnimatedSize(
         duration: AppMotion.duration(context, AppMotion.standard),
         curve: AppMotion.curve,
@@ -1205,75 +1131,41 @@ class SurfaceCard extends StatelessWidget {
   );
 }
 
-class BrandMark extends StatelessWidget {
-  const BrandMark({super.key});
-  @override
-  Widget build(BuildContext context) => const Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(Icons.forest_outlined, size: 23, color: Colors.white),
-      SizedBox(width: 8),
-      Text(
-        'deeraft',
-        style: TextStyle(
-          fontSize: 21,
-          fontWeight: FontWeight.w700,
-          letterSpacing: -.7,
-        ),
-      ),
-    ],
-  );
-}
-
 class CircleAction extends StatelessWidget {
   const CircleAction({
     super.key,
     required this.icon,
     required this.label,
-    required this.onTap,
+    this.onTap,
   });
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => PressFeedback(
-    enabled: onTap != null,
-    child: IconButton(
-      tooltip: label,
-      onPressed: onTap,
-      icon: onTap == null && icon == Icons.refresh_rounded
-          ? const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(strokeWidth: 1.6),
-            )
-          : Icon(icon, size: 21),
-      style: IconButton.styleFrom(
-        backgroundColor: AppColors.raised,
-        side: const BorderSide(color: AppColors.border),
-        minimumSize: const Size(42, 42),
-      ),
-    ),
+  Widget build(BuildContext context) => IconButton(
+    tooltip: label,
+    onPressed: onTap,
+    icon: onTap == null
+        ? const SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Icon(icon),
   );
 }
 
 class SectionTitle extends StatelessWidget {
-  const SectionTitle(this.title, {super.key, this.trailing, this.action});
+  const SectionTitle(this.title, {super.key, this.action});
   final String title;
-  final String? trailing;
   final Widget? action;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 14),
+    padding: const EdgeInsets.fromLTRB(8, 0, 8, 12),
     child: Row(
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleLarge),
-        const Spacer(),
-        if (trailing != null)
-          Text(
-            trailing!,
-            style: const TextStyle(fontSize: 11, color: AppColors.muted),
-          ),
+        Expanded(
+          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
+        ),
         ?action,
       ],
     ),
@@ -1281,23 +1173,26 @@ class SectionTitle extends StatelessWidget {
 }
 
 class BadgePill extends StatelessWidget {
-  const BadgePill(this.text, {super.key, required this.color});
-  final String text;
-  final Color color;
+  const BadgePill(this.label, {super.key, this.color});
+  final String label;
+  final Color? color;
   @override
-  Widget build(BuildContext context) => AnimatedContainer(
-    duration: AppMotion.duration(context, AppMotion.fast),
-    curve: AppMotion.curve,
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .10),
-      borderRadius: BorderRadius.circular(12),
-    ),
-    child: Text(
-      text,
-      style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w500),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return AnimatedContainer(
+      duration: AppMotion.duration(context, AppMotion.fast),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color?.withValues(alpha: .09) ?? c.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium
+            ?.copyWith(color: color ?? c.onSecondaryContainer),
+      ),
+    );
+  }
 }
 
 class EmptyContent extends StatelessWidget {
@@ -1306,16 +1201,21 @@ class EmptyContent extends StatelessWidget {
   final String text;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 22),
+    padding: const EdgeInsets.all(24),
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 28, color: AppColors.muted),
+        Icon(
+          icon,
+          size: 32,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         const SizedBox(height: 12),
         Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: AppColors.muted, fontSize: 13),
+          style: Theme.of(context).textTheme.bodyMedium
+              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
       ],
     ),
@@ -1326,26 +1226,29 @@ class ErrorNotice extends StatelessWidget {
   const ErrorNotice(this.text, {super.key});
   final String text;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.info_outline_rounded,
-          color: AppColors.coral,
-          size: 17,
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: AppColors.coral, fontSize: 12),
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Material(
+        color: c.errorContainer,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.error_outline, color: c.onErrorContainer, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(text, style: TextStyle(color: c.onErrorContainer)),
+              ),
+            ],
           ),
         ),
-      ],
-    ),
-  );
+      ),
+    );
+  }
 }
 
 class PlayerAvatar extends StatelessWidget {
@@ -1362,51 +1265,40 @@ class PlayerAvatar extends StatelessWidget {
   final bool minecraft;
   @override
   Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
     if (minecraft) {
+      Widget placeholder() => Container(
+        width: size,
+        height: size,
+        color: c.secondaryContainer,
+        child: Icon(
+          Icons.person_outline,
+          size: size * .6,
+          color: c.onSecondaryContainer,
+        ),
+      );
       return ClipRRect(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(8),
         child: Image.network(
           'https://minotar.net/avatar/${Uri.encodeComponent(name)}/64',
           width: size,
           height: size,
           fit: BoxFit.cover,
           filterQuality: FilterQuality.none,
-          errorBuilder: (_, _, _) => Container(
-            width: size,
-            height: size,
-            color: AppColors.raised,
-            child: Icon(
-              Icons.person_outline_rounded,
-              size: size * .6,
-              color: AppColors.muted,
-            ),
+          frameBuilder: (_, child, frame, sync) => Stack(
+            children: [placeholder(), if (sync || frame != null) child],
           ),
+          errorBuilder: (_, _, _) => placeholder(),
         ),
       );
     }
-    final accent =
-        color ??
-        [
-          AppColors.green,
-          AppColors.purple,
-          AppColors.yellow,
-          AppColors.coral,
-        ][name.codeUnits.fold<int>(0, (a, b) => a + b) % 4];
-    return Container(
-      width: size,
-      height: size,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: accent.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(size * .28),
-      ),
+    return CircleAvatar(
+      radius: size / 2,
+      backgroundColor: c.secondaryContainer,
+      foregroundColor: c.onSecondaryContainer,
       child: Text(
         name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-        style: TextStyle(
-          color: accent,
-          fontSize: size * .38,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(fontSize: size * .38),
       ),
     );
   }
@@ -1428,13 +1320,10 @@ class _MinecraftPlayersState extends State<MinecraftPlayers> {
   bool expanded = false;
   @override
   Widget build(BuildContext context) {
-    if (widget.players.isEmpty) {
-      return SizedBox(
-        width: double.infinity,
-        child: EmptyContent(
-          icon: Icons.people_outline_rounded,
-          text: widget.available ? '暂无在线玩家' : '玩家列表暂不可用',
-        ),
+    if (!widget.available || widget.players.isEmpty) {
+      return EmptyContent(
+        icon: Icons.people_outline,
+        text: widget.available ? '暂无在线玩家' : '暂时无法获取玩家',
       );
     }
     final visible = expanded ? widget.players : widget.players.take(8).toList();
@@ -1446,12 +1335,12 @@ class _MinecraftPlayersState extends State<MinecraftPlayers> {
           alignment: Alignment.topCenter,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final columns = constraints.maxWidth < 260 ? 3 : 4;
+              final columns = constraints.maxWidth < 280 ? 3 : 4;
               final width =
                   (constraints.maxWidth - (columns - 1) * 12) / columns;
               return Wrap(
                 spacing: 12,
-                runSpacing: 16,
+                runSpacing: 20,
                 children: visible
                     .map(
                       (name) => SizedBox(
@@ -1460,16 +1349,13 @@ class _MinecraftPlayersState extends State<MinecraftPlayers> {
                           message: name,
                           child: Column(
                             children: [
-                              PlayerAvatar(name, size: 36, minecraft: true),
-                              const SizedBox(height: 7),
+                              PlayerAvatar(name, size: 40, minecraft: true),
+                              const SizedBox(height: 8),
                               Text(
                                 name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.muted,
-                                ),
+                                style: Theme.of(context).textTheme.labelMedium,
                               ),
                             ],
                           ),
@@ -1482,11 +1368,16 @@ class _MinecraftPlayersState extends State<MinecraftPlayers> {
           ),
         ),
         if (widget.players.length > 8)
-          TextButton(
-            onPressed: () => setState(() => expanded = !expanded),
-            child: Text(
-              expanded ? '收起' : '展开（${widget.players.length}）',
-              style: const TextStyle(fontSize: 12),
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: TextButton.icon(
+              onPressed: () => setState(() => expanded = !expanded),
+              icon: AnimatedRotation(
+                turns: expanded ? .5 : 0,
+                duration: AppMotion.duration(context, AppMotion.standard),
+                child: const Icon(Icons.expand_more),
+              ),
+              label: Text(expanded ? '收起' : '展开（${widget.players.length}）'),
             ),
           ),
       ],
@@ -1505,115 +1396,14 @@ class SegmentedToggle extends StatelessWidget {
   final int selected;
   final ValueChanged<int> onChanged;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(3),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(16),
+  Widget build(BuildContext context) => SegmentedButton<int>(
+    segments: List.generate(
+      labels.length,
+      (i) => ButtonSegment(value: i, label: Text(labels[i])),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(
-        labels.length,
-        (i) => PressFeedback(
-          child: InkWell(
-            onTap: () => onChanged(i),
-            borderRadius: BorderRadius.circular(14),
-            child: AnimatedContainer(
-              duration: AppMotion.duration(context, AppMotion.fast),
-              curve: AppMotion.curve,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected == i ? AppColors.raised : Colors.transparent,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: AnimatedDefaultTextStyle(
-                duration: AppMotion.duration(context, AppMotion.fast),
-                style: TextStyle(
-                  fontSize: 11,
-                  fontFamily: 'DMSans',
-                  fontFamilyFallback: const ['NotoSansSC'],
-                  color: selected == i ? Colors.white : AppColors.muted,
-                ),
-                child: Text(labels[i]),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
+    selected: {selected},
+    showSelectedIcon: false,
+    onSelectionChanged: (v) => onChanged(v.first),
+    style: const ButtonStyle(visualDensity: VisualDensity.compact),
   );
-}
-
-class WorldArtwork extends StatelessWidget {
-  const WorldArtwork({super.key, required this.accent, required this.index});
-  final Color accent;
-  final int index;
-  @override
-  Widget build(BuildContext context) => CustomPaint(
-    painter: _WorldPainter(accent, index),
-    child: const SizedBox.expand(),
-  );
-}
-
-class _WorldPainter extends CustomPainter {
-  _WorldPainter(this.accent, this.index);
-  final Color accent;
-  final int index;
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.drawRect(
-      Offset.zero & size,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [accent.withValues(alpha: .14), const Color(0xFF181C1C)],
-        ).createShader(Offset.zero & size),
-    );
-    final unit = size.width / 18;
-    for (var x = 0; x < 19; x++) {
-      final height = [
-        2,
-        3,
-        3,
-        4,
-        5,
-        4,
-        3,
-        4,
-        6,
-        5,
-        4,
-        3,
-        4,
-        4,
-        5,
-        6,
-        5,
-        4,
-        3,
-      ][(x + index * 3) % 19];
-      for (var y = 0; y < height; y++) {
-        canvas.drawRect(
-          Rect.fromLTWH(
-            x * unit,
-            size.height - (y + 1) * unit,
-            unit - 1,
-            unit - 1,
-          ),
-          Paint()..color = accent.withValues(alpha: .06 + y * .022),
-        );
-      }
-    }
-    canvas.drawCircle(
-      Offset(size.width * .8, size.height * .28),
-      13,
-      Paint()..color = accent.withValues(alpha: .22),
-    );
-  }
-
-  @override
-  bool shouldRepaint(_WorldPainter old) =>
-      old.accent != accent || old.index != index;
 }

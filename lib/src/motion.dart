@@ -1,14 +1,10 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
-
-import 'theme.dart';
 
 abstract final class AppMotion {
   static const fast = Duration(milliseconds: 140);
   static const standard = Duration(milliseconds: 260);
   static const entrance = Duration(milliseconds: 380);
-  static const curve = Cubic(.2, .8, .2, 1);
+  static const curve = Cubic(.2, 0, 0, 1);
   static Duration duration(BuildContext context, Duration value) =>
       MediaQuery.disableAnimationsOf(context) ? Duration.zero : value;
 }
@@ -192,132 +188,35 @@ class AnimatedMetric extends StatelessWidget {
   );
 }
 
+// Material's native destination indicator, ripple and label transitions.
 class FloatingDock extends StatelessWidget {
   const FloatingDock({super.key, required this.index, required this.onChanged});
   final int index;
   final ValueChanged<int> onChanged;
   static const labels = ['社区', '服务器', '聊天', '我的'];
   static const icons = [
-    Icons.grid_view_rounded,
+    Icons.people_outline,
     Icons.dns_outlined,
-    Icons.chat_bubble_outline_rounded,
-    Icons.person_outline_rounded,
+    Icons.chat_bubble_outline,
+    Icons.person_outline,
+  ];
+  static const selectedIcons = [
+    Icons.people,
+    Icons.dns,
+    Icons.chat_bubble,
+    Icons.person,
   ];
   @override
-  Widget build(BuildContext context) => SafeArea(
-    top: false,
-    minimum: const EdgeInsets.fromLTRB(30, 0, 30, 12),
-    child: Center(
-      heightFactor: 1,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 340),
-        child: DecoratedBox(
-          decoration: BoxDecoration(borderRadius: BorderRadius.circular(40)),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(40),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-              child: Container(
-                height: 64,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(40),
-                  color: const Color(0xD9343434),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: .14),
-                  ),
-                ),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final width = constraints.maxWidth / 4;
-                    return Stack(
-                      children: [
-                        AnimatedPositioned(
-                          duration: AppMotion.duration(
-                            context,
-                            AppMotion.standard,
-                          ),
-                          curve: AppMotion.curve,
-                          left: index * width,
-                          top: 0,
-                          bottom: 0,
-                          width: width,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .13),
-                              borderRadius: BorderRadius.circular(32),
-                            ),
-                          ),
-                        ),
-                        Row(
-                          children: List.generate(
-                            4,
-                            (i) => Expanded(
-                              child: Semantics(
-                                selected: index == i,
-                                button: true,
-                                child: PressFeedback(
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(32),
-                                    onTap: () => onChanged(i),
-                                    child: SizedBox(
-                                      height: 54,
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          AnimatedScale(
-                                            scale: index == i ? 1.04 : 1,
-                                            duration: AppMotion.duration(
-                                              context,
-                                              AppMotion.fast,
-                                            ),
-                                            child: Icon(
-                                              icons[i],
-                                              size: 20,
-                                              color: index == i
-                                                  ? Colors.white
-                                                  : AppColors.muted,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 3),
-                                          AnimatedDefaultTextStyle(
-                                            duration: AppMotion.duration(
-                                              context,
-                                              AppMotion.fast,
-                                            ),
-                                            style: TextStyle(
-                                              fontFamily: 'DMSans',
-                                              fontFamilyFallback: const [
-                                                'NotoSansSC',
-                                              ],
-                                              fontSize: 10,
-                                              fontWeight: index == i
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w400,
-                                              color: index == i
-                                                  ? Colors.white
-                                                  : AppColors.muted,
-                                            ),
-                                            child: Text(labels[i]),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
+  Widget build(BuildContext context) => NavigationBar(
+    selectedIndex: index,
+    onDestinationSelected: onChanged,
+    animationDuration: AppMotion.duration(context, AppMotion.standard),
+    destinations: List.generate(
+      4,
+      (i) => NavigationDestination(
+        icon: Icon(icons[i]),
+        selectedIcon: Icon(selectedIcons[i]),
+        label: labels[i],
       ),
     ),
   );

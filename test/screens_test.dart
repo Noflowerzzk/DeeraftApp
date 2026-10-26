@@ -115,9 +115,121 @@ void main() {
     expect(find.byType(PlayerAvatar), findsNWidgets(8));
     expect(tester.takeException(), isNull);
   });
+  testWidgets('profile ranks at most five real server records', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appProvider.overrideWith(RankingController.new)],
+        child: MaterialApp(theme: appTheme, home: const CommunityShell()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('我的'));
+    await tester.pumpAndSettle();
+    for (final number in [7, 6, 5, 4, 3]) {
+      expect(find.text('World-$number'), findsOneWidget);
+    }
+    expect(find.text('World-2'), findsNothing);
+    expect(find.text('World-1'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('dark narrow layout supports large text on all destinations', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [appProvider.overrideWith(DemoController.new)],
+        child: MaterialApp(
+          theme: appDarkTheme,
+          builder: (_, child) => MediaQuery(
+            data: const MediaQueryData(textScaler: TextScaler.linear(1.6)),
+            child: child!,
+          ),
+          home: const CommunityShell(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (final tab in ['服务器', '聊天', '我的', '社区']) {
+      await tester.tap(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text(tab),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: tab);
+    }
+  });
+  testWidgets(
+    'profile edit retains inputs after failure and shows saved data',
+    (tester) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [appProvider.overrideWith(EditController.new)],
+          child: MaterialApp(theme: appTheme, home: const CommunityShell()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('我的'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('编辑资料'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'NewPlayer');
+      await tester.enterText(find.byType(TextField).last, '新签名');
+      await tester.ensureVisible(find.text('保存修改'));
+      await tester.tap(find.text('保存修改'));
+      await tester.pumpAndSettle();
+      expect(find.text('网络连接失败'), findsOneWidget);
+      expect(find.text('NewPlayer'), findsOneWidget);
+      expect(find.text('新签名'), findsOneWidget);
+      await tester.tap(find.text('保存修改'));
+      await tester.pumpAndSettle();
+      expect(find.text('编辑个人资料'), findsNothing);
+      expect(find.text('NewPlayer'), findsOneWidget);
+      expect(find.text('新签名'), findsOneWidget);
+      // Reopening reads the current profile rather than a stale form snapshot.
+      await tester.tap(find.byTooltip('编辑资料'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+        'NewPlayer',
+      );
+      await tester.tap(find.byTooltip('关闭'));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
 
 class LoggedOutController extends AppController {
   @override
   AppState build() => AppState()..booting = false;
+}
+
+class EditController extends DemoController {
+  bool fail = true;
+  @override
+  Future<void> updateProfile(String username, String bio) async {
+    if (fail) {
+      fail = false;
+      throw '网络连接失败';
+    }
+    state = state.clone()..user = UserProfile(username: username, bio: bio);
+  }
+}
+
+class RankingController extends DemoController {
+  @override
+  AppState build() => super.build()
+    ..playtime = List.generate(
+      7,
+      (i) => {
+        'server_name': 'World-${i + 1}',
+        'playtime_minutes': (i + 1) * 61,
+      },
+    );
 }

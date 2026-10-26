@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -9,14 +8,6 @@ import 'src/theme.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: AppColors.background,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
   runApp(const ProviderScope(child: DeeraftApp()));
 }
 
@@ -31,6 +22,8 @@ class DeeraftApp extends StatelessWidget {
     title: 'Deeraft',
     debugShowCheckedModeBanner: false,
     theme: appTheme,
+    darkTheme: appDarkTheme,
+    themeMode: ThemeMode.system,
     routerConfig: _router,
   );
 }

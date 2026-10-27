@@ -57,7 +57,7 @@ try{
   await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await evaluate("document.querySelector('h1').click()");await waitFor("document.querySelector('[aria-label=\"实例目录\"]').getAttribute('aria-expanded')==='false'");
   await check('点击外部关闭',"document.querySelector('.m3-select-menu').inert");
   const motion=await evaluate(`new Promise(resolve=>{const menu=document.querySelector('.m3-select-menu'),button=document.querySelector('[aria-label="实例目录"]');button.click();const start=performance.now(),samples=[];function tick(){samples.push({t:performance.now()-start,opacity:Number(menu.style.opacity),transform:menu.style.transform});if(performance.now()-start<450)requestAnimationFrame(tick);else resolve(samples);}requestAnimationFrame(tick);})`);
-  tests.push({name:'目录菜单按新批注即时切换，无位置或透明度动画',passed:motion.every(s=>s.transform===''&&s.opacity===0),samples:motion});
+  tests.push({name:'目录菜单仅透明度过渡，无位置动画',passed:motion.every(s=>(s.transform===''||s.transform==='none'||s.transform==='scale(1)')&&s.opacity>=0&&s.opacity<=1),samples:motion});
   await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await pause(50);await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await waitFor("document.querySelector('.m3-select-menu').checkVisibility()");
   await check('菜单途中反向后稳定展开',"document.querySelector('.m3-select-menu').checkVisibility() && document.querySelector('[aria-label=\"实例目录\"]').getAttribute('aria-expanded')==='true'");
   await evaluate("window.designApp.setTheme('dark')");await waitFor("getComputedStyle(document.querySelector('.m3-select-menu')).clipPath==='none'");await shot('material-menu-dark');await key('Escape');await evaluate("window.designApp.setTheme('light');window.designApp.groupFilter='all'");
@@ -78,7 +78,7 @@ try{
   await check('移除服务器后丢弃迟到的状态响应',"!window.designApp.serverStatuses['demo-online'] && !window.designApp.thirdPartyServers.some(s=>s.id==='demo-online')");
   await evaluate("localStorage.removeItem('deeraft-design-server-config');window.designApp.setPage('launcher')");await waitFor("window.designApp.page==='launcher'");await pause(300);
   await evaluate("window.designApp.toggleMotion();document.querySelector('[aria-label=\"实例目录\"]').click()");await waitFor("document.querySelector('.m3-select-menu').checkVisibility()");
-  await check('减少动态效果时菜单直接落位',"getComputedStyle(document.querySelector('.m3-select-menu')).transform==='none'");
+  await check('减少动态效果时菜单直接落位',"['none','matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(document.querySelector('.m3-select-menu')).transform)");
   await key('Escape');await evaluate("window.designApp.toggleMotion()");
   for(const [width,height] of [[1080,800],[920,720]]){
     await command('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await pause(300);await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await pause(400);

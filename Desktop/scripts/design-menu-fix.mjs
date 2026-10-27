@@ -39,7 +39,7 @@ try{
   async function shot(name){await settle();await pause(250);const r=await command('Page.captureScreenshot',{format:'png'});await writeFile(join(output,name+'.png'),Buffer.from(r.data,'base64'));}
   await command('Page.navigate',{url:file});await pause(1500);await evaluate('document.fonts.ready');
   await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await settle();
-  await check('目录菜单即时出现且无动画',"(()=>{const e=document.querySelector('.m3-select-menu');return e.checkVisibility()&&e.getAnimations().length===0&&getComputedStyle(e).transform==='none'&&getComputedStyle(e).opacity==='1'})()");
+  await check('目录菜单只淡入，无空间动画',"(()=>{const e=document.querySelector('.m3-select-menu');return e.checkVisibility()&&e.getAnimations().every(a=>a.transitionProperty==='opacity')&&['none','matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(e).transform)})()");
   await check('箭头无旋转过渡',"getComputedStyle(document.querySelector('.m3-select-chevron')).transitionDuration==='0s'");
   await check('目录菜单与启动菜单样式一致',"(()=>{const a=getComputedStyle(document.querySelector('.m3-select-menu')),b=getComputedStyle(document.querySelector('.launch-menu'));return ['backgroundColor','borderRadius','padding','boxShadow'].every(k=>a[k]===b[k])})()");
   await shot('selector-static');
@@ -49,7 +49,7 @@ try{
   await shot('library-menu-fixed');
   await evaluate("document.querySelector('[aria-label=\"实例分组\"]').click()");await settle();
   await check('分组菜单打开时关闭三点菜单',"!window.designApp.libraryMenu && document.querySelectorAll('.m3-select-menu')[1].checkVisibility()");
-  await check('分组菜单即时显示且无动画',"document.querySelectorAll('.m3-select-menu')[1].getAnimations().length===0 && getComputedStyle(document.querySelectorAll('.m3-select-menu')[1]).opacity==='1'");
+  await check('分组菜单只使用透明度过渡',"document.querySelectorAll('.m3-select-menu')[1].getAnimations().every(a=>a.transitionProperty==='opacity') && ['none','matrix(1, 0, 0, 1, 0, 0)'].includes(getComputedStyle(document.querySelectorAll('.m3-select-menu')[1]).transform)");
   await evaluate("document.querySelectorAll('.m3-select-menu')[1].querySelector('[data-value=生存]').click()");await settle();
   await check('选择分组仍正确过滤，列表不做重排动效',"window.designApp.groupFilter==='生存'&&window.designApp.filteredInstances.length===2&&[...document.querySelectorAll('.instance-row')].every(e=>!e.style.translate&&!e.style.opacity)");
   await evaluate("window.designApp.groupFilter='all';window.designApp.setTheme('dark');document.querySelector('[aria-label=\"导入或关联目录\"]').click()");await shot('library-menu-fixed-dark');

@@ -7,6 +7,20 @@ document.addEventListener('alpine:init', () => {
     theme: 'light',
     railExpanded: false,
     search: '',
+    sourceFilter: 'all',
+    groupFilter: 'all',
+    associationOpen: false,
+    associationKey: '',
+    associationDraft: '',
+    serverLinks: {community: 'ctf'},
+    thirdPartyServers: [],
+    thirdPartyOpen: false,
+    thirdPartyDraft: {id:'', name:'', address:'', instanceId:''},
+    formError: '',
+    storageError: '',
+    sourcesOpen: false,
+    activity: [{id:'initial', player:'123KrF2', instance:'CTF_s3', time:'21:38'}],
+    sources: [{id:'local',name:'DeeraftApp',path:'data/instances',type:'Prism'}, {id:'HMCL',name:'HMCL 游戏目录',path:'D:/Games/HMCL/.minecraft',type:'HMCL'}, {id:'PCL',name:'PCL 游戏目录',path:'E:/Minecraft/.minecraft',type:'PCL'}],
     instanceFilter: '全部',
     reverseOrder: false,
     selectedId: 'nacreate',
@@ -29,13 +43,13 @@ document.addEventListener('alpine:init', () => {
     consoleCommand: '',
     imagePreview: '',
     toast: '',
+    toastAction: '',
     toastTimer: 0,
     navigationEpoch: 0,
     navigation: [
       { id: 'community', name: '社区', icon: 'diversity_3' },
       { id: 'launcher', name: '启动器', icon: 'stadia_controller' },
       { id: 'servers', name: '服务器', icon: 'dns' },
-      { id: 'chat', name: '聊天', icon: 'chat_bubble' },
       { id: 'profile', name: '我的', icon: 'person' }
     ],
     instances: [
@@ -84,8 +98,17 @@ document.addEventListener('alpine:init', () => {
       { name: 'Java 21', detail: '正在下载运行环境', progress: 34, speed: '5.7 MB/s', icon: 'coffee', paused: false }
     ],
     init() {
+      const groups = {nacreate:'整合包',ctf:'多人游戏',farming:'整合包',naaero:'整合包',simcity:'整合包',hmcl:'生存',pcl:'生存'};
+      this.instances.forEach(instance => { instance.group = groups[instance.id]; });
+      try {
+        const stored = JSON.parse(localStorage.getItem('deeraft-design-server-config') || 'null');
+        if (stored) {
+          this.serverLinks = {...this.serverLinks, ...stored.links};
+          this.thirdPartyServers = Array.isArray(stored.servers) ? stored.servers : [];
+        }
+      } catch { this.storageError = '无法读取服务器配置'; }
       const query = new URLSearchParams(location.search);
-      if (this.navigation.some(item => item.id === query.get('page'))) this.page = query.get('page');
+      if (['chat',...this.navigation.map(item=>item.id)].includes(query.get('page'))) this.page = query.get('page');
       this.setTheme(query.get('theme') === 'dark' ? 'dark' : 'light');
       if (query.get('state') === 'dark') this.setTheme('dark');
       if (query.get('state') === 'mods') this.detailTab = '模组';
@@ -95,7 +118,7 @@ document.addEventListener('alpine:init', () => {
       document.addEventListener('keydown', event => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
           event.preventDefault();
-          document.querySelector('.global-search input').focus();
+          this.setPage('launcher').then(() => this.$nextTick(() => document.querySelector('.library-search input').focus()));
         }
       });
       for (const source of ['assets/forest.png', 'assets/village.png']) {
@@ -115,6 +138,8 @@ document.addEventListener('alpine:init', () => {
     get launchState() { return this.selected.running ? 'running' : this.preparingId === this.selectedId ? 'preparing' : 'idle'; },
     get filteredInstances() {
       let items = this.instances.filter(instance => instance.name.toLowerCase().includes(this.search.toLowerCase()));
+      if (this.sourceFilter !== 'all') items = items.filter(instance => instance.source === this.sourceFilter);
+      if (this.groupFilter !== 'all') items = items.filter(instance => instance.group === this.groupFilter);
       if (this.instanceFilter === '收藏') items = items.filter(instance => instance.favorite);
       if (this.instanceFilter === '已关联') items = items.filter(instance => instance.source !== 'local');
       return this.reverseOrder ? [...items].reverse() : items;
@@ -127,7 +152,7 @@ document.addEventListener('alpine:init', () => {
       return 'assets/avatar-' + (identities[name] || 1) + '.svg';
     },
     async setPage(page) {
-      if (this.page === page || !this.navigation.some(item => item.id === page)) return;
+      if (this.page === page || !['chat',...this.navigation.map(item=>item.id)].includes(page)) return;
       const epoch = ++this.navigationEpoch;
       const stage = document.querySelector('.page-stage');
       if (!DeeraftMotion.reduced()) {
@@ -179,15 +204,62 @@ document.addEventListener('alpine:init', () => {
       setTimeout(() => {
         instance.running = true;
         this.preparingId = '';
-        this.showToast(mode === 'offline' ? '已使用离线账号启动' : instance.name + ' 已启动');
+        const event = {id:crypto.randomUUID(),player:'Na2PtCl6',instance:instance.name,time:new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'})};
+        this.activity.unshift(event);
+        this.activity = this.activity.slice(0, 5);
+        this.showToast(event.player+' 启动了 '+event.instance);
+        this.toastAction = '查看';
       }, 2200);
     },
-    async joinCommunityServer() {
-      this.search = '';
-      this.instanceFilter = '全部';
-      this.selectInstance('ctf');
+    async joinCommunityServer() { await this.joinServer('community'); },
+    linkedName(key) { return this.instances.find(item=>item.id===this.serverLinks[key])?.name || '未关联实例'; },
+    openAssociation(key) {
+      this.associationKey = key;
+      this.associationDraft = this.serverLinks[key] || '';
+      this.associationOpen = true;
+      this.formError = '';
+    },
+    saveConfig() {
+      try {
+        localStorage.setItem('deeraft-design-server-config', JSON.stringify({links:this.serverLinks,servers:this.thirdPartyServers}));
+        this.storageError = ''; return true;
+      } catch { this.storageError = '无法保存配置，请检查浏览器存储权限'; this.formError = this.storageError; return false; }
+    },
+    saveAssociation() {
+      const previous = {...this.serverLinks};
+      this.serverLinks[this.associationKey] = this.associationDraft;
+      if (!this.saveConfig()) { this.serverLinks = previous; return; }
+      this.associationOpen = false;
+      this.showToast('关联已保存');
+    },
+    async joinServer(key) {
+      const instance = this.instances.find(item => item.id === this.serverLinks[key]);
+      if (!instance) { this.openAssociation(key); return; }
+      if (this.preparingId || instance.running) { this.showToast(instance.running?'该实例正在运行，请在游戏内加入服务器':'正在准备实例，请稍候'); return; }
+      this.search = ''; this.sourceFilter = 'all'; this.groupFilter = 'all'; this.instanceFilter = '全部';
+      this.selectInstance(instance.id);
       await this.setPage('launcher');
       this.launch('join');
+    },
+    openThirdParty(server) {
+      this.thirdPartyDraft = server ? {...server,instanceId:this.serverLinks[server.id]||''} : {id:'',name:'',address:'',instanceId:''};
+      this.formError = ''; this.thirdPartyOpen = true;
+    },
+    saveThirdParty() {
+      const value = this.thirdPartyDraft;
+      if (!value.name.trim() || !value.address.trim() || /\s|[\/]/.test(value.address)) { this.formError = '请填写名称和有效服务器地址（域名或 IP，可含端口）'; return; }
+      const previousServers = [...this.thirdPartyServers], previousLinks = {...this.serverLinks};
+      const id = value.id || crypto.randomUUID();
+      const server = {id, name:value.name.trim(),address:value.address.trim()};
+      this.thirdPartyServers = [...this.thirdPartyServers.filter(item=>item.id!==id), server];
+      this.serverLinks[id] = value.instanceId;
+      if (!this.saveConfig()) { this.thirdPartyServers=previousServers; this.serverLinks=previousLinks; return; }
+      this.thirdPartyOpen = false; this.showToast('服务器已保存');
+    },
+    removeThirdParty(id) {
+      const previousServers=[...this.thirdPartyServers], previousLinks={...this.serverLinks};
+      this.thirdPartyServers=this.thirdPartyServers.filter(item=>item.id!==id); delete this.serverLinks[id];
+      if (!this.saveConfig()) { this.thirdPartyServers=previousServers; this.serverLinks=previousLinks; this.showToast(this.storageError); }
     },
     toggleDownloads(force) {
       this.downloadsOpen = typeof force === 'boolean' ? force : !this.downloadsOpen;
@@ -204,6 +276,7 @@ document.addEventListener('alpine:init', () => {
     },
     openConsole(name) { this.consoleName = name; this.consoleOpen = true; },
     closePanels() {
+      this.associationOpen = false; this.thirdPartyOpen = false; this.sourcesOpen = false;
       this.settingsOpen = false;
       this.prismWindow = '';
       this.consoleOpen = false;
@@ -219,8 +292,9 @@ document.addEventListener('alpine:init', () => {
     },
     showToast(message) {
       clearTimeout(this.toastTimer);
+      this.toastAction = '';
       this.toast = message;
-      this.toastTimer = setTimeout(() => { this.toast = ''; }, 2600);
+      this.toastTimer = setTimeout(() => { this.toast = ''; }, 5000);
     }
   }));
 });

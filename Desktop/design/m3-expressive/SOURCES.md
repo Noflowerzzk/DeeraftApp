@@ -27,3 +27,14 @@
 - `landscape.png`：[Minecraft Beta 1.8.1 Gameplay Screenshot](https://commons.wikimedia.org/wiki/File:Minecraft_Beta_1.8.1_Gameplay_Screenshot.png)，Xbox México，CC BY 3.0；https://creativecommons.org/licenses/by/3.0/ 。研究素材，本稿主界面未采用。
 
 这些公开截图只用于说明游戏封面如何进入设计，不代表用户服务器的实际景观，也不构成 Mojang/Microsoft 的认可。
+
+
+## 批注修订补充参考
+
+以下均通过实际浏览器阅读渲染后的文本，非只读取截图。Snackbars 放在底部且不打断当前任务；搜索采用圆角 tonal surface 容器。选择器保留原生键盘和 optgroup 支持，使用本稿 Material 色彩与布局。
+
+- [Snackbar overview](https://m3.material.io/components/snackbar/overview)
+- [Menus overview](https://m3.material.io/components/menus/overview)
+- [Search overview](https://m3.material.io/components/search/overview)
+
+研究 DOM 文本记录在工作区 Desktop/.oil-ui/m3-expressive/shots/official-*.txt，不包含进正式交付包。

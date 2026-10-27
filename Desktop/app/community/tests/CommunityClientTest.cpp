@@ -11,6 +11,26 @@ class CommunityClientTest : public QObject
 {
     Q_OBJECT
 private slots:
+    void activitySnapshotsDoNotNotifyAndUpdatesDeduplicate()
+    {
+        QTemporaryDir dir;
+        CommunityClient client(dir.path());
+        QSignalSpy notices(&client,&CommunityClient::activityReceived);
+        QJsonObject first{{"id",1},{"event_id","one"},{"player","A"},{"instance","World"}};
+        QJsonObject second{{"id",2},{"event_id","two"},{"player","B"},{"instance","Other"}};
+        client.mergeActivity(QJsonArray{first,second},true);
+        QCOMPARE(notices.size(),0);
+        QCOMPARE(client.activity().first().toMap().value("id").toInt(),2);
+        QJsonObject third{{"id",3},{"event_id","three"},{"player","C"},{"instance","Latest"}};
+        client.mergeActivity(QJsonArray{second,third},false);
+        client.mergeActivity(QJsonArray{third},false);
+        QCOMPARE(notices.size(),1);
+        QCOMPARE(client.activity().size(),3);
+        QCOMPARE(client.activity().first().toMap().value("id").toInt(),3);
+        client.logout();
+        QVERIFY(client.activity().isEmpty());
+    }
+
     void preservesRepeatedMessagesWithoutIds()
     {
         QTemporaryDir dir;

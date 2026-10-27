@@ -1,3 +1,4 @@
+#include <QUuid>
 #include "CommunityClient.h"
 
 #include <QCryptographicHash>
@@ -365,7 +366,7 @@ void CommunityClient::clearSession(bool notifyServer)
     m_refreshing = false;
     m_refreshWaiters.clear();
     m_profile.clear(); m_community.clear(); m_hostedStatus.clear(); m_rconConfig.clear();
-    m_servers.clear(); m_chat.clear(); m_playtime.clear(); m_daily.clear(); m_liveRooms.clear();
+    m_activity.clear(); m_servers.clear(); m_chat.clear(); m_playtime.clear(); m_daily.clear(); m_liveRooms.clear();
     m_users.clear(); m_logLines.clear(); m_backups.clear();
     m_logServer.clear(); m_error.clear(); m_commandResult.clear();
     m_oauthState.clear(); m_oauthVerifier.clear(); m_oauthStarted = 0;
@@ -557,6 +558,7 @@ void CommunityClient::startFeeds()
 {
     stopFeeds();
     if (!m_authenticated) return;
+    addFeed("activity", "/api/v1/mobile/activity/ws", [this](const QJsonValue& v){const auto obj=v.toObject();mergeActivity(obj.value("items"),obj.value("type").toString()=="initial_activity");});
     addFeed("chat", "/api/v1/mobile/chat/ws", [this](const QJsonValue& v) {
         const auto obj = v.toObject();
         mergeChat(obj.value("messages"), obj.value("type").toString() == "initial_chat_messages");
@@ -633,9 +635,11 @@ void CommunityClient::connectFeed(Feed* feed)
     if (!feed->active || !m_authenticated) return;
     QUrl url = m_origin.resolved(QUrl(feed->path));
     url.setScheme(m_origin.scheme() == "https" ? "wss" : "ws");
-    QUrlQuery query; query.addQueryItem(QStringLiteral("token"), QString::fromUtf8(m_accessToken));
-    url.setQuery(query);
-    feed->socket.open(url);
+    if(feed->name=="activity"){
+        QNetworkRequest request(url);request.setRawHeader("Authorization","Bearer "+m_accessToken);feed->socket.open(request);
+    }else{
+        QUrlQuery query;query.addQueryItem(QStringLiteral("token"),QString::fromUtf8(m_accessToken));url.setQuery(query);feed->socket.open(url);
+    }
 }
 
 void CommunityClient::mergeChat(const QJsonValue& value, bool snapshot)
@@ -792,4 +796,16 @@ void CommunityClient::completeMicrosoftLogin(const QUrl& url)
     request("POST", "/api/v1/mobile/auth/microsoft/exchange",
             QJsonObject{{"code", code}, {"code_verifier", QString::fromLatin1(verifier)}},
             [this](const QJsonValue& v) { clearSession(false); acceptSession(v); }, {}, false);
+}
+
+void CommunityClient::reportGameStarted(const QString& name,const QString& version){
+ if(!m_authenticated)return;
+ const auto event=QUuid::createUuid().toString(QUuid::WithoutBraces);
+ request("POST","/api/v1/mobile/activity",QJsonObject{{"event_id",event},{"instance",name.left(120)},{"version",version.left(128)}},[this](const QJsonValue& result){mergeActivity(QJsonArray{result},false);},[](int,const QString&){/* Community delivery never blocks local gameplay. */});
+}
+void CommunityClient::mergeActivity(const QJsonValue& value,bool snapshot){
+ if(snapshot)m_activity.clear();
+ for(const auto& item:value.toArray()){auto row=item.toObject().toVariantMap();if(row.value("event_id").toString().isEmpty())continue;bool seen=false;for(const auto& existing:m_activity)if(existing.toMap().value("id")==row.value("id")){seen=true;break;}if(seen)continue;m_activity.prepend(row);if(!snapshot)emit activityReceived(row.value("player").toString(),row.value("instance").toString());}
+ std::stable_sort(m_activity.begin(),m_activity.end(),[](const QVariant& a,const QVariant& b){return a.toMap().value("id").toLongLong()>b.toMap().value("id").toLongLong();});
+ while(m_activity.size()>100)m_activity.removeLast();emit changed();
 }

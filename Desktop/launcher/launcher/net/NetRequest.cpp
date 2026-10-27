@@ -41,6 +41,8 @@
 #include "Download.h"
 #if defined(LAUNCHER_APPLICATION)
 #include "download/DownloadSources.h"
+#include "net/ApiHeaderProxy.h"
+#include <algorithm>
 #endif
 
 #include <QDateTime>
@@ -75,10 +77,11 @@ void NetRequest::addValidator(Validator* v)
 void NetRequest::executeTask()
 {
 #if defined(LAUNCHER_APPLICATION)
-    if (!m_deeraftSourceSelected && dynamic_cast<Download*>(this) && m_headerProxies.empty()) {
+    if (!m_deeraftSourceSelected && dynamic_cast<Download*>(this) && std::all_of(m_headerProxies.begin(),m_headerProxies.end(),[](const auto& proxy){return dynamic_cast<ApiHeaderProxy*>(proxy.get())!=nullptr;})) {
         m_deeraftSourceSelected = true;
         m_deeraftOriginalUrl = m_url;
         m_url = DownloadSources::mirror(m_url);
+        if(m_url!=m_deeraftOriginalUrl)qCDebug(logCat)<<"Using domestic source"<<m_url;
     }
 #endif
     setStatus(tr("Requesting %1").arg(StringUtils::truncateUrlHumanFriendly(m_url, 80)));

@@ -13,6 +13,7 @@ class McClient : public QObject {
     explicit McClient(QObject* parent, QString domain, QString ip, uint16_t port);
     //! Read status data of the server, and calls the succeeded() signal with the parsed JSON data
     void getStatusData();
+    QAbstractSocket::SocketError socketError() const { return m_socket.error(); }
 
    signals:
     void succeeded(QJsonObject data);

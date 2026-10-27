@@ -1197,6 +1197,12 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
 
 bool Application::createSetupWizard()
 {
+    // DeeraftApp configures accounts, appearance, and Java through its own shell.
+    // A fresh portable install must open that shell before asking for game setup.
+    if(BuildConfig.LAUNCHER_DISPLAYNAME == QStringLiteral("DeeraftApp")){
+        if(settings()->get("Language").toString().isEmpty())settings()->set("Language",QStringLiteral("en_US"));
+        return false;
+    }
     bool javaRequired = [this]() {
         if (BuildConfig.JAVA_DOWNLOADER_ENABLED && settings()->get("AutomaticJavaDownload").toBool()) {
             return false;
@@ -1662,6 +1668,7 @@ MainWindow* Application::showMainWindow(bool minimized)
         m_mainWindow->restoreState(QByteArray::fromBase64(APPLICATION->settings()->get("MainWindowState").toString().toUtf8()));
         m_mainWindow->restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("MainWindowGeometry").toString().toUtf8()));
 
+        m_mainWindow->deeraftSetAdvanced(false);
         if (minimized) {
             m_mainWindow->showMinimized();
         } else {

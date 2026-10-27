@@ -8,11 +8,12 @@ AppDialog {
         anchors.fill: parent; contentWidth: availableWidth; clip: true
         ColumnLayout {
             width: parent.width; spacing: 20
-            Label { text: "外观"; font.pixelSize: 20 }
+            Label { textFormat: Text.PlainText; text: "外观"; font.pixelSize: 20 }
             ComboBox { model: ["跟随系统", "浅色", "深色"]; currentIndex: ["system","light","dark"].indexOf(desktop.theme); onActivated: desktop.theme = ["system","light","dark"][currentIndex]; Layout.fillWidth: true }
-            Label { text: "下载源"; font.pixelSize: 20 }
+            Switch { text: "减少动态效果"; checked: library.reducedMotion; onToggled: library.reducedMotion = checked }
+            Label { textFormat: Text.PlainText; text: "下载源"; font.pixelSize: 20 }
             ComboBox { model: ["自动（国内优先）", "国内源", "官方源"]; currentIndex: downloadSources.mode; onActivated: downloadSources.mode = currentIndex; Layout.fillWidth: true }
-            Label { text: "Minecraft 账号"; font.pixelSize: 20 }
+            Label { textFormat: Text.PlainText; text: "Minecraft 账号"; font.pixelSize: 20 }
             Repeater { model: desktop.accounts; delegate: RowLayout {
                 required property var modelData
                 Layout.fillWidth: true
@@ -22,14 +23,14 @@ AppDialog {
                 TextField { id: offlineName; placeholderText: "离线玩家名"; Layout.fillWidth: true }
                 ActionButton { text: "添加"; onClicked: { desktop.addOfflineAccount(offlineName.text); offlineName.clear() } }
             }
-            Label { text: desktop.error; visible: text.length > 0; wrapMode: Text.Wrap; Layout.fillWidth: true }
+            Label { textFormat: Text.PlainText; text: desktop.error; visible: text.length > 0; wrapMode: Text.Wrap; Layout.fillWidth: true }
             RowLayout {
                 ActionButton { text: "正版登录 / 管理"; onClicked: desktop.action("actionManageAccounts") }
                 ActionButton { text: "第三方登录"; onClicked: thirdParty.open() }
             }
             ColumnLayout {
                 visible: communityClient.authenticated; Layout.fillWidth: true
-                Label { text: "个人资料"; font.pixelSize: 20 }
+                Label { textFormat: Text.PlainText; text: "个人资料"; font.pixelSize: 20 }
                 TextField { id: username; text: communityClient.profile.username || ""; placeholderText: "用户名"; Layout.fillWidth: true }
                 TextArea { id: bio; text: communityClient.profile.bio || ""; placeholderText: "简介"; Layout.fillWidth: true; wrapMode: TextEdit.Wrap }
                 RowLayout {
@@ -38,7 +39,11 @@ AppDialog {
                 }
             }
             ActionButton { text: "启动器高级设置"; flat: true; onClicked: desktop.action("actionSettings") }
-            Label { text: "DeeraftApp · Prism 11.1.1"; color: app.muted }
+            RowLayout {
+                ActionButton { text: "启动器日志"; flat: true; onClicked: desktop.action("actionViewLog") }
+                ActionButton { text: "关于"; flat: true; onClicked: desktop.action("actionAbout") }
+            }
+            Label { textFormat: Text.PlainText; text: "DeeraftApp · Prism 11.1.1"; color: app.muted }
         }
     }
     AppDialog {
@@ -54,9 +59,9 @@ AppDialog {
                 TextField { id: clientId; visible: provider.currentIndex === 1; placeholderText: "Client ID"; Layout.fillWidth: true }
                 ActionButton { text: "登录"; highlighted: true; enabled: !externalAccounts.busy; onClicked: { if (provider.currentIndex === 0) { externalAccounts.loginAuthlib(server.text,user.text,pass.text); pass.clear() } else externalAccounts.startConnect(discovery.text,clientId.text,server.text) } }
                 BusyIndicator { running: externalAccounts.busy; visible: running }
-                Label { text: externalAccounts.deviceCode; visible: text.length > 0; font.pixelSize: 30 }
+                Label { textFormat: Text.PlainText; text: externalAccounts.deviceCode; visible: text.length > 0; font.pixelSize: 30 }
                 ActionButton { text: "打开授权页面"; visible: externalAccounts.verificationUri.length > 0; onClicked: externalAccounts.openVerificationPage() }
-                Label { text: externalAccounts.error; visible: text.length > 0; wrapMode: Text.Wrap; Layout.fillWidth: true }
+                Label { textFormat: Text.PlainText; text: externalAccounts.error; visible: text.length > 0; wrapMode: Text.Wrap; Layout.fillWidth: true }
                 Repeater { model: externalAccounts.profiles; delegate: ActionButton { required property var modelData; text: modelData.name; onClicked: externalAccounts.selectProfile(modelData.id) } }
             }
         }

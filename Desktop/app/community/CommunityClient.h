@@ -26,6 +26,7 @@ class CommunityClient final : public QObject
     Q_PROPERTY(QVariantMap community READ community NOTIFY changed)
     Q_PROPERTY(QVariantList servers READ servers NOTIFY changed)
     Q_PROPERTY(QVariantList chat READ chat NOTIFY changed)
+    Q_PROPERTY(QVariantList activity READ activity NOTIFY changed)
     Q_PROPERTY(QVariantList playtime READ playtime NOTIFY changed)
     Q_PROPERTY(QVariantList daily READ daily NOTIFY changed)
     Q_PROPERTY(QString dailyDate READ dailyDate NOTIFY changed)
@@ -51,6 +52,7 @@ public:
     QVariantMap community() const { return m_community; }
     QVariantList servers() const { return m_servers; }
     QVariantList chat() const { return m_chat; }
+    QVariantList activity() const {return m_activity;}
     QVariantList playtime() const { return m_playtime; }
     QVariantList daily() const { return m_daily; }
     QString dailyDate() const { return m_dailyDate; }
@@ -66,6 +68,7 @@ public:
     QString connectionStatus() const { return m_connectionStatus; }
 
     Q_INVOKABLE void restoreSession();
+    Q_INVOKABLE void reportGameStarted(const QString& name,const QString& version);
     Q_INVOKABLE void refresh();
     Q_INVOKABLE void login(const QString& username, const QString& password);
     Q_INVOKABLE void registerAccount(const QString& username, const QString& password);
@@ -95,6 +98,7 @@ public:
 
 signals:
     void changed();
+    void activityReceived(const QString& player,const QString& instance);
     void operationFinished(const QString& operation, const QVariant& result);
     void operationFailed(const QString& operation, const QString& message);
     void liveStatusReceived(const QString& roomId, const QVariantMap& status);
@@ -120,6 +124,8 @@ private:
     void stopFeeds();
     void addFeed(const QString& name, const QString& path, Success receive);
     void connectFeed(Feed* feed);
+    void mergeActivity(const QJsonValue& value,bool snapshot);
+    QVariantList m_activity;
     void mergeChat(const QJsonValue& value, bool snapshot);
     void uploadImage(const QString& path, const QUrl& fileUrl, bool avatar);
     void nextChunk(int epoch);

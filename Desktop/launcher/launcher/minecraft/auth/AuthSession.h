@@ -28,6 +28,9 @@ struct AuthSession {
     QStringList extraJvmArguments;
     // the actual launch mode for this session
     LaunchMode launchMode;
+    // Offline identity may install public game files on an ordinary launch.
+    // Explicit offline launches still perform no network downloads.
+    bool allowNetworkDownloads = false;
 };
 
 using AuthSessionPtr = std::shared_ptr<AuthSession>;

@@ -1165,7 +1165,7 @@ LaunchTask* MinecraftInstance::createLaunchTask(AuthSessionPtr session, Minecraf
 
     // load meta
     {
-        auto mode = session->launchMode != LaunchMode::Offline ? Net::Mode::Online : Net::Mode::Offline;
+        auto mode = (session->launchMode != LaunchMode::Offline || session->allowNetworkDownloads) ? Net::Mode::Online : Net::Mode::Offline;
         process->appendStep(makeShared<TaskStepWrapper>(pptr, makeShared<MinecraftLoadAndCheck>(this, mode)));
     }
 
@@ -1185,7 +1185,7 @@ LaunchTask* MinecraftInstance::createLaunchTask(AuthSessionPtr session, Minecraf
     }
 
     // if we aren't in offline mode
-    if (session->launchMode != LaunchMode::Offline) {
+    if (session->launchMode != LaunchMode::Offline || session->allowNetworkDownloads) {
         process->appendStep(makeShared<ClaimAccount>(pptr, session));
         for (auto t : createUpdateTask()) {
             process->appendStep(makeShared<TaskStepWrapper>(pptr, t));

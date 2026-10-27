@@ -84,6 +84,7 @@ class MainWindow : public QMainWindow {
     void deeraftInstallCentral(QWidget* shell);
     void deeraftSetAdvanced(bool advanced);
     void deeraftAction(const QString& name, const QString& instanceId = {});
+    void deeraftSelectInstance(const QString& id);
    signals:
     void isClosing();
 

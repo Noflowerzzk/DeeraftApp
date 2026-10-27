@@ -15,6 +15,7 @@ class NativeExternalLaunchController final : public QObject
     Q_PROPERTY(bool running READ running NOTIFY runningChanged)
     Q_PROPERTY(QString error READ error NOTIFY errorChanged)
     Q_PROPERTY(QString versionId READ versionId NOTIFY runningChanged)
+    Q_PROPERTY(QString rootId READ rootId NOTIFY runningChanged)
 
 public:
     using NativeExtractor = std::function<bool(const QStringList &, const QString &, QString &)>;
@@ -23,6 +24,7 @@ public:
     bool running() const { return m_process.state() != QProcess::NotRunning || !m_lockKey.isEmpty(); }
     QString error() const { return m_error; }
     QString versionId() const { return m_versionId; }
+    QString rootId() const {return m_rootId;}
     void setNativeExtractor(NativeExtractor extractor) { m_extractor = std::move(extractor); }
 
     // Native-only: don't expose the returned arguments through QML, since they
@@ -47,6 +49,7 @@ private:
     QString m_dataDirectory;
     QString m_error;
     QString m_versionId;
+    QString m_rootId;
     QString m_lockKey;
     QStringList m_secrets;
     QProcess m_process;

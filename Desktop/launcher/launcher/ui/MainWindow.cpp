@@ -457,11 +457,14 @@ void MainWindow::deeraftInstallCentral(QWidget* shell)
 void MainWindow::deeraftSetAdvanced(bool advanced)
 {
     if (!m_deeraftStack) return;
-    m_deeraftStack->setCurrentIndex(advanced ? 1 : 0);
-    for (auto bar : findChildren<QToolBar*>(QString(), Qt::FindDirectChildrenOnly)) bar->setVisible(advanced);
-    ui->menuBar->setVisible(advanced);
-    statusBar()->setVisible(advanced);
+    if(advanced){ui->actionSettings->trigger();return;}
+    m_deeraftStack->setCurrentIndex(0);
+    for (auto bar : findChildren<QToolBar*>(QString(), Qt::FindDirectChildrenOnly)) bar->setVisible(false);
+    ui->menuBar->setVisible(false);
+    statusBar()->setVisible(false);
 }
+
+void MainWindow::deeraftSelectInstance(const QString& id){setSelectedInstanceById(id);}
 
 void MainWindow::deeraftAction(const QString& name, const QString& instanceId)
 {
@@ -474,6 +477,7 @@ void MainWindow::deeraftAction(const QString& name, const QString& instanceId)
 #ifndef Q_OS_MAC
 void MainWindow::keyReleaseEvent(QKeyEvent* event)
 {
+    if (m_deeraftStack && m_deeraftStack->currentIndex()==0) { QMainWindow::keyReleaseEvent(event);return; }
     if (event->key() == Qt::Key_Alt && !APPLICATION->settings()->get("MenuBarInsteadOfToolBar").toBool())
         ui->menuBar->setVisible(!ui->menuBar->isVisible());
     else

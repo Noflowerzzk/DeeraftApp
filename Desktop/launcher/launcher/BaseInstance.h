@@ -299,6 +299,7 @@ class BaseInstance : public QObject {
     void launchTaskChanged(LaunchTask*);
 
     void runningStatusChanged(bool running);
+    void minecraftStarted();
 
     void profilerChanged();
 

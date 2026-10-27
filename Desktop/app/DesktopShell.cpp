@@ -1,5 +1,13 @@
 #include "DesktopShell.h"
 #include "DesktopBridge.h"
+#include "library/DesktopLibrary.h"
+#include "net/ApiDownload.h"
+#include "net/ChecksumValidator.h"
+#include "net/NetJob.h"
+#include <QCloseEvent>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QCryptographicHash>
 #include "community/CommunityClient.h"
 #include "compat/ExternalGameCatalog.h"
 #include "compat/NativeExternalLaunchController.h"
@@ -24,6 +32,16 @@
 #include <QDesktopServices>
 #include <QCoreApplication>
 
+// Keep ownership of the directory lock until the external JVM exits.
+// Closing the window minimizes it instead of destroying a running game process.
+class ExternalGameWindowGuard final:public QObject {
+public:
+ ExternalGameWindowGuard(QWidget* window,Deeraft::NativeExternalLaunchController* launcher):QObject(window),m_window(window),m_launcher(launcher){}
+ bool eventFilter(QObject*,QEvent* event)override{
+  if(event->type()==QEvent::Close&&m_launcher&&m_launcher->running()){static_cast<QCloseEvent*>(event)->ignore();QTimer::singleShot(0,m_window,[this]{m_window->showMinimized();});return true;}return false;
+ }
+private:QWidget* m_window;QPointer<Deeraft::NativeExternalLaunchController> m_launcher;
+};
 class InstanceIcons final : public QQuickImageProvider {
 public:
     InstanceIcons():QQuickImageProvider(QQuickImageProvider::Pixmap){}
@@ -36,9 +54,12 @@ public:
 void installDeeraftShell(MainWindow* window){
     Q_INIT_RESOURCE(deeraft);
     qputenv("QT_SHADER_CACHE_PATH",QFile::encodeName(APPLICATION->dataRoot()+"/cache/shaders"));
+    qputenv("QML_DISK_CACHE_PATH",QFile::encodeName(APPLICATION->dataRoot()+"/cache/qml"));
     QQuickStyle::setStyle("Material");
     QFontDatabase::addApplicationFont(":/deeraft/fonts/NotoSansSC.ttf");
-    qApp->setFont(QFont("Noto Sans SC",10));
+    QFontDatabase::addApplicationFont(":/deeraft/fonts/MaterialSymbolsRounded.ttf");
+    QFontDatabase::addApplicationFont(":/deeraft/fonts/RobotoFlex.ttf");
+    QFont applicationFont;applicationFont.setFamilies({"Roboto Flex","Noto Sans SC"});applicationFont.setPointSize(10);qApp->setFont(applicationFont);
     auto bridge=new DesktopBridge(window);
     auto community=new CommunityClient(APPLICATION->dataRoot()+"/community",window);
     community->setObjectName("deeraftCommunity");
@@ -53,6 +74,7 @@ void installDeeraftShell(MainWindow* window){
         QDesktopServices::setUrlHandler("deeraft",community,"completeMicrosoftLogin");
     });
     auto external=new Deeraft::ExternalGameCatalog(APPLICATION->dataRoot()+"/external",window);
+    auto library=new DesktopLibrary(APPLICATION->dataRoot(),external,window);
     auto launcher=new Deeraft::NativeExternalLaunchController(external,APPLICATION->dataRoot(),window);
     launcher->setNativeExtractor([](const QStringList& jars,const QString& destination,QString& error){
         for(const auto& jar:jars){
@@ -72,6 +94,7 @@ void installDeeraftShell(MainWindow* window){
         }return true;
     });
     bridge->setExternalLauncher(launcher);
+    window->installEventFilter(new ExternalGameWindowGuard(window,launcher));
     auto externalAccounts=new ExternalAccountController(APPLICATION->dataRoot()+"/auth",window);
     auto sources=new DownloadSources(APPLICATION->dataRoot(),window);
     auto quick=new QQuickWidget(window);
@@ -79,6 +102,7 @@ void installDeeraftShell(MainWindow* window){
     quick->engine()->addImageProvider("instances",new InstanceIcons);
     auto context=quick->rootContext();
     context->setContextProperty("desktop",bridge);
+    context->setContextProperty("library",library);
     context->setContextProperty("communityClient",community);
     context->setContextProperty("externalGames",external);
     context->setContextProperty("externalLauncher",launcher);
@@ -87,7 +111,7 @@ void installDeeraftShell(MainWindow* window){
     quick->setSource(QUrl("qrc:/deeraft/qml/Main.qml"));
     for(const auto& error:quick->errors())qWarning().noquote()<<error.toString();
     window->deeraftInstallCentral(quick);
-    window->resize(1240,820);
+    window->resize(1440,960);
     window->setMinimumSize(900,640);
     QTimer::singleShot(0,community,&CommunityClient::restoreSession);
     const QString capture=qEnvironmentVariable("DEERAFT_CAPTURE");
@@ -98,18 +122,38 @@ void installDeeraftShell(MainWindow* window){
     const QString smoke=qEnvironmentVariable("DEERAFT_SMOKE_DIR");
     if(!smoke.isEmpty() && quick->rootObject()){
         QDir().mkpath(smoke);
+        const QString fixtureAccount=qEnvironmentVariable("DEERAFT_SMOKE_ACCOUNT");
+        if(!fixtureAccount.isEmpty())bridge->addOfflineAccount(fixtureAccount);
+        const QString probeFile=qEnvironmentVariable("DEERAFT_SOURCE_PROBE");
+        if(!probeFile.isEmpty()){
+            const QString hash="9dd32387135eefa7ab95996d52a5ca4cec8a3b30";
+            auto [download,bytes]=Net::ApiDownload::makeByteArray(QUrl("https://resources.download.minecraft.net/9d/"+hash));
+            download->addValidator(new Net::ChecksumValidator(QCryptographicHash::Sha1,hash));
+            auto report=std::make_shared<QJsonObject>();
+            QObject::connect(download.get(),&Task::status,window,[report](const QString& status){if(status.contains("bmclapi2.bangbang93.com"))(*report)["domesticAttempted"]=true;if(status.contains("resources.download.minecraft.net"))(*report)["officialAttempted"]=true;});
+            auto job=new NetJob("Deeraft source verification",APPLICATION->network());job->setParent(window);job->addNetAction(download);
+            auto finish=[report,bytes,hash,probeFile](bool success){(*report)["success"]=success;(*report)["sha1Matches"]=QString::fromLatin1(QCryptographicHash::hash(*bytes,QCryptographicHash::Sha1).toHex())==hash;QSaveFile file(probeFile);if(file.open(QIODevice::WriteOnly)){file.write(QJsonDocument(*report).toJson());file.commit();}QTimer::singleShot(0,qApp,[success]{qApp->exit(success?0:1);});};
+            QObject::connect(job,&Task::succeeded,window,[finish]{finish(true);});QObject::connect(job,&Task::failed,window,[finish](const QString&){finish(false);});
+            QTimer::singleShot(1000,job,&Task::start);QTimer::singleShot(90000,window,[finish]{finish(false);});return;
+        }
         auto take=[window,smoke](const QString& name){window->grab().save(QDir(smoke).filePath(name+".png"));};
-        QTimer::singleShot(2500,window,[bridge,take]{bridge->setTheme("dark");take("community-dark");});
+        QTimer::singleShot(1500,window,[take]{take("launcher-light");});
+        QTimer::singleShot(2000,window,[quick,bridge]{quick->rootObject()->setProperty("page",0);bridge->setTheme("dark");});
+        QTimer::singleShot(3000,window,[take]{take("community-dark");});
         QTimer::singleShot(3500,window,[quick]{quick->rootObject()->setProperty("page",1);});
-        QTimer::singleShot(4500,window,[take]{take("launcher");});
-        QTimer::singleShot(5500,window,[quick]{quick->rootObject()->setProperty("page",4);});
+        QTimer::singleShot(4500,window,[take]{take("launcher-dark");});
+        QTimer::singleShot(5000,window,[quick]{quick->rootObject()->setProperty("page",2);});
+        QTimer::singleShot(5500,window,[take]{take("servers-dark");});
+        QTimer::singleShot(6000,window,[quick]{quick->rootObject()->setProperty("page",4);});
         QTimer::singleShot(6500,window,[take]{take("profile");});
+        QTimer::singleShot(6800,window,[quick]{quick->rootObject()->setProperty("page",3);});
+        QTimer::singleShot(7300,window,[take]{take("chat");});
         QTimer::singleShot(7500,window,[quick]{QMetaObject::invokeMethod(quick->rootObject(),"showSettings");});
         QTimer::singleShot(8500,window,[take]{take("settings");});
         QTimer::singleShot(9500,window,[quick,bridge]{QMetaObject::invokeMethod(quick->rootObject(),"closeSettings");quick->rootObject()->setProperty("page",0);bridge->setTheme("light");});
         QTimer::singleShot(10500,window,[take]{take("community-light");});
         QTimer::singleShot(11500,window,[window]{window->deeraftSetAdvanced(true);});
-        QTimer::singleShot(12500,window,[take]{take("advanced");});
+        QTimer::singleShot(12500,window,[take]{take("secondary-settings");});
         QTimer::singleShot(13500,qApp,&QApplication::quit);
     }
 }

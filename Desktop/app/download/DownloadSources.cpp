@@ -1,8 +1,9 @@
 #include "DownloadSources.h"
+#include "Application.h"
 #include <QSettings>
 QString DownloadSources::s_settingsPath;
 DownloadSources::DownloadSources(const QString& dir,QObject* parent):QObject(parent){s_settingsPath=dir+"/desktop.ini";}
-int DownloadSources::currentMode(){return s_settingsPath.isEmpty()?0:QSettings(s_settingsPath,QSettings::IniFormat).value("downloadSource",0).toInt();}
+int DownloadSources::currentMode(){const QString path=s_settingsPath.isEmpty()&&APPLICATION?APPLICATION->dataRoot()+"/desktop.ini":s_settingsPath;return path.isEmpty()?0:QSettings(path,QSettings::IniFormat).value("downloadSource",0).toInt();}
 int DownloadSources::mode()const{return currentMode();}
 void DownloadSources::setMode(int value){if(value<0||value>2)return;QSettings(s_settingsPath,QSettings::IniFormat).setValue("downloadSource",value);emit changed();}
 QUrl DownloadSources::mirror(const QUrl& original){

@@ -1,32 +1,42 @@
 # DeeraftApp Windows
 
-已固定 Prism Launcher 11.1.1 源码，并完成项目内 Qt/C++ 工具链及可启动的集成版本。当前处于开发阶段，不代表完整功能已验收。
+基于 Prism Launcher 11.1.1 的 Windows x64 桌面应用。主界面已按确认的 Material 3 Expressive 设计实现为 Qt Quick/QML；Prism 仅用于相关二级窗口和启动核心。当前为内部测试版。
 
-用户最新确认：启动器主界面必须完全融入 App，只保留 Prism 的相关二级窗口；桌面端重新按 M3 Expressive 设计，不沿用手机端配置。正式界面替换暂停，先审阅 [可交互设计稿](design/m3-expressive/index.html)、[设计说明](design/m3-expressive/DESIGN.md) 和 [Styles 学习记录](design/m3-expressive/STYLE-STUDY.md)。
+## 使用
 
-## 目录
+解压整个便携包，运行 `DeeraftApp.exe`，不要单独移动 EXE。数据默认保存在程序旁 `data/`，更新时关闭程序并保留该目录。社区账号和 Minecraft 账号独立，使用启动器不要求先登录社区。
 
-- `app/`：Qt/QML 壳层、社区客户端、第三方账号、目录兼容和下载源适配。
-- `launcher/`：固定版本 Prism 源码，来源见 `launcher/UPSTREAM.md`。
-- `design/m3-expressive/`：独立 HTML 设计稿，含本地字体、素材、明暗主题与交互状态。
-- `scripts/`：工作区内工具链、构建、运行、打包和设计取证脚本。
-- `.toolchain/`、`.cache/`、`build/`、`dist/`：本地产物，不提交。
+在“我的”中添加 Minecraft 账号，或在启动器账号菜单中进入账号管理。离线账号可直接创建、安装并启动原版；Microsoft 和第三方账号在应用内授权。Java 可在设置中选择，也可使用高级 Java 管理。
 
-## 开发命令
+“我的实例”内可分别筛选实例目录和分组；通过菜单关联现有 PCL/HMCL 游戏目录。关联不会转换原目录，移除关联不删除游戏。外部实例当前同一时间支持一个运行进程；游戏运行时关闭主窗口会最小化，以保留进程与目录锁。
+
+社区与服务器页支持关联实例和服务器地址，“启动实例并加入”启动关联实例。第三方服务器配置仅保存在本地，并查询真实在线状态、版本和人数。社区聊天从社区页进入。
+
+下载源提供自动、国内和官方模式；自动优先受支持的 BMCLAPI 地址，失败回退官方。登录认证不经过下载镜像。直播使用 WebView2；未附带固定运行时时需要系统已安装 WebView2 Runtime，播放器缓存位于便携数据目录。
+
+## 开发
 
 从仓库根目录执行：
 
 ```powershell
 ./Desktop/scripts/bootstrap.ps1
-./Desktop/scripts/build.ps1
+./Desktop/scripts/build.ps1 -Jobs 2
 ./Desktop/scripts/run.ps1
 ./Desktop/scripts/package.ps1
 ```
 
-开发脚本只在当前进程设置环境，不修改系统 PATH。编译器、Qt、依赖与临时目录留在 Desktop 内。便携数据默认为程序旁 `data/`；开发时可用 `run.ps1 -AppArguments @('--dir','绝对路径')` 指定独立数据目录。
+脚本只修改当前进程环境，不修改全局 PATH。工具链、缓存、构建和发行产物留在 `Desktop/`。可通过 `run.ps1 -AppArguments @('--dir','绝对路径')` 使用独立数据目录。并行链接占用内存较多，默认机器内存不足时使用 `-Jobs 2`。
 
-## 验证边界
+- `app/`：QML 界面及 C++ 启动器、社区、账号、目录和下载源适配。
+- `launcher/`：固定 Prism 源码，来源与许可证见 `UPSTREAM.md` 和 `LICENSE`。
+- `backend/`：网站启动动态接口及部署、验证脚本。
+- `design/m3-expressive/`：已确认的交互设计稿与素材来源。
+- `docs/feature-matrix.md`：功能入口及实际验收边界。
 
-已通过桌面默认 CTest 22 项、独立社区测试 8 项、目录兼容测试 9 项，手机端静态检查与 Android 调试构建通过。Windows 符号链接的提权测试默认禁用，不自动触发 UAC；文件链接辅助程序已部署其 Qt DLL，并在不含开发环境 PATH 的进程中验证加载。
+## 验证
 
-尚未完成：最终 Expressive Qt 界面替换、所有账号的真实授权、实际 Minecraft/模组/整合包启动、镜像故障和完整性异常的端到端验证、网站管理写操作的真实角色联调、Windows 10 实机及完整便携发行回归。HTML 设计稿使用展示数据，不执行这些操作。
+已实际完成离线账号首次下载、安装并启动原版 Minecraft 1.20.1，用户确认游戏正常启动。已用原生下载任务验证国内源尝试、官方回退与 SHA-1 校验；启动动态接口已部署到网站，匿名请求返回 401。
+
+自动测试包含 Prism 默认测试、目录适配、个人服务器状态与配置、社区会话及动态、后端鉴权与去重。符号链接的提权测试默认禁用，不自动触发 UAC。开发机上的原生界面与便携运行检查不能代替所有系统和外部服务验收。
+
+仍需用户在应用内授权正版及第三方账号；模组/整合包真实启动、管理写操作的不同角色联调、直播播放及 Windows 10 实机尚未完整验收。更新采用手动替换便携包，不安装上游 Prism 二进制。

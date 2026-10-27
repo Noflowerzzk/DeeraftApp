@@ -4,6 +4,7 @@ find_package(OpenSSL REQUIRED)
 set(DEERAFT_COMPAT_TESTS ON CACHE BOOL "Compatibility regression tests" FORCE)
 add_subdirectory("${DEERAFT_APP_DIR}/compat" "${CMAKE_BINARY_DIR}/deeraft-compat")
 target_sources(Launcher_logic PRIVATE
+    "${DEERAFT_APP_DIR}/library/DesktopLibrary.cpp" "${DEERAFT_APP_DIR}/library/DesktopLibrary.h"
     "${DEERAFT_APP_DIR}/DesktopBridge.cpp" "${DEERAFT_APP_DIR}/DesktopBridge.h"
     "${DEERAFT_APP_DIR}/DesktopShell.cpp" "${DEERAFT_APP_DIR}/DesktopShell.h"
     "${DEERAFT_APP_DIR}/community/CommunityClient.cpp" "${DEERAFT_APP_DIR}/community/CommunityClient.h"
@@ -21,3 +22,13 @@ if(WIN32)
     target_link_libraries(Launcher_logic crypt32 ole32 shlwapi version)
 endif()
 set_target_properties(${Launcher_Name} PROPERTIES OUTPUT_NAME "DeeraftApp")
+
+if(BUILD_TESTING)
+ find_package(Qt6 REQUIRED COMPONENTS Test)
+ add_executable(deeraft_library_tests "${DEERAFT_APP_DIR}/library/tests/DesktopLibraryTest.cpp")
+ set_target_properties(deeraft_library_tests PROPERTIES AUTOMOC ON)
+ target_link_libraries(deeraft_library_tests PRIVATE Launcher_logic Qt6::Test)
+ file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/test-temp")
+ add_test(NAME deeraft_library_tests COMMAND deeraft_library_tests)
+ set_tests_properties(deeraft_library_tests PROPERTIES ENVIRONMENT "TEMP=${CMAKE_BINARY_DIR}/test-temp;TMP=${CMAKE_BINARY_DIR}/test-temp")
+endif()

@@ -1,6 +1,7 @@
 <RCC>
  <qresource prefix="/deeraft">
   <file>qml/Main.qml</file>
+  <file>qml/RoundedImage.qml</file>
   <file>qml/ActionButton.qml</file>
   <file>qml/AppDialog.qml</file>
   <file>qml/CommunityPage.qml</file>
@@ -10,5 +11,15 @@
   <file>qml/ProfilePage.qml</file>
   <file>qml/SettingsDialog.qml</file>
   <file alias="fonts/NotoSansSC.ttf">../../Mobile/assets/fonts/NotoSansSC.ttf</file>
+  <file>qml/AppIcon.qml</file>
+  <file>qml/AppMenu.qml</file>
+  <file>qml/AppSelect.qml</file>
+  <file>qml/IconButton.qml</file>
+  <file>qml/Theme.js</file>
+  <file alias="fonts/MaterialSymbolsRounded.ttf">assets/MaterialSymbolsRounded.ttf</file>
+  <file alias="fonts/RobotoFlex.ttf">assets/RobotoFlex.ttf</file>
+  <file alias="images/village.png">assets/village.png</file>
+  <file alias="images/forest.png">assets/forest.png</file>
+  <file alias="images/map.png">assets/map.png</file>
  </qresource>
 </RCC>

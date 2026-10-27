@@ -302,6 +302,7 @@ void BaseInstance::setRunning(bool running)
 
 void BaseInstance::setMinecraftRunning(bool running)
 {
+    if(running)emit minecraftStarted();
     if (!settings()->get("RecordGameTime").toBool()) {
         return;
     }

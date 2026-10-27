@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QSettings>
 #include <QUrl>
+#include <QSet>
 class MainWindow;
 class Task;
 namespace Deeraft {class ExternalGameCatalog; class NativeExternalLaunchController;}
@@ -26,6 +27,11 @@ public:
     QString error() const { return m_error; }
     Q_INVOKABLE void action(const QString& name, const QString& instanceId = {});
     Q_INVOKABLE void advanced();
+    Q_INVOKABLE void selectInstance(const QString& id);
+    Q_INVOKABLE void launchInstance(const QString& id, const QString& address = {});
+    Q_INVOKABLE QVariantList resources(const QString& id,const QString& kind) const;
+    Q_INVOKABLE bool setModEnabled(const QString& id,const QString& fileName,bool enabled);
+    Q_INVOKABLE QString readGameLog(const QString& id) const;
     Q_INVOKABLE QString chooseDirectory();
     Q_INVOKABLE QUrl chooseFile(const QString& filter = {});
     Q_INVOKABLE void openPath(const QString& path);
@@ -34,15 +40,18 @@ public:
     Q_INVOKABLE void cancelTask(const QString& id);
     Q_INVOKABLE void openWebsite();
     Q_INVOKABLE void openLive(const QString& roomId);
-    Q_INVOKABLE void launchExternal(const QString& rootId,const QString& versionId);
+    Q_INVOKABLE void launchExternal(const QString& rootId,const QString& versionId,const QString& address = {},const QString& javaOverride = {});
     void setExternalLauncher(Deeraft::NativeExternalLaunchController* launcher);
     static void trackTask(Task* task);
 signals:
     void changed();
     void themeChanged();
     void tasksChanged();
+    void gameStarted(const QString& name,const QString& version);
 private:
     void applyPalette();
+    void observeInstances();
+    QSet<QObject*> m_observed;
     void updateTask(Task* task, const QString& state = {});
     MainWindow* m_window;
     QSettings m_settings;

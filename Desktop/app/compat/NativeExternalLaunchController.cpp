@@ -302,6 +302,7 @@ bool NativeExternalLaunchController::launch(const QString &rootId, const QString
         return false;
     }
     m_versionId = versionId;
+    m_rootId = rootId;
     const auto natives = QDir(m_dataDirectory).filePath("external-natives/" + m_lockKey);
     const auto resolved = m_catalog->resolveVersion(rootId, versionId);
     const auto plan = buildPlan(resolved, session, javaOptions, natives);

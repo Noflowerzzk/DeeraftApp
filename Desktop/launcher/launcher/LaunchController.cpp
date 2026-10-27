@@ -310,6 +310,7 @@ void LaunchController::login()
 
     m_session = std::make_shared<AuthSession>();
     m_session->launchMode = m_actualLaunchMode;
+    m_session->allowNetworkDownloads = m_accountToUse->accountType()==AccountType::Offline && m_wantedLaunchMode==LaunchMode::Normal;
     m_accountToUse->fillSession(m_session);
     if ((m_accountToUse->accountType() == AccountType::Authlib || m_accountToUse->accountType() == AccountType::YggdrasilConnect) && m_session->extraJvmArguments.isEmpty()) {
         emitFailed(tr("认证组件缺失或校验失败，请重新添加第三方账号"));

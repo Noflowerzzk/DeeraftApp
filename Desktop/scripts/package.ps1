@@ -21,6 +21,10 @@ Copy-Item "$desktop/launcher/COPYING.md" "$output/licenses/" -ErrorAction Silent
 Copy-Item "$desktop/app/webview/vendor/LICENSE" "$output/licenses/webview-MIT.txt"
 Copy-Item "$desktop/app/webview/vendor/WebView2-LICENSE.txt" "$output/licenses/"
 Copy-Item "$desktop/../Mobile/assets/fonts/OFL.txt" "$output/licenses/NotoSansSC-OFL.txt"
+Copy-Item "$desktop/design/m3-expressive/assets/licenses/Material-Symbols-LICENSE.txt" "$output/licenses/"
+Copy-Item "$desktop/design/m3-expressive/assets/licenses/Roboto-Flex-OFL.txt" "$output/licenses/"
+Copy-Item "$desktop/design/m3-expressive/SOURCES.md" "$output/licenses/UI-ASSETS.md"
+if(Test-Path "$desktop/.toolchain/WebView2Runtime"){Copy-Item "$desktop/.toolchain/WebView2Runtime" "$output/WebView2Runtime" -Recurse}
 Copy-Item "$desktop/launcher/UPSTREAM.md","$desktop/README.md" $output
 Copy-Item "$desktop/scripts/packages.lock.txt" "$output/licenses/toolchain-packages.txt"
 if(Test-Path "$prefix/share/licenses"){Copy-Item "$prefix/share/licenses" "$output/licenses/dependencies" -Recurse}

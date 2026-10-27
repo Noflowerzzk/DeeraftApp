@@ -31,10 +31,13 @@
 
 ## 批注修订补充参考
 
-以下均通过实际浏览器阅读渲染后的文本，非只读取截图。Snackbars 放在底部且不打断当前任务；搜索采用圆角 tonal surface 容器。选择器保留原生键盘和 optgroup 支持，使用本稿 Material 色彩与布局。
+以下均通过实际浏览器阅读渲染后的文本，非只读取截图。Snackbars 放在底部且不打断当前任务；搜索采用圆角 tonal surface 容器。关联实例对话框保留原生 optgroup；实例目录与分组在后续批注中改为自绘 Material 选择菜单，保留键盘操作，使用本稿 Material 色彩与布局。
 
 - [Snackbar overview](https://m3.material.io/components/snackbar/overview)
 - [Menus overview](https://m3.material.io/components/menus/overview)
 - [Search overview](https://m3.material.io/components/search/overview)
 
 研究 DOM 文本记录在工作区 Desktop/.oil-ui/m3-expressive/shots/official-*.txt，不包含进正式交付包。
+
+
+- 本轮重新阅读 [Motion how it works](https://m3.material.io/styles/motion/overview/how-it-works) 与 [Menus guidelines](https://m3.material.io/components/menus/guidelines) 的完整渲染文本，参考菜单出入、过滤重排和 spring 的应用范围。记录在工作区 shots/official-motion-how-it-works.txt 与 official-menus-guidelines.txt。

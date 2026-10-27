@@ -46,7 +46,7 @@ try {
   const frames=await evaluate(`new Promise(resolve=>{const frames=[];document.querySelector('.menu-toggle').click();const start=performance.now();function tick(){const item=document.querySelector('.rail-item'),label=item.querySelector('.rail-label');frames.push({t:performance.now()-start,h:item.getBoundingClientRect().height,y:label.getBoundingClientRect().top,x:label.getBoundingClientRect().left,w:label.getBoundingClientRect().width,display:getComputedStyle(item).display});if(performance.now()-start<650)requestAnimationFrame(tick);else resolve(frames);}requestAnimationFrame(tick);})`);
   results.push({name:'导航重排保持固定高度与标签宽度，并连续位移',passed:frames.every(f=>Math.abs(f.h-72)<.01&&Math.abs(f.w-80)<.01&&f.display==='block')&&new Set(frames.map(f=>Math.round(f.y))).size>=3 && Math.max(...frames.map(f=>f.y))-Math.min(...frames.map(f=>f.y))<=21,frames});
   await shot('rail-expanded');await evaluate("document.querySelector('.menu-toggle').click()");await pause(650);
-  await evaluate("document.querySelector('[aria-label=\"实例目录\"]').value='HMCL';document.querySelector('[aria-label=\"实例目录\"]').dispatchEvent(new Event('change',{bubbles:true}))");await pause(50);
+  await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await pause(80);await evaluate("document.querySelector('.m3-select-menu [data-value=HMCL]').click()");await pause(80);
   await check('目录过滤使用独立来源',"window.designApp.filteredInstances.length===1 && window.designApp.filteredInstances[0].source==='HMCL'");
   await evaluate("window.designApp.groupFilter='整合包'");await pause(50);
   await check('目录与分组交叉筛选',"window.designApp.filteredInstances.length===0");

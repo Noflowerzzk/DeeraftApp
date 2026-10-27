@@ -14,6 +14,9 @@ document.addEventListener('alpine:init', () => {
     associationDraft: '',
     serverLinks: {community: 'ctf'},
     thirdPartyServers: [],
+    serverStatuses: {},
+    statusDemo: false,
+    statusRequests: {},
     thirdPartyOpen: false,
     thirdPartyDraft: {id:'', name:'', address:'', instanceId:''},
     formError: '',
@@ -111,10 +114,24 @@ document.addEventListener('alpine:init', () => {
       if (['chat',...this.navigation.map(item=>item.id)].includes(query.get('page'))) this.page = query.get('page');
       this.setTheme(query.get('theme') === 'dark' ? 'dark' : 'light');
       if (query.get('state') === 'dark') this.setTheme('dark');
+      if (query.get('state') === 'server-status') {
+        this.statusDemo=true;
+        this.page='servers';
+        this.thirdPartyServers=[{id:'demo-online',name:'朋友的生存服',address:'play.example.com:25565'},{id:'demo-offline',name:'周末建筑服',address:'build.example.com'},{id:'demo-unknown',name:'模组联机',address:'modded.example.com'}];
+        this.serverLinks['demo-online']='hmcl';this.serverLinks['demo-offline']='simcity';this.serverLinks['demo-unknown']='pcl';
+        this.serverStatuses={
+          'demo-online':{state:'online',label:'在线',version:'Paper 1.21.4',players:'3 / 20',latency:38,updated:'刚刚更新'},
+          'demo-offline':{state:'offline',label:'离线',version:'版本 —',players:null,latency:null,updated:'刚刚更新'},
+          'demo-unknown':{state:'unavailable',label:'查询失败',version:null,players:null,latency:null,updated:'可重试'}
+        };
+      }
       if (query.get('state') === 'mods') this.detailTab = '模组';
       this.reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
       document.documentElement.dataset.motion = this.reducedMotion ? 'reduced' : 'full';
       window.designApp = this;
+      for(const [key,selector] of [['thirdPartyOpen','[aria-label="第三方服务器配置"]'],['associationOpen','[aria-label="关联实例"]'],['sourcesOpen','.sources-dialog'],['settingsOpen','.settings-dialog']]){
+        this.$watch(key,open=>{if(open)this.$nextTick(()=>DeeraftMotion.enter(document.querySelector(selector)));});
+      }
       document.addEventListener('keydown', event => {
         if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
           event.preventDefault();
@@ -128,6 +145,7 @@ document.addEventListener('alpine:init', () => {
         if (!DeeraftMotion.reduced()) {
           document.querySelector('.page-stage').animate([{ opacity: 0.3, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)' }], { duration: 350, easing: 'cubic-bezier(.2,0,0,1)' });
         }
+        DeeraftMotion.trackTabs(document.querySelector('.detail-tabs'));
         this.downloadSpring = new DeeraftMotion.Spring(100, value => {
           document.querySelector('.downloads-sheet').style.transform = `translateX(${value}%)`;
         }, 'defaultSpatial');
@@ -220,6 +238,7 @@ document.addEventListener('alpine:init', () => {
       this.formError = '';
     },
     saveConfig() {
+      if(this.statusDemo)return true;
       try {
         localStorage.setItem('deeraft-design-server-config', JSON.stringify({links:this.serverLinks,servers:this.thirdPartyServers}));
         this.storageError = ''; return true;
@@ -241,6 +260,19 @@ document.addEventListener('alpine:init', () => {
       await this.setPage('launcher');
       this.launch('join');
     },
+    statusFor(id) { return this.serverStatuses[id] || {state:'unknown',label:'未检测',version:null,players:null,latency:null,updated:''}; },
+    refreshServerStatus(id) {
+      if(this.statusFor(id).state==='checking')return;
+      const request=crypto.randomUUID(); this.statusRequests[id]=request;
+      const previous=this.statusFor(id);
+      this.serverStatuses[id]={...previous,state:'checking',label:'检测中',updated:''};
+      // Design-only transition. The HTML prototype cannot open Minecraft TCP sockets.
+      setTimeout(() => {
+        if(this.statusRequests[id]!==request || !this.thirdPartyServers.some(server=>server.id===id))return;
+        this.serverStatuses[id]={state:'unavailable',label:'查询失败',version:null,players:null,latency:null,updated:'可重试'};
+        this.$nextTick(() => DeeraftMotion.feedback(document.querySelector(`[data-motion-key="${id}"] .ping-badge`)));
+      }, 900);
+    },
     openThirdParty(server) {
       this.thirdPartyDraft = server ? {...server,instanceId:this.serverLinks[server.id]||''} : {id:'',name:'',address:'',instanceId:''};
       this.formError = ''; this.thirdPartyOpen = true;
@@ -254,12 +286,18 @@ document.addEventListener('alpine:init', () => {
       this.thirdPartyServers = [...this.thirdPartyServers.filter(item=>item.id!==id), server];
       this.serverLinks[id] = value.instanceId;
       if (!this.saveConfig()) { this.thirdPartyServers=previousServers; this.serverLinks=previousLinks; return; }
+      if (!value.id || previousServers.find(server=>server.id===id)?.address!==server.address) { delete this.serverStatuses[id]; delete this.statusRequests[id]; }
+      DeeraftMotion.captureList(document.querySelector('.third-party-list'));
       this.thirdPartyOpen = false; this.showToast('服务器已保存');
+      this.$nextTick(() => requestAnimationFrame(() => DeeraftMotion.settleList(document.querySelector('.third-party-list'))));
     },
     removeThirdParty(id) {
+      DeeraftMotion.captureList(document.querySelector('.third-party-list'));
       const previousServers=[...this.thirdPartyServers], previousLinks={...this.serverLinks};
       this.thirdPartyServers=this.thirdPartyServers.filter(item=>item.id!==id); delete this.serverLinks[id];
       if (!this.saveConfig()) { this.thirdPartyServers=previousServers; this.serverLinks=previousLinks; this.showToast(this.storageError); }
+      else { delete this.statusRequests[id]; delete this.serverStatuses[id]; }
+      this.$nextTick(() => requestAnimationFrame(() => DeeraftMotion.settleList(document.querySelector('.third-party-list'))));
     },
     toggleDownloads(force) {
       this.downloadsOpen = typeof force === 'boolean' ? force : !this.downloadsOpen;

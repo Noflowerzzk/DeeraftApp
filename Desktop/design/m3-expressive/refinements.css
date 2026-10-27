@@ -1,0 +1,40 @@
+/* Material 3 filled select + listbox, server status, and spring-driven details. */
+.library-selectors{position:relative;z-index:12;flex-shrink:0}
+.m3-select{position:relative;min-width:0}
+.m3-select-trigger{position:relative;width:100%;min-height:60px;text-align:left;padding:8px 32px 8px 12px;background:var(--surface-container-highest);border-radius:4px 4px 0 0;border-bottom:1px solid var(--on-surface-variant);display:flex;flex-direction:column;justify-content:center;overflow:hidden;transition:background-color 150ms var(--effects),border-color 150ms var(--effects)}
+.m3-select-trigger:hover{background:color-mix(in srgb,var(--on-surface) 8%,var(--surface-container-highest))}
+.m3-select-trigger[aria-expanded=true]{border-bottom:2px solid var(--primary);padding-bottom:7px}
+.m3-select-trigger[aria-expanded=true] .m3-select-label{color:var(--primary)}
+.m3-select-label{font-size:12px;line-height:18px;color:var(--on-surface-variant);white-space:nowrap}
+.m3-select-value{font-size:14px;line-height:22px;color:var(--on-surface);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.m3-select-chevron{position:absolute;right:8px;top:18px;font-size:24px;color:var(--on-surface-variant);transition:rotate 350ms var(--spatial-fast)}
+.m3-select-chevron.rotated{rotate:180deg}
+.m3-select-menu{position:absolute;left:0;top:calc(100% + 4px);width:max(100%,260px);max-width:min(360px,calc(100vw - 110px));max-height:320px;overflow-y:auto;padding:8px 0;border-radius:12px;background:var(--surface-container);color:var(--on-surface);box-shadow:0 4px 8px #0003,0 1px 3px #0002;opacity:0;visibility:hidden;z-index:100;transform-origin:top left;will-change:transform,clip-path,opacity}
+.m3-select:nth-child(2) .m3-select-menu{left:auto;right:0;min-width:200px;width:200px}
+.m3-select-menu button{width:100%;min-height:48px;display:flex;align-items:center;gap:12px;text-align:left;padding:10px 16px;position:relative;border-radius:0;outline-offset:-3px}
+.m3-select-menu button:hover,.m3-select-menu button:focus-visible{background:color-mix(in srgb,var(--on-surface) 8%,var(--surface-container))}
+.m3-select-menu button[aria-selected=true]{background:var(--secondary-container);color:var(--on-secondary-container)}
+.m3-select-menu button>.mi{font-size:20px}
+.m3-option-copy{flex:1;min-width:0;display:flex;flex-direction:column}
+.m3-option-copy strong{font-size:14px;font-weight:500}
+.m3-option-copy small{font-size:12px;color:var(--on-surface-variant);text-overflow:ellipsis;white-space:nowrap;overflow:hidden;max-width:260px}
+.m3-option-check{color:var(--primary)}
+.third-party-row{gap:12px;padding:20px 0}
+.third-party-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.ping-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;background:var(--surface-container-high);color:var(--on-surface-variant);font-size:12px;line-height:18px;white-space:nowrap}
+.ping-badge .status-dot{background:currentColor;width:6px;height:6px}
+.ping-badge[data-state=online]{background:var(--primary-container);color:var(--on-primary-container)}
+.ping-badge[data-state=offline]{background:var(--surface-container-highest);color:var(--on-surface-variant)}
+.ping-badge[data-state=unavailable]{background:var(--error-container);color:var(--on-error-container)}
+.ping-badge[data-state=checking]{background:var(--secondary-container);color:var(--on-secondary-container)}
+.third-party-facts{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:10px 0 4px;font-size:13px;color:var(--on-surface-variant)}
+.third-party-facts>span{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.third-party-facts .mi{font-size:18px}
+.third-party-facts .ping-time{font-size:12px}
+.third-party-copy .text-button{margin-top:2px}
+.refresh-server .checking{animation:status-spin 900ms linear infinite}
+@keyframes status-spin{to{rotate:360deg}}
+.detail-tabs{position:relative}
+.detail-tabs button::after{display:none}
+.detail-tab-indicator{position:absolute;bottom:0;height:3px;border-radius:3px 3px 0 0;background:var(--primary);pointer-events:none}
+@media(max-width:1050px){.library-selectors{gap:8px}.m3-select-trigger{min-height:54px;padding-block:5px}.m3-select-trigger[aria-expanded=true]{padding-bottom:4px}.m3-select-chevron{top:15px}.m3-select-menu{max-height:280px}.third-party-row>.button{margin-left:auto}.third-party-facts{gap:12px}}

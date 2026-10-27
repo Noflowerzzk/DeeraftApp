@@ -1,0 +1,225 @@
+[
+  {
+    "name": "实例筛选为自绘Material菜单，不使用原生select",
+    "passed": true
+  },
+  {
+    "name": "菜单有来源说明与选中标记",
+    "passed": true
+  },
+  {
+    "name": "End定位末项",
+    "passed": true
+  },
+  {
+    "name": "Enter选择、同步筛选并归还焦点",
+    "passed": true
+  },
+  {
+    "name": "分组菜单保持交叉过滤",
+    "passed": true
+  },
+  {
+    "name": "Escape关闭并保留焦点",
+    "passed": true
+  },
+  {
+    "name": "点击外部关闭",
+    "passed": true
+  },
+  {
+    "name": "菜单空间弹簧与透明度effects分离",
+    "passed": true,
+    "samples": [
+      {
+        "t": 15.600000023841858,
+        "opacity": 0.362249,
+        "transform": "translateY(7.58741px)"
+      },
+      {
+        "t": 31.5,
+        "opacity": 0.660324,
+        "transform": "translateY(5.7258px)"
+      },
+      {
+        "t": 48,
+        "opacity": 0.825926,
+        "transform": "translateY(3.69891px)"
+      },
+      {
+        "t": 64.80000001192093,
+        "opacity": 0.911098,
+        "transform": "translateY(1.95453px)"
+      },
+      {
+        "t": 82.60000002384186,
+        "opacity": 0.954847,
+        "transform": "translateY(0.656239px)"
+      },
+      {
+        "t": 98.19999998807907,
+        "opacity": 0.977073,
+        "transform": "translateY(-0.164365px)"
+      },
+      {
+        "t": 115.60000002384186,
+        "opacity": 0.988359,
+        "transform": "translateY(-0.580746px)"
+      },
+      {
+        "t": 131.80000001192093,
+        "opacity": 0.994067,
+        "transform": "translateY(-0.704142px)"
+      },
+      {
+        "t": 148.80000001192093,
+        "opacity": 0.996988,
+        "transform": "translateY(-0.647551px)"
+      },
+      {
+        "t": 164.69999998807907,
+        "opacity": 0.998465,
+        "transform": "translateY(-0.50346px)"
+      },
+      {
+        "t": 181.30000001192093,
+        "opacity": 0.999221,
+        "transform": "translateY(-0.335955px)"
+      },
+      {
+        "t": 198.60000002384186,
+        "opacity": 0.999604,
+        "transform": "translateY(-0.185696px)"
+      },
+      {
+        "t": 214.39999997615814,
+        "opacity": 1,
+        "transform": "translateY(-0.0713384px)"
+      },
+      {
+        "t": 232.5,
+        "opacity": 1,
+        "transform": "translateY(0.0030078px)"
+      },
+      {
+        "t": 248.5,
+        "opacity": 1,
+        "transform": "translateY(0.0431336px)"
+      },
+      {
+        "t": 264.80000001192093,
+        "opacity": 1,
+        "transform": "translateY(0.0572946px)"
+      },
+      {
+        "t": 281.60000002384186,
+        "opacity": 1,
+        "transform": "translateY(0.0549115px)"
+      },
+      {
+        "t": 298,
+        "opacity": 1,
+        "transform": "translateY(0.0440131px)"
+      },
+      {
+        "t": 316.10000002384186,
+        "opacity": 1,
+        "transform": "translateY(0.0302984px)"
+      },
+      {
+        "t": 331.30000001192093,
+        "opacity": 1,
+        "transform": "translateY(0.0174312px)"
+      },
+      {
+        "t": 348.39999997615814,
+        "opacity": 1,
+        "transform": "translateY(0.0074637px)"
+      },
+      {
+        "t": 364.80000001192093,
+        "opacity": 1,
+        "transform": "translateY(0.0006979px)"
+      },
+      {
+        "t": 381.39999997615814,
+        "opacity": 1,
+        "transform": "translateY(-0.0030832px)"
+      },
+      {
+        "t": 398.80000001192093,
+        "opacity": 1,
+        "transform": "translateY(0px)"
+      },
+      {
+        "t": 414.80000001192093,
+        "opacity": 1,
+        "transform": "translateY(0px)"
+      },
+      {
+        "t": 430.89999997615814,
+        "opacity": 1,
+        "transform": "translateY(0px)"
+      },
+      {
+        "t": 447.69999998807907,
+        "opacity": 1,
+        "transform": "translateY(0px)"
+      },
+      {
+        "t": 464.5,
+        "opacity": 1,
+        "transform": "translateY(0px)"
+      }
+    ]
+  },
+  {
+    "name": "菜单途中反向后稳定展开",
+    "passed": true
+  },
+  {
+    "name": "标签指示条移动到选中项",
+    "passed": true
+  },
+  {
+    "name": "对话框弹簧结束后稳定",
+    "passed": true
+  },
+  {
+    "name": "第三方列表直接显示在线、版本、人数和延迟",
+    "passed": true
+  },
+  {
+    "name": "离线和查询失败为不同状态，未知人数不冒充0",
+    "passed": true
+  },
+  {
+    "name": "查询期间禁用重复刷新并显示检测中",
+    "passed": true
+  },
+  {
+    "name": "原型未接查询服务时不伪造成功",
+    "passed": true
+  },
+  {
+    "name": "移除服务器后丢弃迟到的状态响应",
+    "passed": true
+  },
+  {
+    "name": "减少动态效果时菜单直接落位",
+    "passed": true
+  },
+  {
+    "name": "窄窗口1080菜单不超出视口",
+    "passed": true
+  },
+  {
+    "name": "窄窗口920菜单不超出视口",
+    "passed": true
+  },
+  {
+    "name": "无浏览器运行时异常",
+    "passed": true,
+    "details": []
+  }
+]

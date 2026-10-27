@@ -76,3 +76,15 @@ CSS 形状变化使用官网提供的 Web 近似曲线；按钮为 fast spatial�
 现有动态/聊天实时通道新增独立类型 `game.started`，历史接口返回时间游标；客户端重连按游标补齐并去重。新事件出现在玩家动态并触发单个 Snackbar，不把启动动态混进 Minecraft 原始聊天。失败、取消、离线及未登录社区不伪造已发布记录；社区报告失败不阻断本地启动。历史补齐不批量弹通知。
 
 本地个人服务器配置与社区动态完全分开；第三方地址始终留在个人数据目录。后端真实路由、数据库迁移和权限检查须在网站仓库中实施并联调，以上为可审查的接入约定，尚未声称实现。
+
+
+## 第三方服务器状态与 Motion 补充
+
+- 第三方服务器在列表内直接显示状态、服务端版本、在线人数 / 上限、延迟及更新时间，保留独立刷新按钮。状态有未检测、检测中、在线、离线、查询失败；未知人数用“—”，不当作 0，查询失败不当作离线。更改地址即失效旧状态；移除记录后忽略迟到响应。
+- 状态属于短期运行信息，不写入个人服务器配置。正式客户端在本地用 Minecraft Java Server List Ping 查询，保留 SRV、协议/超时处理与缓存；不将个人服务器地址发送到网站后端。显示服务端返回的实际版本，关联实例版本不充当服务端版本。
+- HTML 无法建立 Minecraft TCP 查询连接。本稿刷新仅演示“检测中→查询失败”，不把任意输入的服务器伪装成在线。`index.html?state=server-status` 展示在线、离线及失败三种设计数据，不表示真实查询；真实接入仍在原生客户端阶段。
+- 实例目录和分组改为自绘 M3 filled select + 单选菜单。移除这两个选择器的系统原生弹出层；包含 tonal surface、标签、展开箭头、选中标记、来源路径、hover / focus state layer。支持 Enter / Space、方向键、Home / End、Escape、Tab、前缀检索与外部点击关闭，并将焦点归还触发器。
+- 菜单位置 / 裁切展开用 fastSpatial，透明度单独用 fastEffects；展开和收起可以打断并反向。过滤后列表用 FLIP 记录原位置，现有条目平移，新条目短距离进入；空间与 effects 分开，文本不做整体缩放。
+- 实例标签的指示条使用 fastSpatial 平移与变宽，替代原先瞬间换位。配置对话框用 defaultSpatial 进入，透明度用 fastEffects；状态反馈只短促淡入。沿用全局减少动态效果设置，正在进行的 Spring 在下一帧直接到目标值。
+
+原文依据：[Motion physics — How it works](https://m3.material.io/styles/motion/overview/how-it-works)、[Menus guidelines](https://m3.material.io/components/menus/guidelines)。前者区分可回弹的 spatial 与不回弹的 effects，并按元素覆盖面积区分快 / 默认 / 慢；本稿使用已有官方 token 数值，不额外发明另一套参数。

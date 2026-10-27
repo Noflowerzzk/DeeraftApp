@@ -1,0 +1,65 @@
+/* Generated with official Material Color Utilities 0.3.0; seed #216c5e. */
+:root{
+  --primary:#056b5b;
+  --on-primary:#ffffff;
+  --primary-container:#a0f2de;
+  --on-primary-container:#005144;
+  --secondary:#4a635d;
+  --on-secondary:#ffffff;
+  --secondary-container:#cde8e0;
+  --on-secondary-container:#334b45;
+  --tertiary:#436278;
+  --on-tertiary:#ffffff;
+  --tertiary-container:#c8e6ff;
+  --on-tertiary-container:#2b4a5f;
+  --surface:#f5fbf7;
+  --on-surface:#171d1b;
+  --on-surface-variant:#3f4946;
+  --surface-container-lowest:#ffffff;
+  --surface-container-low:#eff5f1;
+  --surface-container:#e9efec;
+  --surface-container-high:#e3eae6;
+  --surface-container-highest:#dee4e0;
+  --outline:#6f7976;
+  --outline-variant:#bec9c5;
+  --error:#ba1a1a;
+  --on-error:#ffffff;
+  --error-container:#ffdad6;
+  --on-error-container:#93000a;
+  --inverse-surface:#2b3230;
+  --inverse-on-surface:#ecf2ef;
+  --inverse-primary:#84d6c3;
+  --scrim:#000000;
+}
+:root[data-theme=dark]{
+  --primary:#84d6c3;
+  --on-primary:#00382f;
+  --primary-container:#005144;
+  --on-primary-container:#a0f2de;
+  --secondary:#b1ccc4;
+  --on-secondary:#1d352f;
+  --secondary-container:#334b45;
+  --on-secondary-container:#cde8e0;
+  --tertiary:#abcae4;
+  --on-tertiary:#113348;
+  --tertiary-container:#2b4a5f;
+  --on-tertiary-container:#c8e6ff;
+  --surface:#0e1513;
+  --on-surface:#dee4e0;
+  --on-surface-variant:#bec9c5;
+  --surface-container-lowest:#090f0e;
+  --surface-container-low:#171d1b;
+  --surface-container:#1b211f;
+  --surface-container-high:#252b29;
+  --surface-container-highest:#303634;
+  --outline:#89938f;
+  --outline-variant:#3f4946;
+  --error:#ffb4ab;
+  --on-error:#690005;
+  --error-container:#93000a;
+  --on-error-container:#ffdad6;
+  --inverse-surface:#dee4e0;
+  --inverse-on-surface:#2b3230;
+  --inverse-primary:#056b5b;
+  --scrim:#000000;
+}

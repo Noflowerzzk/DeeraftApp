@@ -1,0 +1,100 @@
+[
+  {
+    "theme": "light",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 6.44,
+    "passed": true
+  },
+  {
+    "theme": "light",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 7.19,
+    "passed": true
+  },
+  {
+    "theme": "light",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 6.49,
+    "passed": true
+  },
+  {
+    "theme": "light",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 7.26,
+    "passed": true
+  },
+  {
+    "theme": "light",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 7.22,
+    "passed": true
+  },
+  {
+    "theme": "light",
+    "foreground": "onSurface",
+    "background": "surfaceContainerLowest",
+    "ratio": 17.1,
+    "passed": true
+  },
+  {
+    "theme": "light",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerLow",
+    "ratio": 8.43,
+    "passed": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "onPrimary",
+    "background": "primary",
+    "ratio": 7.71,
+    "passed": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "onPrimaryContainer",
+    "background": "primaryContainer",
+    "ratio": 7.19,
+    "passed": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "onSecondary",
+    "background": "secondary",
+    "ratio": 7.68,
+    "passed": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "onSecondaryContainer",
+    "background": "secondaryContainer",
+    "ratio": 7.26,
+    "passed": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "onTertiaryContainer",
+    "background": "tertiaryContainer",
+    "ratio": 7.22,
+    "passed": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "onSurface",
+    "background": "surfaceContainerLowest",
+    "ratio": 14.99,
+    "passed": true
+  },
+  {
+    "theme": "dark",
+    "foreground": "onSurfaceVariant",
+    "background": "surfaceContainerLow",
+    "ratio": 10.06,
+    "passed": true
+  }
+]

@@ -1,0 +1,67 @@
+[
+  {
+    "name": "选择实例同步详情标题",
+    "passed": true
+  },
+  {
+    "name": "收藏过滤",
+    "passed": true
+  },
+  {
+    "name": "PCL/HMCL关联实例过滤",
+    "passed": true
+  },
+  {
+    "name": "空搜索结果",
+    "passed": true
+  },
+  {
+    "name": "模组开关与无障碍状态同步",
+    "passed": true
+  },
+  {
+    "name": "启动即时反馈并禁用重复点击",
+    "passed": true
+  },
+  {
+    "name": "准备状态转为运行",
+    "passed": true
+  },
+  {
+    "name": "结束恢复就绪",
+    "passed": true
+  },
+  {
+    "name": "侧栏可打断并反向继续",
+    "passed": true
+  },
+  {
+    "name": "Escape关闭浮层",
+    "passed": true
+  },
+  {
+    "name": "社区选择对应版本并开始启动链路",
+    "passed": true
+  },
+  {
+    "name": "窗口1080×800无页面横向溢出",
+    "passed": true
+  },
+  {
+    "name": "窗口920×720无页面横向溢出",
+    "passed": true
+  },
+  {
+    "name": "Material图标与字体已加载",
+    "passed": true
+  },
+  {
+    "name": "相同玩家跨区域使用同一头像",
+    "passed": true
+  },
+  {
+    "name": "无浏览器运行时异常",
+    "passed": true,
+    "details": []
+  }
+]

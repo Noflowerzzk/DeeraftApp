@@ -21,7 +21,7 @@ MD.SnakeBarBase {
     iconControl: btn_icon
     property bool actionOnNewLine: false
     property bool showClose: false
-    property real radius: MD.Token.shape.corner.extra_small
+    property real radius: MD.Token.shape.corner.medium
     readonly property bool stackedAction: actionOnNewLine && !!action
 
     padding: 0

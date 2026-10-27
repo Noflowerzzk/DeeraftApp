@@ -44,6 +44,7 @@ namespace Ui {
 class MinecraftSettingsWidget;
 }
 
+class QLineEdit;
 class MinecraftSettingsWidget : public QWidget {
    public:
     MinecraftSettingsWidget(MinecraftInstance* instance, QWidget* parent = nullptr);
@@ -68,4 +69,5 @@ class MinecraftSettingsWidget : public QWidget {
     Ui::MinecraftSettingsWidget* m_ui;
     JavaSettingsWidget* m_javaSettings = nullptr;
     bool m_quickPlaySingleplayer = false;
+    QLineEdit* m_gameDirectory = nullptr;
 };

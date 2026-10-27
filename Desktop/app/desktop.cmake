@@ -8,6 +8,7 @@ target_link_libraries(Launcher_logic qml_materialplugin)
 set(DEERAFT_COMPAT_TESTS ON CACHE BOOL "Compatibility regression tests" FORCE)
 add_subdirectory("${DEERAFT_APP_DIR}/compat" "${CMAKE_BINARY_DIR}/deeraft-compat")
 target_sources(Launcher_logic PRIVATE
+    "${DEERAFT_APP_DIR}/DesktopInstances.cpp"
     "${DEERAFT_APP_DIR}/DesktopWindow.cpp" "${DEERAFT_APP_DIR}/DesktopWindow.h"
     "${DEERAFT_APP_DIR}/library/DesktopLibrary.cpp" "${DEERAFT_APP_DIR}/library/DesktopLibrary.h"
     "${DEERAFT_APP_DIR}/DesktopBridge.cpp" "${DEERAFT_APP_DIR}/DesktopBridge.h"

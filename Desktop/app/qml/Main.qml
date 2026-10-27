@@ -21,7 +21,10 @@ MD.Pane {
  property alias railExpanded: rail.expanded
  property var navigation: [{id:0,name:"社区",icon:"diversity_3"},{id:1,name:"启动器",icon:"stadia_controller"},{id:2,name:"服务器",icon:"dns"},{id:4,name:"我的",icon:"person"}]
  property string pageTitle: ["社区","启动器","服务器","社区聊天","我的"][displayedPage]
- property var allInstances: desktop.instances.concat(library.externalInstances)
+ property var visualInstances: null
+ property var allInstances: visualInstances || desktop.instances.concat(library.externalInstances.map(function(row){return Object.assign({},row,desktop.externalStates[row.id]||{},library.metadata[row.id]||{})})).filter(function(row){return !row.hidden})
+ property var gameAccount: desktop.accounts.find(function(a){return a.selected})||null
+ property var instanceChoices: allInstances.map(function(row){return {id:row.id,name:row.name+" · "+(row.sourcePath||row.path)}})
  property var activity: communityClient.activity
  property string toastText: ""
  property string seenDesktopError: ""
@@ -48,7 +51,7 @@ MD.Pane {
  Binding { target: MD.Token.color; property: "useSysColorSM"; value: false }
  Binding { target: MD.Token.color; property: "useSysAccentColor"; value: false }
  Binding { target: MD.Token.font; property: "default_font"; value: desktop.interfaceFont }
- function clean(text) { return String(text || "").replace(/§[0-9a-fk-or]/gi, "") }
+ function clean(text) { return String(text || "").replace(/§[0-9a-fk-or]/gi, "").replace(/[\r\n\t]+/g," ").replace(/ +/g," ").trim() }
  function duration(minutes) { return Number(minutes||0)<60 ? Math.round(Number(minutes||0))+" 分钟" : (Number(minutes)/60).toFixed(1)+" 小时" }
  function showSettings(){ settings.open() }
  function closeSettings(){ settings.close() }
@@ -56,7 +59,7 @@ MD.Pane {
  function entryKey(row){ return row.id || "" }
  function meta(row){ return library.metadata[entryKey(row)] || ({}) }
  function findInstance(key){for(var i=0;i<allInstances.length;i++)if(allInstances[i].id===key)return allInstances[i];return null}
- function linkedName(key){var row=findInstance(library.links[key]||"");return row?row.name:"未关联实例"}
+ function linkedName(key){var row=findInstance(library.links[key]||"");return row?row.name:"选择实例"}
  function serverAddress(key,fallback){return library.addresses[key]||fallback||"mc.ainfinitythecoder.cn"}
  function associate(key,address){associationKey=key;associationPersonal=library.servers.some(function(s){return s.id===key});associationAddress=serverAddress(key,address);associationAddressField.text=associationAddress;associationChoice.currentIndex=Math.max(0,associationChoice.model.findIndex(function(r){return r.id===library.links[key]}));associationDialog.open()}
  function start(row,address){if(!row)return;if(row.running){notify("该实例正在运行");return}if(row.external){externalLog="";desktop.launchExternal(row.rootId,row.versionId,address||"",meta(row).javaPath||"")}else desktop.launchInstance(row.id,address||"")}
@@ -145,7 +148,7 @@ MD.Pane {
          icon.name: "person"
          mdState.type: MD.Enum.IBtFilledTonal
          onClicked: root.page=4
-         RoundedImage { visible: communityClient.authenticated && !!communityClient.profile.avatar_url; anchors.fill: parent; anchors.margins: 3; radius: 12; source: communityClient.imageUrl(communityClient.profile.avatar_url||"") }
+         RoundedImage { visible: !!root.gameAccount; anchors.fill: parent; anchors.margins: 3; radius: 12; source: root.gameAccount?root.gameAccount.avatar:"" }
        }
      }
      StackLayout {
@@ -166,22 +169,22 @@ MD.Pane {
    ColumnLayout {width:parent.width;spacing:20
      AppLabel { textFormat: Text.PlainText;text:"选择启动并加入服务器的实例";color:root.muted}
      AppTextField {id:associationAddressField;visible:!root.associationPersonal;Layout.fillWidth:true;placeholderText:"服务器地址"}
-     AppSelect {id:associationChoice;Layout.fillWidth:true;model:[{id:"",name:"未关联实例"}].concat(root.allInstances);textRole:"name";valueRole:"id";caption:"实例"}
+     AppSelect {id:associationChoice;Layout.fillWidth:true;model:[{id:"",name:"未选择实例"}].concat(root.instanceChoices);textRole:"name";valueRole:"id";caption:"实例"}
      AppLabel {textFormat:Text.PlainText;text:library.error;visible:!!text;color:root.colors.error;wrapMode:Text.Wrap;Layout.fillWidth:true}
      RowLayout {Layout.fillWidth:true;Item {Layout.fillWidth:true}ActionButton {text:"取消";flat:true;onClicked:associationDialog.close()}ActionButton {text:"保存";highlighted:true;onClicked:{if(library.associate(root.associationKey,associationChoice.currentValue||"",root.associationPersonal?"":associationAddressField.text))associationDialog.close()}}}
    }
  }
- MD.SideSheetDialog {id:tasksDrawer;edge:MD.SideSheetBase.End;sheetWidth:Math.min(root.width-60,440);animationsEnabled:!library.reducedMotion
+ MD.SideSheetDialog {id:tasksDrawer;objectName:"downloadTasks";edge:MD.SideSheetBase.End;sheetWidth:Math.min(root.width-60,440);animationsEnabled:!library.reducedMotion
    ColumnLayout {anchors.fill:parent;anchors.margins:24;spacing:20
      RowLayout {Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:"下载任务";font.pixelSize:24;Layout.fillWidth:true}IconButton {symbol:"close";hint:"关闭";onClicked:tasksDrawer.close()}}
-     ProgressBar {visible:communityClient.uploading;value:communityClient.uploadProgress;Layout.fillWidth:true}
+     MD.LinearIndicator { completionBehavior: MD.LinearIndicator.Keep; indeterminate: false; strokeWidth: 4; wavy: true; animationsEnabled: !library.reducedMotion; visible:communityClient.uploading;value:communityClient.uploadProgress;Layout.fillWidth:true}
      ActionButton {visible:communityClient.uploading;text:"取消上传";onClicked:communityClient.cancelUpload()}
      AppLabel { textFormat: Text.PlainText;visible:desktop.tasks.length===0&&!communityClient.uploading;text:"暂无任务";color:root.muted}
      ListView {Layout.fillWidth:true;Layout.fillHeight:true;model:desktop.tasks;clip:true;spacing:20
        delegate:ColumnLayout {required property var modelData;width:ListView.view.width
          AppLabel { textFormat: Text.PlainText;text:modelData.name||modelData.status||"下载";wrapMode:Text.Wrap;Layout.fillWidth:true}
          AppLabel { textFormat: Text.PlainText;text:modelData.state+(modelData.error?" · "+modelData.error:"");wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.muted}
-         ProgressBar {from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";Layout.fillWidth:true}
+         MD.LinearIndicator { completionBehavior: MD.LinearIndicator.Keep; strokeWidth: 4; wavy: true; animationsEnabled: !library.reducedMotion; from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";Layout.fillWidth:true}
          ActionButton {text:"取消";visible:modelData.canCancel;onClicked:desktop.cancelTask(modelData.id)}
        }
      }

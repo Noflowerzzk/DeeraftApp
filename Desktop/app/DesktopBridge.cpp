@@ -23,8 +23,13 @@
 #include <QApplication>
 #include <QDesktopServices>
 #include <QFileDialog>
+#include <QInputDialog>
+#include <QMessageBox>
+#include "library/DesktopLibrary.h"
 #include <QPalette>
 #include <QRegularExpression>
+#include <QCryptographicHash>
+#include "ui/themes/ThemeManager.h"
 #include <QStyleHints>
 #include <QStyleFactory>
 #include <QTimer>
@@ -33,6 +38,10 @@ QPointer<DesktopBridge> DesktopBridge::s_instance;
 DesktopBridge::DesktopBridge(MainWindow* window)
     : QObject(window), m_window(window), m_settings(APPLICATION->dataRoot()+"/desktop.ini",QSettings::IniFormat) {
     s_instance=this;
+    if(!m_settings.value("windowsAppDefaultApplied").toBool()){
+        APPLICATION->settings()->set("IconTheme","windowsapp");
+        APPLICATION->themeManager()->setIconTheme("windowsapp");m_settings.setValue("windowsAppDefaultApplied",true);
+    }
     for(const auto& style : {"Windows11", "windowsvista", "windows"}) {
         if(auto nativeStyle=QStyleFactory::create(style)) { qApp->setStyle(nativeStyle); qInfo()<<"Prism secondary style:"<<style; break; }
     }
@@ -71,8 +80,8 @@ QVariantList DesktopBridge::accounts() const {
     auto list=APPLICATION->accounts();
     for(int i=0;i<list->count();++i) {
         auto account=list->at(i);
-        result.append(QVariantMap{{"uuid",account->profileId()},{"name",account->profileName()},
-          {"type",account->typeString()},{"selected",account==list->defaultAccount()}});
+        result.append(QVariantMap{{"uuid",account->internalId()},{"name",account->profileName()},
+          {"type",account->accountType()==AccountType::MSA?tr("正版登录"):account->accountType()==AccountType::Offline?tr("离线登录"):m_settings.value("accountLabels/"+account->internalId(),tr("第三方登录")).toString()},{"avatar",QString("image://accounts/")+account->internalId()+"?"+QString::fromLatin1(QCryptographicHash::hash(account->accountData()->minecraftProfile.skin.data,QCryptographicHash::Sha256).toHex().left(12))},{"selected",account==list->defaultAccount()}});
     }
     return result;
 }
@@ -101,8 +110,20 @@ void DesktopBridge::applyPalette() {
 }
 void DesktopBridge::action(const QString& name,const QString& id) {
  m_error.clear();
- if(name=="actionLaunchInstanceOffline"){if(auto instance=APPLICATION->instances()->getInstanceById(id))APPLICATION->launch(instance,LaunchMode::Offline);return;}
- if(name.startsWith("instance-page:")){if(auto instance=APPLICATION->instances()->getInstanceById(id))APPLICATION->showInstanceWindow(instance,name.mid(14));return;}
+ auto instance=id.isEmpty()?nullptr:resolveInstance(id);
+ auto lib=parent()->findChild<DesktopLibrary*>();
+ if(name=="actionUndoTrashInstance" && lib){
+    QString latest; qint64 timestamp=0;
+    const auto values=lib->metadata();for(auto it=values.begin();it!=values.end();++it){const auto row=it.value().toMap();if(row.value("hidden").toBool() && row.value("removedAt").toLongLong()>timestamp){latest=it.key();timestamp=row.value("removedAt").toLongLong();}}
+    if(!latest.isEmpty()){lib->setMetadata(latest,{{"hidden",false}});return;}
+ }
+ if(name=="actionRenameInstance" && instance){bool ok=false;const auto value=QInputDialog::getText(m_window->deeraftWindow(),tr("重命名实例"),tr("名称"),QLineEdit::Normal,instance->name(),&ok);if(ok && !value.trimmed().isEmpty()){instance->setName(value.trimmed());if(id.startsWith("external:")&&lib)lib->setMetadata(id,{{"name",value.trimmed()}});}emit changed();return;}
+ if(name=="actionDeleteInstance" && instance && id.startsWith("external:") && lib){if(QMessageBox::question(m_window->deeraftWindow(),tr("移除实例"),tr("从实例列表移除 %1？游戏文件保留在：\n%2").arg(instance->name(),instance->gameRoot()))==QMessageBox::Yes)lib->setMetadata(id,{{"hidden",true},{"removedAt",QDateTime::currentMSecsSinceEpoch()}});return;}
+ if(name=="actionLaunchInstanceOffline"){if(auto instance=resolveInstance(id))APPLICATION->launch(instance,LaunchMode::Offline);return;}
+ if(name=="actionKillInstance"){if(auto instance=resolveInstance(id))APPLICATION->kill(instance);return;}
+ if(name=="actionEditInstance"){if(auto instance=resolveInstance(id))APPLICATION->showInstanceWindow(instance,"settings");return;}
+ if(name.startsWith("instance-page:")){if(auto instance=resolveInstance(id))APPLICATION->showInstanceWindow(instance,name.mid(14));return;}
+ if(instance && id.startsWith("external:")){m_window->deeraftActionForInstance(name,instance);emit changed();return;}
  m_window->deeraftAction(name,id);
 }
 void DesktopBridge::selectInstance(const QString& id){m_window->deeraftSelectInstance(id);}
@@ -118,36 +139,11 @@ void DesktopBridge::setExternalLauncher(Deeraft::NativeExternalLaunchController*
  connect(launcher,&Deeraft::NativeExternalLaunchController::runningChanged,this,&DesktopBridge::changed);
 }
 void DesktopBridge::launchExternal(const QString& rootId,const QString& versionId,const QString& address,const QString& javaOverride){
-    auto launcher=qobject_cast<Deeraft::NativeExternalLaunchController*>(property("externalLauncher").value<QObject*>());
-    auto account=APPLICATION->accounts()->defaultAccount();
-    if(!launcher || !account){m_error=tr("请先在设置中添加并选择 Minecraft 账号");emit changed();return;}
-    if(account->accountType()!=AccountType::Offline){
-        if(account->shouldRefresh() || account->accountState()!=AccountState::Online){
-            account->refresh();auto task=account->currentTask();if(task){ProgressDialog progress(m_window->deeraftWindow());progress.execWithTask(task.get());}
-        }
-        if(account->accountState()!=AccountState::Online || !account->ownsMinecraft()){m_error=tr("账号无法用于启动，请重新登录或选择离线账号");emit changed();return;}
-    }
-    auto session=std::make_shared<AuthSession>();session->launchMode=account->accountType()==AccountType::Offline?LaunchMode::Offline:LaunchMode::Normal;account->fillSession(session);
-    if((account->accountType()==AccountType::Authlib || account->accountType()==AccountType::YggdrasilConnect) && session->extraJvmArguments.isEmpty()){m_error=tr("认证组件校验失败，请重新添加账号");emit changed();return;}
-    auto settings=APPLICATION->settings();QString java=javaOverride;if(QUrl(java).isLocalFile())java=QUrl(java).toLocalFile();if(java.isEmpty())java=settings->get("JavaPath").toString();
-    if(java.isEmpty())java=m_settings.value("externalJavaPath").toString();
-    if(java.isEmpty()){
-        java=QFileDialog::getOpenFileName(m_window->deeraftWindow(),tr("选择 Java 可执行文件"),{},"Java (java.exe javaw.exe)");
-        if(java.isEmpty()) return;
-        m_settings.setValue("externalJavaPath",java);
-    }
-    QStringList jvm=QProcess::splitCommand(settings->get("JvmArgs").toString());jvm.append(session->extraJvmArguments);
-    QVariantMap identity{{"playerName",session->player_name},{"uuid",session->uuid},{"accessToken",session->access_token.isEmpty()?"0":session->access_token},{"userType",session->user_type},{"session",session->session},{"userProperties",session->serializeUserProperties()}};
-    QVariantMap options{{"javaPath",java},{"minMemoryMiB",settings->get("MinMemAlloc")},{"maxMemoryMiB",settings->get("MaxMemAlloc")},{"jvmArguments",jvm}};
-    if(!address.isEmpty()){
-        auto key=QUrl("mc://"+address);if(key.host().isEmpty()){m_error=tr("服务器地址无效");emit changed();return;}
-        // Modern versions declare quickPlay in their manifest; legacy versions use server/port.
-        auto externalCatalog=m_window->findChild<Deeraft::ExternalGameCatalog*>();
-        auto resolved=externalCatalog?externalCatalog->resolveVersion(rootId,versionId):QVariantMap{};
-        auto json=QJsonDocument::fromVariant(resolved.value("versionJson")).toJson();
-        options["gameArguments"]=json.contains("quickPlayMultiplayer")?QStringList{"--quickPlayMultiplayer",address}:QStringList{"--server",key.host(),"--port",QString::number(key.port(25565))};
-    }
-    m_error.clear();if(!launcher->launch(rootId,versionId,identity,options))m_error=launcher->error();emit changed();
+    const QString id="external:"+rootId+":"+versionId;
+    if(auto instance=resolveInstance(id)) {
+        if(!javaOverride.isEmpty()){instance->settings()->set("OverrideJavaLocation",true);instance->settings()->set("JavaPath",javaOverride);}
+        launchInstance(id,address);
+    }else{m_error=tr("无法读取实例，请刷新实例目录");emit changed();}
 }
 void DesktopBridge::addOfflineAccount(const QString& name){
     if(!QRegularExpression("^[A-Za-z0-9_]{1,16}$").match(name).hasMatch()){m_error=tr("玩家名需为 1–16 位字母、数字或下划线");emit changed();return;}
@@ -156,7 +152,8 @@ void DesktopBridge::addOfflineAccount(const QString& name){
     auto account=MinecraftAccount::createOffline(name);
     if(account){list->addAccount(account);list->setDefaultAccount(account);m_error.clear();emit changed();}
 }
-void DesktopBridge::selectAccount(const QString& uuid){auto list=APPLICATION->accounts();int i=list->findAccountByProfileId(uuid);if(i>=0)list->setDefaultAccount(list->at(i));}
+void DesktopBridge::selectAccount(const QString& uuid){auto list=APPLICATION->accounts();for(int i=0;i<list->count();++i)if(list->at(i)->internalId()==uuid){list->setDefaultAccount(list->at(i));return;}}
+void DesktopBridge::setAccountLabel(const QString& uuid,const QString& label){m_settings.setValue("accountLabels/"+uuid,label.trimmed().left(40));emit changed();}
 void DesktopBridge::trackTask(Task* task){
     if(!s_instance || !task)return;
     auto self=s_instance.data();
@@ -186,25 +183,25 @@ void DesktopBridge::updateTask(Task* task,const QString& state){
 void DesktopBridge::cancelTask(const QString& id){if(auto task=m_taskObjects.value(id);task && task->canAbort())task->abort();}
 
 void DesktopBridge::launchInstance(const QString& id,const QString& address){
- auto instance=APPLICATION->instances()->getInstanceById(id);if(!instance)return;
+ auto instance=resolveInstance(id);if(!instance)return;
  if(instance->isRunning()){m_error=tr("该实例正在运行，请在游戏内加入服务器");emit changed();return;}
  MinecraftTarget::Ptr target;
  if(!address.isEmpty()){auto url=QUrl("mc://"+address);if(url.host().isEmpty()){m_error=tr("服务器地址无效");emit changed();return;}target=std::make_shared<MinecraftTarget>(MinecraftTarget::parse(address,false));}
  APPLICATION->launch(instance,LaunchMode::Normal,target);
 }
 QVariantList DesktopBridge::resources(const QString& id,const QString& kind) const{
- auto instance=APPLICATION->instances()->getInstanceById(id);if(!instance)return {};
+ auto instance=resolveInstance(id);if(!instance)return {};
  QString folder=kind=="mods"?instance->modsRoot():QDir(instance->gameRoot()).filePath(kind);
  if(kind!="mods"&&kind!="saves"&&kind!="screenshots"&&kind!="resourcepacks"&&kind!="shaderpacks")return {};
  QVariantList result;auto entries=QDir(folder).entryInfoList(kind=="saves"?QDir::Dirs|QDir::NoDotAndDotDot:QDir::Files,QDir::Name|QDir::IgnoreCase);
  for(const auto& file:entries){if(kind=="mods"){QString name=file.fileName();if(name.endsWith(".disabled"))name.chop(9);if(!QStringList{"jar","zip","litemod"}.contains(QFileInfo(name).suffix().toLower()))continue;}if(kind=="screenshots"&&!QStringList{"png","jpg","jpeg","webp"}.contains(file.suffix().toLower()))continue;result.append(QVariantMap{{"name",file.fileName()},{"path",file.absoluteFilePath()},{"url",QUrl::fromLocalFile(file.absoluteFilePath())},{"enabled",!file.fileName().endsWith(".disabled")},{"size",file.size()},{"updated",file.lastModified().toString("yyyy-MM-dd HH:mm")}});}return result;
 }
 bool DesktopBridge::setModEnabled(const QString& id,const QString& fileName,bool enabled){
- auto instance=APPLICATION->instances()->getInstanceById(id);if(!instance||instance->isRunning()||QFileInfo(fileName).fileName()!=fileName)return false;
+ auto instance=resolveInstance(id);if(!instance||instance->isRunning()||QFileInfo(fileName).fileName()!=fileName)return false;
  auto folder=QDir(instance->modsRoot());auto path=folder.filePath(fileName);if(!QFileInfo(path).isFile()||QFileInfo(path).isSymLink())return false;
  QString target=fileName;if(enabled&&target.endsWith(".disabled"))target.chop(9);else if(!enabled&&!target.endsWith(".disabled"))target+=".disabled";if(target==fileName)return true;
  if(!QFile::rename(path,folder.filePath(target))){m_error=tr("无法修改模组状态");emit changed();return false;}emit changed();return true;
 }
-QString DesktopBridge::readGameLog(const QString& id)const{auto instance=APPLICATION->instances()->getInstanceById(id);if(!instance)return {};QFile file(QDir(instance->gameRoot()).filePath("logs/latest.log"));if(!file.open(QIODevice::ReadOnly))return {};if(file.size()>262144)file.seek(file.size()-262144);return QString::fromUtf8(file.readAll());}
+QString DesktopBridge::readGameLog(const QString& id)const{auto instance=resolveInstance(id);if(!instance)return {};QFile file(QDir(instance->gameRoot()).filePath("logs/latest.log"));if(!file.open(QIODevice::ReadOnly))return {};if(file.size()>262144)file.seek(file.size()-262144);return QString::fromUtf8(file.readAll());}
 
 void DesktopBridge::observeInstances(){for(int i=0;i<APPLICATION->instances()->count();++i){auto instance=APPLICATION->instances()->at(i);if(m_observed.contains(instance))continue;m_observed.insert(instance);connect(instance,&QObject::destroyed,this,[this,instance]{m_observed.remove(instance);});connect(instance,&BaseInstance::minecraftStarted,this,[this,instance]{QString version;if(auto mc=qobject_cast<MinecraftInstance*>(instance))version=mc->getPackProfile()->getComponentVersion("net.minecraft");emit gameStarted(instance->name(),version);emit changed();});}}

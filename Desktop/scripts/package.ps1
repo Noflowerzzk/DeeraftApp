@@ -20,6 +20,7 @@ Copy-Item "$desktop/app/vendor/QmlMaterial/LICENSE" "$output/licenses/QmlMateria
 Copy-Item "$desktop/app/vendor/QmlMaterial/LICENSE.androidx" "$output/licenses/QmlMaterial-AndroidX.txt"
 Copy-Item "$desktop/app/vendor/QmlMaterial/UPSTREAM.md","$desktop/app/vendor/QmlMaterial/PATCHES.md" "$output/licenses/"
 Copy-Item "$desktop/launcher/LICENSE" "$output/licenses/Prism-GPL-3.0.txt"
+Copy-Item "$desktop/app/translations/UPSTREAM.md" "$output/licenses/Chinese-translation.md"
 Copy-Item "$desktop/launcher/COPYING.md" "$output/licenses/" -ErrorAction SilentlyContinue
 Copy-Item "$desktop/app/webview/vendor/LICENSE" "$output/licenses/webview-MIT.txt"
 Copy-Item "$desktop/app/webview/vendor/WebView2-LICENSE.txt" "$output/licenses/"

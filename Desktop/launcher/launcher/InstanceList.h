@@ -158,6 +158,7 @@ class InstanceList : public QAbstractListModel {
     QMimeData* mimeData(const QModelIndexList& indexes) const override;
 
     QStringList getLinkedInstancesById(const QString& id) const;
+    void registerDirectoryInstance(const QString& alias,std::unique_ptr<BaseInstance> instance);
 
    signals:
     void dataIsInvalid();
@@ -203,6 +204,8 @@ class InstanceList : public QAbstractListModel {
     QSet<QString> m_collapsedGroups;
     QMap<InstanceId, GroupId> m_instanceGroupIndex;
     QSet<InstanceId> instanceSet;
+    QHash<QString,BaseInstance*> m_directoryInstances;
+    std::vector<std::unique_ptr<BaseInstance>> m_directoryOwned;
     bool m_groupsLoaded = false;
     bool m_instancesProbed = false;
 

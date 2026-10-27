@@ -19,6 +19,7 @@ AppDialog {
                 required property var modelData
                 Layout.fillWidth: true
                 MD.RadioButton { text: modelData.name + " · " + modelData.type; selected: modelData.selected; onSelectionRequested: desktop.selectAccount(modelData.uuid); Layout.fillWidth: true }
+                AppTextField { visible: modelData.type!=="正版登录" && modelData.type!=="离线登录"; text: modelData.type; placeholderText: "登录站点名称"; Layout.preferredWidth: 140; onEditingFinished: desktop.setAccountLabel(modelData.uuid,text) }
             } }
             RowLayout { Layout.fillWidth: true
                 AppTextField { id: offlineName; placeholderText: "离线玩家名"; Layout.fillWidth: true }

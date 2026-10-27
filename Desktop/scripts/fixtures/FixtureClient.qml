@@ -17,7 +17,7 @@ QtObject {
  property var users: []
  property var logLines: []
  property var backups: []
- property var hostedStatus: ({})
+ property var hostedStatus: dataset.hostedStatus||({})
  property var rconConfig: ({})
  property string commandResult: ""
  property bool uploading: false

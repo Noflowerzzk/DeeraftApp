@@ -27,6 +27,27 @@ class ExternalGameCatalogTest final : public QObject
     }
 
 private slots:
+    void readsHmclComponentsAndPrismDirectories()
+    {
+        QTemporaryDir temp;
+        const auto game=temp.filePath("中文/.minecraft");
+        QVERIFY(version(game,"my-fabric",R"({"id":"my-fabric","mainClass":"net.fabricmc.loader.impl.launch.knot.KnotClient","patches":[{"id":"game","version":"1.17.1"},{"id":"fabric","version":"0.17.3"}],"libraries":[{"name":"net.fabricmc:fabric-loader:0.17.3"}]})"));
+        auto row=ExternalVersionResolver::resolve(game,"my-fabric");
+        QCOMPARE(row.value("version").toString(),QString("1.17.1"));
+        QCOMPARE(row.value("loader").toString(),QString("Fabric 0.17.3"));
+        const auto instances=temp.filePath("Prism/instances");
+        QVERIFY(write(instances+"/同名/instance.cfg","[General]\nname=Sample\niconKey=grass\nUnknownSetting=keep\n"));
+        QVERIFY(write(instances+"/同名/mmc-pack.json",R"({"formatVersion":1,"components":[{"uid":"net.minecraft","version":"1.20.1"},{"uid":"net.minecraftforge","version":"47.3.0"}]})"));
+        QVERIFY(QDir().mkpath(instances+"/同名/.minecraft/saves"));
+        auto prism=ExternalVersionResolver::scan(instances);
+        QCOMPARE(prism.size(),1);auto p=prism.first().toMap();
+        QCOMPARE(p.value("version").toString(),QString("1.20.1"));
+        QCOMPARE(p.value("loader").toString(),QString("Forge 47.3.0"));
+        QCOMPARE(p.value("gameDirectory").toString(),instances+"/同名/.minecraft");
+        QCOMPARE(ExternalVersionResolver::normalizeRoot(temp.filePath("Prism")),instances);
+        ExternalGameCatalog catalog(temp.filePath("data"));QVERIFY(!catalog.addRoot(instances).isEmpty());
+        QFile original(instances+"/同名/instance.cfg");QVERIFY(original.open(QIODevice::ReadOnly));QVERIFY(original.readAll().contains("UnknownSetting=keep"));
+    }
     void inheritsSharedResourcesAndArguments()
     {
         QTemporaryDir temp;

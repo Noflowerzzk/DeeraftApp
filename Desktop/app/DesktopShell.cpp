@@ -1,5 +1,8 @@
 #include "DesktopShell.h"
 #include "DesktopWindow.h"
+#include "DesktopTranslations.h"
+#include "minecraft/auth/AccountList.h"
+#include "minecraft/auth/MinecraftAccount.h"
 #include <QtQml/QQmlExtensionPlugin>
 Q_IMPORT_QML_PLUGIN(Qcm_MaterialPlugin)
 Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
@@ -26,6 +29,11 @@ Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
 #include "accounts/ExternalAccountController.h"
 #include "download/DownloadSources.h"
 #include "archive/ArchiveReader.h"
+#include "archive/ExportToZipTask.h"
+#include "InstanceCopyTask.h"
+#include "InstanceList.h"
+#include "settings/INIFile.h"
+#include "settings/SettingsObject.h"
 #include "Application.h"
 #include "ui/MainWindow.h"
 #include "icons/IconList.h"
@@ -43,6 +51,7 @@ Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
 #include <QDir>
 #include <QDesktopServices>
 #include <QCoreApplication>
+#include <QPainter>
 #include <functional>
 
 class InstanceIcons final : public QQuickImageProvider {
@@ -54,8 +63,35 @@ public:
         return APPLICATION->icons()->getIcon(id).pixmap(target);
     }
 };
+class AccountFaces final : public QQuickImageProvider {
+public:
+    AccountFaces():QQuickImageProvider(QQuickImageProvider::Pixmap){}
+    QPixmap requestPixmap(const QString& id,QSize* size,const QSize& requested) override {
+        const auto target=requested.isValid()?requested:QSize(64,64);if(size)*size=target;
+        auto list=APPLICATION->accounts();
+        for(int i=0;i<list->count();++i)if(list->at(i)->internalId()==id.section('?',0,0)){
+            auto account=list->at(i);auto face=account->getFace(target.width(),target.height());
+            if(face.isNull() && !m_requested.contains(account->internalId()) && (account->accountType()==AccountType::Authlib||account->accountType()==AccountType::YggdrasilConnect)){
+                m_requested.insert(account->internalId());QTimer::singleShot(0,account.get(),[account]{if(!account->currentTask())account->refresh();});
+            }
+            if(face.isNull()){
+                face=QPixmap(target);face.fill(QColor("#cde7df"));QPainter painter(&face);painter.setRenderHint(QPainter::Antialiasing);painter.setBrush(QColor("#42675d"));painter.setPen(Qt::NoPen);
+                painter.drawEllipse(QRectF(target.width()*.34,target.height()*.18,target.width()*.32,target.height()*.32));
+                painter.drawRoundedRect(QRectF(target.width()*.2,target.height()*.57,target.width()*.6,target.height()*.3),target.width()*.1,target.height()*.1);
+            }
+            return face;
+        }
+        return {};
+    }
+private:
+    QSet<QString> m_requested;
+};
 void installDeeraftShell(MainWindow* window){
     Q_INIT_RESOURCE(deeraft);
+    const auto language=APPLICATION->settings()->get("Language").toString();
+    QLocale::setDefault(QLocale(language.startsWith("zh")?"zh_CN":language));
+    qApp->installTranslator(new ChineseCatalog(qApp));
+    qApp->installTranslator(new DesktopTranslations(qApp));
     qputenv("QT_SHADER_CACHE_PATH",QFile::encodeName(APPLICATION->dataRoot()+"/cache/shaders"));
     qputenv("QML_DISK_CACHE_PATH",QFile::encodeName(APPLICATION->dataRoot()+"/cache/qml"));
     QQuickStyle::setStyle("Basic");
@@ -102,6 +138,8 @@ void installDeeraftShell(MainWindow* window){
         }return true;
     });
     bridge->setExternalLauncher(launcher);
+    bridge->loadInstanceDirectories();
+    QObject::connect(external,&Deeraft::ExternalGameCatalog::rootsChanged,bridge,&DesktopBridge::loadInstanceDirectories);
     host->setExternalLauncher(launcher);
     auto externalAccounts=new ExternalAccountController(APPLICATION->dataRoot()+"/auth",window);
     auto sources=new DownloadSources(APPLICATION->dataRoot(),window);
@@ -109,7 +147,9 @@ void installDeeraftShell(MainWindow* window){
     quick->setResizeMode(QQuickView::SizeRootObjectToView);
     quick->engine()->addImportPath("qrc:/");
     quick->engine()->addImageProvider("instances",new InstanceIcons);
+    quick->engine()->addImageProvider("accounts",new AccountFaces);
     auto context=quick->rootContext();
+    context->setContextProperty("appRoot",quick->contentItem());
     context->setContextProperty("desktop",bridge);
     context->setContextProperty("library",library);
     context->setContextProperty("communityClient",community);
@@ -131,7 +171,7 @@ void installDeeraftShell(MainWindow* window){
     quick->setSource(liveQml.isEmpty()?QUrl("qrc:/deeraft/qml/Main.qml"):QUrl::fromLocalFile(QDir(liveQml).filePath("Main.qml")));
     for(const auto& error:quick->errors())qWarning().noquote()<<error.toString();
     if(!quick->rootObject()&&!qEnvironmentVariable("DEERAFT_SMOKE_DIR").isEmpty()){QTimer::singleShot(0,qApp,[]{qApp->exit(1);});return;}
-    if(!fixtureData.isEmpty()&&quick->rootObject())quick->rootObject()->setProperty("allInstances",fixtureData.value("instances").toArray().toVariantList());
+    if(!fixtureData.isEmpty()&&quick->rootObject())quick->rootObject()->setProperty("visualInstances",fixtureData.value("instances").toArray().toVariantList());
     host->setContent(quick);
     QTimer::singleShot(0,community,&CommunityClient::restoreSession);
     const QString capture=qEnvironmentVariable("DEERAFT_CAPTURE");
@@ -164,6 +204,93 @@ void installDeeraftShell(MainWindow* window){
         auto item=[quick](const char* name){return quick->rootObject()->findChild<QQuickItem*>(QString::fromUtf8(name));};
         auto click=[quick,item](const char* name){if(auto target=item(name)){auto point=target->mapToItem(quick->rootObject(),QPointF(target->width()/2,target->height()/2));QMouseEvent press(QEvent::MouseButtonPress,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(quick,&press);QMouseEvent release(QEvent::MouseButtonRelease,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(quick,&release);}};
         auto escape=[quick]{QKeyEvent press(QEvent::KeyPress,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&press);QKeyEvent release(QEvent::KeyRelease,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&release);};
+        if(qEnvironmentVariableIsSet("DEERAFT_REPAIR_PROBE")){
+            // Controlled fixtures only: no original launcher directories or account files are written.
+            const auto source=QDir(smoke).filePath("source-game");
+            auto put=[](const QString& path,const QByteArray& bytes){QDir().mkpath(QFileInfo(path).absolutePath());QFile file(path);return file.open(QIODevice::WriteOnly)&&file.write(bytes)==bytes.size();};
+            const auto version=source+"/versions/测试版本";
+            put(version+"/测试版本.json",R"({"id":"fixture","clientVersion":"1.17.1","patches":[{"id":"game","version":"1.17.1"},{"id":"fabric","version":"0.17.3"}]})");
+            put(version+"/hmclversion.cfg",R"({"usesGlobal":false,"gameDirType":1,"unknown":"preserve"})");
+            put(version+"/mods/test.jar","fixture");put(version+"/saves/测试世界/level.dat","fixture");
+            const auto rootId=external->addRoot(source);const auto instanceId="external:"+rootId+":测试版本";
+            auto instance=APPLICATION->instances()->getInstanceById(instanceId);
+            const auto state=bridge->externalStates().value(instanceId).toMap();
+            (*report)["directoryCoreRegistered"]=instance!=nullptr;
+            (*report)["directoryVersion"]=state.value("version").toString();(*report)["directoryLoader"]=state.value("loader").toString();
+            (*report)["directoryMods"]=bridge->resources(instanceId,"mods").size();(*report)["directoryWorlds"]=bridge->resources(instanceId,"saves").size();
+            (*report)["modToggleRoundTrip"]=bridge->setModEnabled(instanceId,"test.jar",false)&&QFileInfo::exists(version+"/mods/test.jar.disabled")&&bridge->setModEnabled(instanceId,"test.jar.disabled",true);
+            if(instance){
+                instance->settings()->set("DeeraftGameDirectory",version);
+                const auto staging=QDir(smoke).filePath("copy-result");
+                InstanceCopyPrefs prefs;prefs.enableCopyMods(false);
+                auto copy=new InstanceCopyTask(instance,prefs);copy->setParent(window);copy->setParentSettings(APPLICATION->settings());copy->setStagingPath(staging);copy->setName("Fixture copy");
+                QObject::connect(copy,&Task::succeeded,window,[report,staging,version]{
+                    INIFile config;config.loadFile(staging+"/instance.cfg");
+                    (*report)["copyWorldPreserved"]=QFileInfo::exists(staging+"/minecraft/saves/测试世界/level.dat");
+                    (*report)["copyModFilterRespected"]=!QFileInfo::exists(staging+"/minecraft/mods/test.jar");
+                    (*report)["copyIndependentDirectory"]=!config.contains("DeeraftGameDirectory");
+                    (*report)["copyOriginalIntact"]=QFileInfo::exists(version+"/mods/test.jar")&&QFileInfo::exists(version+"/saves/测试世界/level.dat");
+                });copy->start();
+                const auto output=QDir(smoke).filePath("mapped-export.zip");
+                auto archive=new MMCZip::ExportToZipTask(output,version,QFileInfoList{QFileInfo(version+"/mods/test.jar"),QFileInfo(instance->instanceRoot()+"/mmc-pack.json")},"minecraft/");archive->setParent(window);
+                archive->mapFilePath(instance->instanceRoot()+"/mmc-pack.json","mmc-pack.json");archive->addExtraFile("instance.cfg","[General]\nname=Fixture\n");
+                QObject::connect(archive,&Task::succeeded,window,[report,output]{MMCZip::ArchiveReader reader(output);reader.collectFiles();const auto files=reader.getFiles();(*report)["exportPortablePaths"]=files.contains("minecraft/mods/test.jar")&&files.contains("mmc-pack.json")&&files.contains("instance.cfg")&&!files.join('|').contains("../");});archive->start();
+            }
+            QTimer::singleShot(1200,window,[host,quick,report]{
+                (*report)["viewport"]=QJsonObject{{"hostWidth",host->width()},{"viewWidth",quick->width()},{"rootWidth",quick->rootObject()->width()},{"rootHeight",quick->rootObject()->height()},{"ownerless",host->parentWidget()==nullptr},{"hasIcon",!host->windowIcon().isNull()}};
+                quick->rootObject()->setProperty("page",0);
+            });
+            QTimer::singleShot(2200,window,[quick,item,take,report]{
+                take("long-motd");
+                auto hero=item("serverHero"),button=item("heroLaunchButton");
+                if(hero&&button){const auto pos=button->mapToItem(hero,QPointF());(*report)["motdLaunchInsideHero"]=pos.y()>=0&&pos.y()+button->height()<=hero->height();}
+                quick->rootObject()->setProperty("page",2);
+            });
+            QTimer::singleShot(3000,window,[item]{if(auto page=item("serversPage"))page->setProperty("onlyRunning",true);});
+            QTimer::singleShot(3500,window,[quick,item,take,report]{
+                take("running-servers");int count=0;
+                std::function<void(QQuickItem*)> visit=[&](QQuickItem* node){if(node->objectName()=="serverCard"&&node->isVisible()&&node->property("running").toBool())++count;for(auto child:node->childItems())visit(child);};
+                if(auto page=item("serversPage"))visit(page);
+                (*report)["runningServerCards"]=count;quick->rootObject()->setProperty("page",4);
+            });
+            QTimer::singleShot(4200,window,[quick]{if(auto calendar=quick->rootObject()->findChild<QObject*>("dailyCalendar"))QMetaObject::invokeMethod(calendar,"open");});
+            QTimer::singleShot(4800,window,[quick,take,report]{
+                take("date-picker");QJsonArray labels;
+                std::function<void(QQuickItem*)> visit=[&](QQuickItem* node){const auto text=node->property("text").toString();if(node->isVisible()&&!text.isEmpty())labels.append(text);for(auto child:node->childItems())visit(child);};visit(quick->contentItem());
+                (*report)["calendarVisibleLabels"]=labels;
+                if(auto calendar=quick->rootObject()->findChild<QObject*>("dailyCalendar")){(*report)["calendarPosition"]=QJsonObject{{"x",calendar->property("x").toDouble()},{"y",calendar->property("y").toDouble()},{"width",calendar->property("width").toDouble()},{"height",calendar->property("height").toDouble()}};QMetaObject::invokeMethod(calendar,"close");}
+                quick->rootObject()->setProperty("page",1);
+            });
+            QTimer::singleShot(5500,window,[quick,take,click,item,report]{
+                take("running-instance");if(auto launch=item("launchGame"))(*report)["runningButtonText"]=launch->property("text").toString();
+                const auto shot=quick->grabWindow();bool filled=true;
+                for(auto name:{"sourcePicker","groupPicker"})if(auto field=item(name)){
+                    auto background=field->property("background").value<QQuickItem*>();
+                    if(!background||background->childItems().isEmpty()){filled=false;continue;}
+                    const auto expected=background->childItems().first()->property("color").value<QColor>();
+                    const auto pos=field->mapToItem(quick->rootObject(),QPointF(3,30));const auto scale=shot.width()/quick->rootObject()->width();
+                    const auto observed=shot.pixelColor(qRound(pos.x()*scale),qRound(pos.y()*scale));
+                    filled&=expected.isValid()&&std::abs(expected.red()-observed.red())<5&&std::abs(expected.green()-observed.green())<5&&std::abs(expected.blue()-observed.blue())<5;
+                }
+                (*report)["selectorFillSurvivesPageTransitions"]=filled;click("libraryMenuButton");
+            });
+            QTimer::singleShot(6100,window,[quick,take,report]{
+                take("library-menu");auto menu=quick->rootObject()->findChild<QObject*>("libraryMenu");if(menu)(*report)["libraryMenuWidth"]=menu->property("width").toDouble();
+            });
+            QTimer::singleShot(6500,window,escape);
+            QTimer::singleShot(6900,window,[click]{click("sourcePicker");});
+            QTimer::singleShot(7400,window,[take]{take("source-menu");});
+            QTimer::singleShot(7700,window,escape);
+            QTimer::singleShot(8000,window,[bridge,instanceId]{bridge->action("actionEditInstance",instanceId);});
+            QTimer::singleShot(9300,window,[smoke,report]{for(auto widget:qApp->topLevelWidgets())if(widget->isVisible()&&widget->inherits("InstanceWindow")){widget->grab().save(QDir(smoke).filePath("directory-settings.png"));(*report)["nativeInstanceSettingsOpened"]=true;widget->close();}});
+            QTimer::singleShot(9600,window,[quick]{
+                if(auto fixture=quick->rootContext()->contextProperty("communityClient").value<QObject*>()){fixture->setProperty("uploading",true);fixture->setProperty("uploadProgress",.37);}
+                if(auto drawer=quick->rootObject()->findChild<QObject*>("downloadTasks"))QMetaObject::invokeMethod(drawer,"open");
+            });
+            QTimer::singleShot(11200,window,[quick,take,report]{take("wavy-progress");QJsonArray bars;std::function<void(QQuickItem*)> visit=[&](QQuickItem* node){if(node->isVisible()&&node->property("wavy").toBool())bars.append(QJsonObject{{"value",node->property("value").toDouble()},{"displayed",node->property("displayedPosition").toDouble()},{"amplitude",node->property("amplitudeFraction").toDouble()},{"animating",node->property("animating").toBool()},{"width",node->width()},{"height",node->height()}});for(auto child:node->childItems())visit(child);};visit(quick->contentItem());(*report)["visibleWavyIndicators"]=bars.size();(*report)["progressIndicators"]=bars;});
+            QTimer::singleShot(11700,window,[report,writeReport,host]{(*report)["appToolbarCount"]=host->findChildren<QToolBar*>().size();writeReport();qApp->quit();});
+            return;
+        }
         if(qEnvironmentVariableIsSet("DEERAFT_MOTION_PROBE")) {
             auto captureRail=[quick,report](const QString& name){
                 QJsonArray rows;
@@ -230,6 +357,7 @@ void installDeeraftShell(MainWindow* window){
             QMetaObject::invokeMethod(window,"defaultAccountChanged",Qt::DirectConnection);
             QMetaObject::invokeMethod(window,"globalSettingsClosed",Qt::DirectConnection);
             (*report)["legacyWindowHiddenAfterAccountChange"]=!window->isVisible();(*report)["appToolbarCount"]=host->findChildren<QToolBar*>().size();
+            (*report)["viewport"]=QJsonObject{{"hostWidth",host->width()},{"hostHeight",host->height()},{"viewWidth",quick->width()},{"viewHeight",quick->height()},{"rootWidth",quick->rootObject()->width()},{"rootHeight",quick->rootObject()->height()},{"contentWidth",quick->contentItem()->width()},{"ownerless",host->parentWidget()==nullptr},{"hasIcon",!host->windowIcon().isNull()}};
             QJsonObject geometry;for(auto name:{"instanceLibrary","instanceSearch","sourcePicker","instanceDetail","instanceCover","instanceTitle","launchGame","detailTabs"})if(auto target=item(name)){auto p=target->mapToItem(quick->rootObject(),QPointF());geometry[name]=QJsonObject{{"x",p.x()},{"y",p.y()},{"width",target->width()},{"height",target->height()}};}(*report)["geometry"]=geometry;writeReport();
         });
         QTimer::singleShot(1500,window,[take]{take("launcher-light");});

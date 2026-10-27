@@ -68,6 +68,7 @@ MD.StateMenuItem {
     }
 
     readonly property Item background: Rectangle {
+        radius: 8
         implicitWidth: 200
         implicitHeight: 48
         color: control.mdState.backgroundColor

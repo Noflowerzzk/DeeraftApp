@@ -7,6 +7,7 @@ ScrollView {
  required property var app
  property var mc: communityClient.community.mc||({})
  property var kook: communityClient.community.kook||({})
+ property var streamingRooms: communityClient.liveRooms.filter(function(room){return !!room.live})
  property bool humans: true
  property bool expanded: false
  property string address: app.serverAddress("community",String(mc.address||"mc.ainfinitythecoder.cn"))
@@ -25,8 +26,11 @@ ScrollView {
    Layout.alignment: Qt.AlignTop
    spacing: 24
    MD.Pane {
+    id: serverHero
+    objectName: "serverHero"
+    clip: true
     Layout.fillWidth: true
-    Layout.preferredHeight: 342
+    Layout.preferredHeight: Math.max(342,heroCopy.implicitHeight+64)
     corners: MD.Util.corners(48,28,28,28)
     backgroundColor: app.colors.primaryContainer
     RowLayout {
@@ -34,10 +38,12 @@ ScrollView {
      anchors.margins: app.width<=1250?28:32
      spacing: 20
      ColumnLayout {
+      id: heroCopy
       Layout.fillWidth: true
+      Layout.minimumWidth: 0
       spacing: 0
       AppLabel { text: "●  Minecraft"; color: app.colors.onPrimaryContainer; font.pixelSize: 14; font.weight: 550 }
-      AppLabel { text: app.clean(page.mc.motd)||"Minecraft"; color: app.colors.onPrimaryContainer; font.pixelSize: app.width<=1050?38:45; lineHeight: font.pixelSize*1.3; font.weight: 650; font.letterSpacing: -1; Layout.fillWidth: true; Layout.topMargin: 10; Layout.bottomMargin: 6; maximumLineCount: 2; wrapMode: Text.Wrap; elide: Text.ElideRight }
+      AppLabel { objectName: "motdText"; text: app.clean(page.mc.motd)||"Minecraft"; color: app.colors.onPrimaryContainer; font.pixelSize: app.clean(page.mc.motd).length>28?32:app.width<=1050?38:45; lineHeight: font.pixelSize*1.3; font.weight: 650; font.letterSpacing: -1; Layout.fillWidth: true; Layout.topMargin: 10; Layout.bottomMargin: 6; Layout.minimumWidth: 0; maximumLineCount: 2; wrapMode: Text.WrapAnywhere; elide: Text.ElideRight }
       RowLayout {
        spacing: 4
        AppLabel { text: page.address; color: app.colors.onPrimaryContainer; font.pixelSize: 13 }
@@ -56,7 +62,7 @@ ScrollView {
       }
       RowLayout {
        spacing: 12
-       ActionButton { text: "启动并加入"; symbol: "play_arrow"; highlighted: true; onClicked: app.joinServer("community",page.address) }
+       ActionButton { objectName: "heroLaunchButton"; text: "启动并加入"; symbol: "play_arrow"; highlighted: true; onClicked: app.joinServer("community",page.address) }
        ActionButton { text: app.linkedName("community"); symbol: "link"; flat: true; onClicked: app.associate("community",page.address) }
       }
      }
@@ -134,10 +140,12 @@ ScrollView {
      radius: 28; backgroundColor: app.colors.tertiaryContainer
      ColumnLayout {
       anchors.fill: parent; anchors.margins: 24; spacing: 12
-      RowLayout { Layout.fillWidth: true; AppLabel { text: "直播间"; font.pixelSize: 20; color: app.colors.onTertiaryContainer; Layout.fillWidth: true } MD.Icon { name: "smart_display"; size: 32; color: app.colors.onTertiaryContainer } IconButton { visible: communityClient.profile.role==="admin"; symbol: "edit"; hint: "管理直播间"; onClicked: liveEditor.open() } }
-      AppLabel { visible: communityClient.liveRooms.length<=1; text: communityClient.liveRooms.length?communityClient.liveRooms[0].title||"直播间":"暂无直播"; color: app.colors.onTertiaryContainer; font.pixelSize: 13; Layout.fillWidth: true; elide: Text.ElideRight }
-      AppSelect { id: room; visible: communityClient.liveRooms.length>1; Layout.fillWidth: true; model: communityClient.liveRooms; textRole: "title"; valueRole: "room_id" }
-      ActionButton { text: "观看"; symbol: "play_arrow"; enabled: !!communityClient.liveRooms.length; onClicked: desktop.openLive(String(room.currentValue||communityClient.liveRooms[0].room_id||communityClient.liveRooms[0].id)) }
+      RowLayout { Layout.fillWidth: true; AppLabel { text: "直播"; font.pixelSize: 20; color: app.colors.onTertiaryContainer; Layout.fillWidth: true } MD.Icon { name: "smart_display"; size: 32; color: app.colors.onTertiaryContainer } }
+      Repeater { model: page.streamingRooms
+       AppLabel { required property var modelData; Layout.fillWidth: true; elide: Text.ElideRight; color: app.colors.onTertiaryContainer; text: modelData.name||modelData.title||"直播间" }
+      }
+      AppLabel { visible: !page.streamingRooms.length; text: communityClient.liveRooms.some(function(room){return !room.checked&&!room.statusError})?"查询中":communityClient.liveRooms.some(function(room){return room.statusError})?"状态暂不可用":"暂无直播"; color: app.colors.onTertiaryContainer }
+
      }
     }
    }
@@ -177,7 +185,7 @@ ScrollView {
       }
      }
      AppLabel { visible: !(page.kook.channels||[]).length; text: "暂无语音频道"; color: app.muted }
-     ActionButton { text: "进入语音"; symbol: "headphones"; Layout.fillWidth: true; enabled: !!(page.kook.invite_url||page.kook.url); onClicked: Qt.openUrlExternally(page.kook.invite_url||page.kook.url) }
+     ActionButton { text: "进入语音"; symbol: "headphones"; Layout.fillWidth: true; onClicked: Qt.openUrlExternally(page.kook.invite_url||page.kook.url||"https://www.kookapp.cn/app/") }
     }
    }
    MD.Card {
@@ -204,11 +212,4 @@ ScrollView {
   }
  }
  TextEdit {id:addressCopy;visible:false}
-    AppDialog {
-        id: liveEditor; title: "直播间"; width: Math.min(page.width - 40, 580); modal: true
-        standardButtons: Dialog.Save | Dialog.Cancel
-        onOpened: liveJson.text = JSON.stringify(communityClient.liveRooms, null, 2)
-        onAccepted: { try { communityClient.saveLiveRooms(JSON.parse(liveJson.text)) } catch(e) { liveJson.text = String(e) } }
-        TextArea { id: liveJson; width: parent.width; height: 300; wrapMode: TextEdit.Wrap; selectByMouse: true }
-    }
 }

@@ -10,6 +10,7 @@ MD.Button {
     icon.name: symbol
     mdState.type: flat ? MD.Enum.BtText : highlighted ? MD.Enum.BtFilled : MD.Enum.BtFilledTonal
     mdState.size: MD.Enum.S
+    shapeSpringSpec: MD.Token.motion.spring.expressive.fastSpatial
     font.pixelSize: 14
     font.weight: Font.Medium
     animationsEnabled: !library.reducedMotion

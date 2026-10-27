@@ -269,9 +269,9 @@ void TranslationsModel::reloadLocalFiles()
     const auto indexPath = d->m_dir.absoluteFilePath("index_v2.json");
     if (!QFileInfo::exists(indexPath)) {
         downloadIndex();
-        return;
+    } else {
+        readIndex(indexPath, languages);
     }
-    readIndex(indexPath, languages);
     auto entries = d->m_dir.entryInfoList({ "mmc_*.qm", "*.po" }, QDir::Files | QDir::NoDotAndDotDot);
     for (auto& entry : entries) {
         auto completeSuffix = entry.completeSuffix();
@@ -295,9 +295,9 @@ void TranslationsModel::reloadLocalFiles()
                 language.localFileType = fileType;
             }
         } else {
-            if (fileType == FileType::Po) {
+            if (fileType == FileType::Po || fileType == FileType::Qm) {
                 Language localFound(langCode);
-                localFound.localFileType = FileType::Po;
+                localFound.localFileType = fileType;
                 languages.insert(langCode, localFound);
             }
         }

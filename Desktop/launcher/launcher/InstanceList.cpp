@@ -609,6 +609,7 @@ void InstanceList::providerUpdated()
 
 BaseInstance* InstanceList::getInstanceById(QString instId) const
 {
+    if(m_directoryInstances.contains(instId))return m_directoryInstances.value(instId);
     if (instId.isEmpty())
         return nullptr;
     for (auto& inst : m_instances) {
@@ -617,6 +618,13 @@ BaseInstance* InstanceList::getInstanceById(QString instId) const
         }
     }
     return nullptr;
+}
+
+void InstanceList::registerDirectoryInstance(const QString& alias,std::unique_ptr<BaseInstance> value)
+{
+    auto instance=value.get();m_directoryOwned.push_back(std::move(value));
+    m_directoryInstances[alias]=instance;m_directoryInstances[instance->id()]=instance;
+    connect(instance,&QObject::destroyed,this,[this,instance]{for(auto it=m_directoryInstances.begin();it!=m_directoryInstances.end();)if(it.value()==instance)it=m_directoryInstances.erase(it);else ++it;});
 }
 
 BaseInstance* InstanceList::getInstanceByManagedName(const QString& managed_name) const

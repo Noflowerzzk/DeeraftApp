@@ -31,6 +31,7 @@ bool IconTheme::load()
     QSettings settings(path, QSettings::IniFormat);
     settings.beginGroup("Icon Theme");
     m_name = settings.value("Name").toString();
+    if(m_id=="windowsapp")m_name="WindowsApp";
     settings.endGroup();
     return !m_name.isNull();
 }

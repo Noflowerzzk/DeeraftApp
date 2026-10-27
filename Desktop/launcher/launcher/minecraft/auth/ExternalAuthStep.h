@@ -10,6 +10,7 @@ public:
     void perform() override;
     void abort() override;
 private:
+    void loadSkin();
     QNetworkAccessManager m_network;
     bool m_cancelled = false;
 };

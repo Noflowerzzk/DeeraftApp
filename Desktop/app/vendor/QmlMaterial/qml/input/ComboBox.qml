@@ -132,7 +132,7 @@ MD.ComboBoxBase {
     }
 
     background: Item {
-        opacity: control.mdState.backgroundOpacity
+        opacity: control.enabled ? 1 : .12
         implicitWidth: 64
         implicitHeight: control.mdState.containerHeight
         MD.FilledTextFieldShape {

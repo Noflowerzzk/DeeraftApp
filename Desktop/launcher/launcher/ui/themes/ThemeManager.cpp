@@ -103,7 +103,7 @@ void ThemeManager::initializeIcons()
     themeDebugLog() << "<> Initializing Icon Themes";
 
     for (const QString& id : builtinIcons) {
-        IconTheme theme(id, QString(":/icons/%1").arg(id));
+        IconTheme theme(id, QString(":/icons/%1").arg(id=="windowsapp"?"pe_colored":id));
         if (!theme.load()) {
             themeWarningLog() << "Couldn't load built-in icon theme" << id;
             continue;
@@ -248,7 +248,7 @@ void ThemeManager::setIconTheme(const QString& name)
         return;
     }
 
-    QIcon::setThemeName(name);
+    QIcon::setThemeName(name=="windowsapp"?"pe_colored":name);
 }
 
 void ThemeManager::setApplicationTheme(const QString& name, bool initial)

@@ -21,6 +21,7 @@ MD.MenuItemBase {
 
     implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
     implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding, implicitIndicatorHeight + topPadding + bottomPadding)
+    width: menu ? menu.availableWidth : implicitWidth
 
     padding: 16
     verticalPadding: 0

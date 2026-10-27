@@ -6,6 +6,9 @@
 #include <QUrl>
 #include <QFont>
 #include <QSet>
+#include <memory>
+#include <map>
+class BaseInstance;
 class MainWindow;
 class Task;
 namespace Deeraft {class ExternalGameCatalog; class NativeExternalLaunchController;}
@@ -13,6 +16,7 @@ class DesktopBridge final : public QObject {
     Q_OBJECT
     Q_PROPERTY(QVariantList instances READ instances NOTIFY changed)
     Q_PROPERTY(QVariantList accounts READ accounts NOTIFY changed)
+    Q_PROPERTY(QVariantMap externalStates READ externalStates NOTIFY changed)
     Q_PROPERTY(QVariantList tasks READ tasks NOTIFY tasksChanged)
     Q_PROPERTY(QFont interfaceFont READ interfaceFont CONSTANT)
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
@@ -20,6 +24,10 @@ class DesktopBridge final : public QObject {
     Q_PROPERTY(QString error READ error NOTIFY changed)
 public:
     explicit DesktopBridge(MainWindow* window);
+    ~DesktopBridge() override;
+    QVariantMap externalStates() const;
+    void loadInstanceDirectories();
+    Q_INVOKABLE void setAccountLabel(const QString& uuid,const QString& label);
     QVariantList instances() const;
     QVariantList accounts() const;
     QVariantList tasks() const { return m_tasks; }
@@ -52,6 +60,8 @@ signals:
     void tasksChanged();
     void gameStarted(const QString& name,const QString& version);
 private:
+    BaseInstance* resolveInstance(const QString& id) const;
+    mutable std::map<QString,QPointer<BaseInstance>> m_externalInstances;
     void applyPalette();
     void observeInstances();
     QSet<QObject*> m_observed;

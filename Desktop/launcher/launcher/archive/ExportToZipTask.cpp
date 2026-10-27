@@ -54,6 +54,7 @@ auto ExportToZipTask::exportZip() -> ZipResult
 
         auto absolute = file.absoluteFilePath();
         auto relative = m_dir.relativeFilePath(absolute);
+        const auto destination=m_mappedPaths.value(absolute,m_destinationPrefix+relative);
         setStatus("Compressing: " + relative);
         setProgress(m_progress + 1, m_progressTotal);
         if (m_followSymlinks) {
@@ -63,7 +64,7 @@ auto ExportToZipTask::exportZip() -> ZipResult
                 absolute = file.canonicalFilePath();
         }
 
-        if (!m_excludeFiles.contains(relative) && !m_output.addFile(absolute, m_destinationPrefix + relative)) {
+        if (!m_excludeFiles.contains(relative) && !m_output.addFile(absolute, destination)) {
             return ZipResult(tr("Could not read and compress %1").arg(relative));
         }
     }

@@ -40,6 +40,12 @@
 #include "ui_MinecraftSettingsWidget.h"
 
 #include <QFileDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QMessageBox>
 #include "Application.h"
 #include "BuildConfig.h"
 #include "Json.h"
@@ -62,6 +68,12 @@ MinecraftSettingsWidget::MinecraftSettingsWidget(MinecraftInstance* instance, QW
         m_ui->globalDataPacksGroupBox->hide();
         m_ui->loaderGroup->hide();
     } else {
+        auto directoryPage=new QWidget(this);auto directoryLayout=new QVBoxLayout(directoryPage);
+        directoryLayout->addWidget(new QLabel(tr("游戏目录"),directoryPage));
+        auto directoryRow=new QHBoxLayout;m_gameDirectory=new QLineEdit(directoryPage);auto browseDirectory=new QPushButton(tr("浏览…"),directoryPage);
+        directoryRow->addWidget(m_gameDirectory,1);directoryRow->addWidget(browseDirectory);directoryLayout->addLayout(directoryRow);directoryLayout->addStretch();
+        m_ui->settingsTabs->addTab(directoryPage,tr("游戏目录"));
+        connect(browseDirectory,&QPushButton::clicked,this,[this]{const auto path=QFileDialog::getExistingDirectory(this,tr("游戏目录"),m_gameDirectory->text());if(!path.isEmpty())m_gameDirectory->setText(path);});
         m_javaSettings = new JavaSettingsWidget(m_instance, this);
         m_ui->javaScrollArea->setWidget(m_javaSettings);
 
@@ -154,6 +166,7 @@ MinecraftSettingsWidget::~MinecraftSettingsWidget()
 
 void MinecraftSettingsWidget::loadSettings()
 {
+    if(m_gameDirectory && m_instance)m_gameDirectory->setText(m_instance->gameRoot());
     SettingsObject* settings;
 
     if (m_instance != nullptr)
@@ -308,6 +321,11 @@ void MinecraftSettingsWidget::loadSettings()
 
 void MinecraftSettingsWidget::saveSettings()
 {
+    if(m_gameDirectory && m_instance && QDir::cleanPath(m_gameDirectory->text())!=QDir::cleanPath(m_instance->gameRoot())){
+        const auto path=m_gameDirectory->text().trimmed();
+        if(m_instance->isRunning() || !QDir(path).isAbsolute() || !QDir(path).exists()){QMessageBox::warning(this,tr("游戏目录"),tr("请结束游戏后选择已存在的文件夹"));return;}
+        m_instance->settings()->set("DeeraftGameDirectory",QDir::cleanPath(path));
+    }
     SettingsObject* settings;
 
     if (m_instance != nullptr)

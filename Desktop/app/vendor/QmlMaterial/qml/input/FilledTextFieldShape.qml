@@ -4,6 +4,8 @@ import Qcm.Material as MD
 
 MD.Shape {
     id: root
+    // CurveRenderer can retain a blank node after hidden-page transitions in embedded Qt 6.12 views.
+    preferredRendererType: Shape.GeometryRenderer
     property real radius: 0
     property color color: "black"
     property alias bottomLineColor: m_line.strokeColor

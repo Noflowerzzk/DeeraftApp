@@ -29,7 +29,7 @@ ScrollView {
     Layout.topMargin: 16
     Layout.bottomMargin: 24
     spacing: 20
-    RoundedImage { Layout.preferredWidth: 88; Layout.preferredHeight: 88; radius: 28; source: communityClient.authenticated?communityClient.imageUrl(communityClient.profile.avatar_url||""):""; MD.Icon { visible: !communityClient.authenticated; anchors.centerIn: parent; name: "person"; size: 48; color: app.accent } }
+    RoundedImage { Layout.preferredWidth: 88; Layout.preferredHeight: 88; radius: 28; source: app.gameAccount?app.gameAccount.avatar:""; MD.Icon { visible: !app.gameAccount; anchors.centerIn: parent; name: "person"; size: 48; color: app.accent } }
     ColumnLayout { Layout.fillWidth: true; spacing: 10; AppLabel { text: communityClient.authenticated?communityClient.profile.username||"":"登录"; font.pixelSize: 32; lineHeight: 42; color: app.ink; Layout.fillWidth: true; elide: Text.ElideRight } AppLabel { text: communityClient.profile.bio||""; color: app.muted; font.pixelSize: 14; wrapMode: Text.Wrap; Layout.fillWidth: true } }
     ActionButton { text: "编辑资料"; symbol: "edit"; visible: communityClient.authenticated; onClicked: app.showSettings() }
    }
@@ -174,7 +174,7 @@ ScrollView {
    }
   }
  }
- MD.DatePickerDialog { id: calendar; selectedDate: new Date(communityClient.dailyDate+"T12:00:00"); onAcceptedDate: function(date){communityClient.loadDaily(Qt.formatDate(date,"yyyy-MM-dd"));communityClient.loadDailyWeek(Qt.formatDate(date,"yyyy-MM-dd"))} }
+ MD.DatePickerDialog { id: calendar; objectName: "dailyCalendar"; parent: appRoot; locale: Qt.locale("zh_CN"); selectedDate: new Date(communityClient.dailyDate+"T12:00:00"); onAcceptedDate: function(date){communityClient.loadDaily(Qt.formatDate(date,"yyyy-MM-dd"));communityClient.loadDailyWeek(Qt.formatDate(date,"yyyy-MM-dd"))} }
     AppDialog {
         id: users; width: Math.min(page.width - 40, 700); height: Math.min(page.height - 40, 600); title: "用户管理"; modal: true; standardButtons: Dialog.Close
         ColumnLayout { anchors.fill: parent

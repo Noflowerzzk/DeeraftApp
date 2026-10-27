@@ -458,6 +458,15 @@ void MainWindow::deeraftAction(const QString& name, const QString& instanceId)
     if (!instanceId.isEmpty()) setSelectedInstanceById(instanceId);
     if (auto action = findChild<QAction*>(name); action && action->isEnabled()) action->trigger();
 }
+void MainWindow::deeraftActionForInstance(const QString& name,BaseInstance* instance)
+{
+    QPointer<BaseInstance> previous=m_selectedInstance;
+    m_selectedInstance=instance;
+    if(auto action=findChild<QAction*>(name)){
+        const bool wasEnabled=action->isEnabled();action->setEnabled(true);action->trigger();action->setEnabled(wasEnabled);
+    }
+    m_selectedInstance=previous;
+}
 
 // macOS always has a native menu bar, so these fixes are not applicable
 // Other systems may or may not have a native menu bar (most do not - it seems like only Ubuntu Unity does)

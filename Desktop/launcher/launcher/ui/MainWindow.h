@@ -87,6 +87,7 @@ class MainWindow : public QMainWindow {
     void setVisible(bool visible) override;
     void deeraftSetAdvanced(bool advanced);
     void deeraftAction(const QString& name, const QString& instanceId = {});
+    void deeraftActionForInstance(const QString& name,BaseInstance* instance);
     void deeraftSelectInstance(const QString& id);
    signals:
     void isClosing();

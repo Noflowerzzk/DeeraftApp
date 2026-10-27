@@ -1,6 +1,9 @@
 import QtQuick
 import Qcm.Material as MD
 MD.Dialog {
+    parent: appRoot
+    locale: Qt.locale("zh_CN")
+    margins: 24
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0; to: 1; duration: library.reducedMotion ? 0 : MD.Token.duration.short3; easing: MD.Token.easing.standard }
         NumberAnimation { property: "scale"; from: .96; to: 1; duration: library.reducedMotion ? 0 : MD.Token.duration.medium1; easing: MD.Token.easing.emphasized_decelerate }

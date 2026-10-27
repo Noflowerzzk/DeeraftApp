@@ -6,6 +6,8 @@
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QPointer>
 #include <QtCore/QSignalBlocker>
+#include <QtCore/QAbstractAnimation>
+#include <functional>
 #include <QtQuick/QQuickWindow>
 #include <algorithm>
 #include <cmath>
@@ -38,6 +40,14 @@ struct Transition {
     }
 };
 bool valid(qreal value) { return std::isfinite(value) && value >= 0; }
+class IndicatorClock final : public QAbstractAnimation {
+public:
+    std::function<void(qreal)> tick;
+    int previous=0;
+    int duration()const override{return -1;}
+protected:
+    void updateCurrentTime(int time)override{const auto elapsed=std::max(0,time-previous);previous=time;if(elapsed>0&&tick)tick(elapsed);}
+};
 } // namespace
 
 struct ProgressIndicator::Private {
@@ -49,6 +59,7 @@ struct ProgressIndicator::Private {
     bool                          animations      = true;
     bool                          active          = false;
     bool                          initialized     = false;
+    std::unique_ptr<IndicatorClock> animationClock;
     qreal                         stroke          = 4;
     qreal                         wavelength      = -1;
     qreal                         amplitude;
@@ -91,6 +102,8 @@ struct ProgressIndicator::Private {
 
 ProgressIndicator::ProgressIndicator(bool circular, QQuickItem* parent)
     : ProgressBar(parent), d(std::make_unique<Private>(circular)) {
+    d->animationClock=std::make_unique<IndicatorClock>();
+    d->animationClock->tick=[this](qreal elapsed){if(eligible()&&needsAnimation())advanceAnimations(elapsed);else publish();};
     if (circular)
         d->circle = new CircularIndicatorUpdator(this);
     else {
@@ -256,11 +269,6 @@ void ProgressIndicator::bindWindow(QQuickWindow* window) {
     disconnect(d->frameConnection);
     d->window = window;
     d->clock.invalidate();
-    if (window) {
-        d->frameConnection = connect(window, &QQuickWindow::afterAnimating, this, [this] {
-            if (eligible() && needsAnimation()) polish();
-        });
-    }
     publish();
 }
 void ProgressIndicator::schedule() {
@@ -272,6 +280,8 @@ void ProgressIndicator::schedule() {
         d->window->update();
     }
     d->active = active;
+    if(active&&d->animationClock->state()==QAbstractAnimation::Stopped){d->animationClock->previous=0;d->animationClock->start();}
+    else if(!active)d->animationClock->stop();
 }
 void ProgressIndicator::publish() {
     schedule();
@@ -305,6 +315,7 @@ void ProgressIndicator::notifyParameters() {
     if (guard) publish();
 }
 void ProgressIndicator::updatePolish() {
+    if(d->animationClock->state()==QAbstractAnimation::Running)return;
     if (! eligible() || ! needsAnimation()) {
         if (d->active) publish();
         return;

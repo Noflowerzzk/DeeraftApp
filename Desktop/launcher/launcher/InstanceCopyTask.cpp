@@ -6,7 +6,12 @@
 #include "Filter.h"
 #include "NullInstance.h"
 #include "settings/INISettingsObject.h"
+#include "settings/INIFile.h"
 #include "tasks/Task.h"
+
+namespace {
+bool detachedGame(BaseInstance* instance){return instance->property("deeraftDirectoryInstance").toBool()||!instance->settings()->get("DeeraftGameDirectory").toString().isEmpty();}
+}
 
 InstanceCopyTask::InstanceCopyTask(BaseInstance* origInstance, const InstanceCopyPrefs& prefs)
 {
@@ -40,6 +45,23 @@ void InstanceCopyTask::executeTask()
     setStatus(tr("Copying instance %1").arg(m_origInstance->name()));
 
     m_copyFuture = QtConcurrent::run(QThreadPool::globalInstance(), [this] {
+        if(detachedGame(m_origInstance)){
+            FS::copy metadata(m_origInstance->instanceRoot(),m_stagingPath);
+            const auto gameRelative=QDir(m_origInstance->instanceRoot()).relativeFilePath(m_origInstance->gameRoot());
+            if(!gameRelative.startsWith("../")&&!QDir::isAbsolutePath(gameRelative)&&gameRelative!=".")
+                metadata.matcher([gameRelative](const QString& path){return path==gameRelative||path.startsWith(gameRelative+"/");});
+            if(!metadata())return false;
+            const auto matcher=[this](const QString& path){return m_matcher && m_matcher("minecraft/"+path);};
+            const auto destination=FS::PathCombine(m_stagingPath,"minecraft");
+            if(m_useClone){FS::clone game(m_origInstance->gameRoot(),destination);game.matcher(matcher);return game();}
+            if(m_useLinks||m_useHardLinks){
+                if(m_copySaves){FS::copy saves(FS::PathCombine(m_origInstance->gameRoot(),"saves"),FS::PathCombine(destination,"saves"));if(!saves())return false;}
+                FS::create_link game(m_origInstance->gameRoot(),destination);
+                game.linkRecursively(true).setMaxDepth(m_linkRecursively?-1:0).useHardLinks(m_useHardLinks).matcher(matcher);
+                return game();
+            }
+            FS::copy game(m_origInstance->gameRoot(),destination);game.matcher(matcher);return game();
+        }
         if (m_useClone) {
             FS::clone folderClone(m_origInstance->instanceRoot(), m_stagingPath);
             folderClone.matcher(m_matcher);
@@ -146,9 +168,17 @@ void InstanceCopyTask::copyFinished()
     }
 
     // FIXME: shouldn't this be able to report errors?
+    if(detachedGame(m_origInstance)){
+        // Copies become independent instances; never keep an absolute source game directory.
+        INIFile config;
+        const auto path=FS::PathCombine(m_stagingPath,"instance.cfg");
+        if(!config.loadFile(path)){emitFailed(tr("Instance folder copy failed."));return;}
+        config.remove("DeeraftGameDirectory");
+        if(!config.saveFile(path)){emitFailed(tr("Instance folder copy failed."));return;}
+    }
     auto instanceSettings = std::make_unique<INISettingsObject>(FS::PathCombine(m_stagingPath, "instance.cfg"));
 
-    BaseInstance* inst(new NullInstance(m_globalSettings, std::move(instanceSettings), m_stagingPath));
+    auto inst=std::make_unique<NullInstance>(m_globalSettings, std::move(instanceSettings), m_stagingPath);
     inst->setName(name());
     inst->setIconKey(m_instIcon);
     inst->regenerateUuid();

@@ -59,6 +59,11 @@
 #include <functional>
 #include "Application.h"
 #include "SeparatorPrefixTree.h"
+#include "settings/SettingsObject.h"
+
+namespace {
+bool detachedGame(BaseInstance* instance){return instance->property("deeraftDirectoryInstance").toBool()||!instance->settings()->get("DeeraftGameDirectory").toString().isEmpty();}
+}
 
 ExportInstanceDialog::ExportInstanceDialog(BaseInstance* instance, QWidget* parent)
     : QDialog(parent), m_ui(new Ui::ExportInstanceDialog), m_instance(instance)
@@ -66,10 +71,10 @@ ExportInstanceDialog::ExportInstanceDialog(BaseInstance* instance, QWidget* pare
     m_ui->setupUi(this);
     auto model = new QFileSystemModel(this);
     model->setIconProvider(&m_icons);
-    auto root = instance->instanceRoot();
+    auto root = detachedGame(instance)?instance->gameRoot():instance->instanceRoot();
     m_proxyModel = new FileIgnoreProxy(root, this);
     m_proxyModel->setSourceModel(model);
-    auto prefix = QDir(instance->instanceRoot()).relativeFilePath(instance->gameRoot());
+    auto prefix = QDir(root).relativeFilePath(instance->gameRoot());
     for (auto path : { "logs", "crash-reports", ".cache", ".fabric", ".quilt" }) {
         m_proxyModel->ignoreFilesWithPath().insert(FS::PathCombine(prefix, path));
     }
@@ -144,14 +149,32 @@ void ExportInstanceDialog::doExport()
     SaveIcon(m_instance);
 
     auto files = QFileInfoList();
-    if (!MMCZip::collectFileListRecursively(m_instance->instanceRoot(), nullptr, &files,
+    const bool directory=detachedGame(m_instance);
+    const auto source=directory?m_instance->gameRoot():m_instance->instanceRoot();
+    if (!MMCZip::collectFileListRecursively(source, nullptr, &files,
                                             std::bind(&FileIgnoreProxy::filterFile, m_proxyModel, std::placeholders::_1))) {
         QMessageBox::warning(this, tr("Error"), tr("Unable to export instance"));
         QDialog::done(QDialog::Rejected);
         return;
     }
 
-    auto task = makeShared<MMCZip::ExportToZipTask>(output, m_instance->instanceRoot(), files, "", true);
+    QFileInfoList metadata;
+    if(directory){
+        MMCZip::collectFileListRecursively(m_instance->instanceRoot(),nullptr,&metadata,nullptr);
+        // Supply a sanitized portable config separately rather than exporting the source path.
+        const auto game=QDir(m_instance->gameRoot()).absolutePath()+"/";
+        metadata.removeIf([game](const QFileInfo& file){return file.fileName()=="instance.cfg"||file.absoluteFilePath().startsWith(game,Qt::CaseInsensitive);});
+        files.append(metadata);
+    }
+    auto task = makeShared<MMCZip::ExportToZipTask>(output, source, files, directory?"minecraft/":"", true);
+    if(directory){
+        QFile config(QDir(m_instance->instanceRoot()).filePath("instance.cfg"));
+        if(!config.open(QIODevice::ReadOnly)){QMessageBox::warning(this,tr("Error"),tr("Unable to export instance"));return;}
+        auto lines=config.readAll().split('\n');
+        lines.removeIf([](const QByteArray& line){return line.trimmed().startsWith("DeeraftGameDirectory=");});
+        task->addExtraFile("instance.cfg",lines.join('\n'));
+    }
+    for(const auto& file:metadata)task->mapFilePath(file.absoluteFilePath(),QDir(m_instance->instanceRoot()).relativeFilePath(file.absoluteFilePath()));
 
     connect(task.get(), &Task::failed, this,
             [this, output](QString reason) { CustomMessageBox::selectable(this, tr("Error"), reason, QMessageBox::Critical)->show(); });

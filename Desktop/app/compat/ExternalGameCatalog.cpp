@@ -11,6 +11,7 @@
 #include <QSaveFile>
 #include <QSet>
 #include <QUrl>
+#include <QRegularExpression>
 
 namespace Deeraft {
 namespace {
@@ -259,6 +260,7 @@ QString ExternalVersionResolver::normalizeRoot(const QString &path)
         candidate = QFileInfo(candidate).absolutePath();
     if (!QDir(candidate).exists("versions") && QDir(candidate).exists(".minecraft/versions"))
         candidate = canonical(QDir(candidate).filePath(".minecraft"));
+    if(!QDir(candidate).exists("versions") && QDir(candidate).exists("instances"))candidate=canonical(QDir(candidate).filePath("instances"));
     return candidate;
 }
 
@@ -271,6 +273,26 @@ QVariantMap ExternalVersionResolver::resolve(const QString &path, const QString 
 {
     const auto root = normalizeRoot(path);
     QVariantMap result{{"id", versionId}, {"root", root}, {"rootId", rootId(root)}, {"valid", false}};
+    const auto instanceDirectory=QDir(root).filePath(versionId);
+    if(safeVersionId(versionId) && QFileInfo::exists(QDir(instanceDirectory).filePath("instance.cfg"))) {
+        QString error;
+        const auto pack=readJson(QDir(instanceDirectory).filePath("mmc-pack.json"),error);
+        if(!error.isEmpty()){result["error"]=error;return result;}
+        const auto settings=readIni(QDir(instanceDirectory).filePath("instance.cfg"));
+        QString version,loader;
+        for(const auto& value:pack["components"].toArray()) {
+            const auto c=value.toObject();const auto uid=c["uid"].toString();const auto v=c["version"].toString();
+            if(uid=="net.minecraft")version=v;
+            const QMap<QString,QString> names{{"net.fabricmc.fabric-loader","Fabric"},{"net.minecraftforge","Forge"},{"net.neoforged","NeoForge"},{"org.quiltmc.quilt-loader","Quilt"},{"optifine.OptiFine","OptiFine"}};
+            if(names.contains(uid))loader=names[uid]+" "+v;
+        }
+        auto game=QDir(instanceDirectory).filePath(".minecraft");
+        if(!QDir(game).exists())game=QDir(instanceDirectory).filePath("minecraft");
+        result["format"]="prism";result["instanceDirectory"]=instanceDirectory;result["versionDirectory"]=instanceDirectory;
+        result["gameDirectory"]=game;result["name"]=settings.value("name",versionId);result["icon"]=settings.value("iconKey","default");
+        result["version"]=version;result["loader"]=loader;result["valid"]=!version.isEmpty();
+        return result;
+    }
     if (!QDir(root).exists("versions") || !safeVersionId(versionId)) {
         result.insert("error", QStringLiteral("无效的 Minecraft 目录或版本名称"));
         return result;
@@ -313,6 +335,24 @@ QVariantMap ExternalVersionResolver::resolve(const QString &path, const QString 
     result.insert("clientJar", jar);
     result.insert("inheritance", chain);
     result.insert("versionJson", version.toVariantMap());
+    QString minecraft=version.value("clientVersion").toString(),loader;
+    for(const auto& patch:version.value("patches").toArray()) {
+        const auto p=patch.toObject();const auto id=p["id"].toString().toLower();
+        if(id=="game" || id=="minecraft")minecraft=p["version"].toString();
+        const QMap<QString,QString> names{{"fabric","Fabric"},{"forge","Forge"},{"neoforge","NeoForge"},{"quilt","Quilt"},{"optifine","OptiFine"}};
+        if(names.contains(id))loader=names[id]+" "+p["version"].toString();
+    }
+    for(const auto& item:version.value("libraries").toArray()) {
+        const auto name=item.toObject()["name"].toString();const auto parts=name.split(':');
+        if(parts.size()<3)continue;
+        const QMap<QString,QString> names{{"net.fabricmc:fabric-loader","Fabric"},{"net.minecraftforge:forge","Forge"},{"net.neoforged:neoforge","NeoForge"},{"org.quiltmc:quilt-loader","Quilt"},{"optifine:OptiFine","OptiFine"}};
+        const auto key=parts[0]+":"+parts[1];if(names.contains(key))loader=names[key]+" "+parts[2];
+    }
+    if(minecraft.isEmpty()) {
+        for(const auto& candidate:chain)if(QRegularExpression("^(?:\\d+\\.\\d+(?:\\.\\d+)?|\\d{2}w\\d{2}[a-z])$").match(candidate).hasMatch()){minecraft=candidate;break;}
+    }
+    if(minecraft.isEmpty())minecraft=version.value("id").toString(versionId);
+    result["version"]=minecraft;result["loader"]=loader;result["format"]="minecraft";
     result.insert("source", source);
     result.insert("modded", moddedVersion(version));
     result.insert("warnings", warnings);
@@ -325,6 +365,12 @@ QVariantMap ExternalVersionResolver::resolve(const QString &path, const QString 
 QVariantList ExternalVersionResolver::scan(const QString &path, const QVariantMap &options)
 {
     const auto root = normalizeRoot(path);
+    if(!QDir(root).exists("versions")) {
+        QVariantList result;
+        for(const auto& id:QDir(root).entryList(QDir::Dirs|QDir::NoDotAndDotDot,QDir::Name|QDir::IgnoreCase))
+            if(QFileInfo::exists(QDir(root).filePath(id+"/instance.cfg")) && QFileInfo::exists(QDir(root).filePath(id+"/mmc-pack.json")))result.append(resolve(root,id,options));
+        return result;
+    }
     const QDir versions(QDir(root).filePath("versions"));
     QVariantList result;
     for (const auto &id : versions.entryList(QDir::Dirs | QDir::NoDotAndDotDot, QDir::Name | QDir::IgnoreCase)) {
@@ -394,8 +440,8 @@ QVariantMap ExternalGameCatalog::findRoot(const QString &id) const
 QString ExternalGameCatalog::addRoot(const QString &path)
 {
     const auto root = ExternalVersionResolver::normalizeRoot(path);
-    if (!QDir(root).exists("versions")) {
-        setError(QStringLiteral("所选目录中没有 versions 文件夹"));
+    if (!QDir(root).exists("versions") && ExternalVersionResolver::scan(root).isEmpty()) {
+        setError(QStringLiteral("所选文件夹中没有可识别的实例，请选择 .minecraft 或 instances 文件夹"));
         return {};
     }
     const auto id = ExternalVersionResolver::rootId(root);

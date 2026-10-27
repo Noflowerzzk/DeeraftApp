@@ -167,6 +167,7 @@ class OrSetting : public Setting {
 MinecraftInstance::MinecraftInstance(SettingsObject* globalSettings, std::unique_ptr<SettingsObject> settings, const QString& rootDir)
     : BaseInstance(globalSettings, std::move(settings), rootDir)
 {
+    m_settings->registerSetting("DeeraftGameDirectory",QString());
     m_components.reset(new PackProfile(this));
 }
 
@@ -351,6 +352,8 @@ void MinecraftInstance::populateLaunchMenu(QMenu* menu)
 
 QString MinecraftInstance::gameRoot() const
 {
+    const auto custom=m_settings->get("DeeraftGameDirectory").toString();
+    if(!custom.isEmpty())return custom;
     QFileInfo mcDir(FS::PathCombine(instanceRoot(), "minecraft"));
     QFileInfo dotMCDir(FS::PathCombine(instanceRoot(), ".minecraft"));
 

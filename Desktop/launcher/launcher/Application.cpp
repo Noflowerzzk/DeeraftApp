@@ -103,6 +103,7 @@
 #include <QWindow>
 
 #include "InstanceList.h"
+#include "compat/ExternalGameCatalog.h"
 #include "MTPixmapCache.h"
 
 #include <minecraft/auth/AccountList.h>
@@ -642,7 +643,7 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
         m_settings.reset(new INISettingsObject({ BuildConfig.LAUNCHER_CONFIGFILE, "polymc.cfg", "multimc.cfg" }, this));
 
         // Theming
-        m_settings->registerSetting("IconTheme", QString());
+        m_settings->registerSetting("IconTheme", "windowsapp");
         m_settings->registerSetting("ApplicationTheme", QString());
         m_settings->registerSetting("BackgroundCat", QString("kitteh"));
 
@@ -1010,6 +1011,18 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
 
     // load translations
     {
+        if(BuildConfig.LAUNCHER_DISPLAYNAME==QStringLiteral("DeeraftApp")){
+            Q_INIT_RESOURCE(deeraft);
+            QDir().mkpath("translations");
+            if(!QFileInfo::exists("translations/mmc_zh.qm")&&QFile::copy(":/deeraft/translations/mmc_zh.qm","translations/mmc_zh.qm"))
+                QFile::setPermissions("translations/mmc_zh.qm",QFileDevice::ReadOwner|QFileDevice::WriteOwner|QFileDevice::ReadUser|QFileDevice::WriteUser|QFileDevice::ReadGroup|QFileDevice::ReadOther);
+            QSettings defaults(dataRoot()+"/desktop.ini",QSettings::IniFormat);
+            if(!defaults.value("chineseDefaultsApplied",false).toBool()){
+                const auto language=settings()->get("Language").toString();
+                if(language.isEmpty()||language=="en_US")settings()->set("Language","zh");
+                defaults.setValue("chineseDefaultsApplied",true);
+            }
+        }
         m_translations.reset(new TranslationsModel("translations"));
         m_translations->downloadIndex();
         qInfo() << "Your language is" << m_translations->selectedLanguage();
@@ -1200,7 +1213,7 @@ bool Application::createSetupWizard()
     // DeeraftApp configures accounts, appearance, and Java through its own shell.
     // A fresh portable install must open that shell before asking for game setup.
     if(BuildConfig.LAUNCHER_DISPLAYNAME == QStringLiteral("DeeraftApp")){
-        if(settings()->get("Language").toString().isEmpty())settings()->set("Language",QStringLiteral("en_US"));
+        if(settings()->get("Language").toString().isEmpty())settings()->set("Language",QStringLiteral("zh"));
         return false;
     }
     bool javaRequired = [this]() {
@@ -1330,6 +1343,9 @@ void Application::performMainStartupAction()
 {
     m_status = Application::Initialized;
     if (!m_instanceIdToLaunch.isEmpty()) {
+        // Directory instances are registered by the desktop shell before shortcut lookup.
+        if (!instances()->getInstanceById(m_instanceIdToLaunch) && !m_mainWindow)
+            showMainWindow(true);
         auto inst = instances()->getInstanceById(m_instanceIdToLaunch);
         if (inst) {
             MinecraftTarget::Ptr targetToJoin = nullptr;
@@ -1523,6 +1539,9 @@ bool Application::launch(BaseInstance* instance,
     if (m_updateRunning) {
         qDebug() << "Cannot launch instances while an update is running. Please try again when updates are completed.";
     } else if (instance->canLaunch()) {
+        if(instance->property("deeraftNeedsDirectory").toBool() && instance->settings()->get("DeeraftGameDirectory").toString().isEmpty()){
+            showInstanceWindow(instance,"settings");return false;
+        }
         QMutexLocker locker(&m_instanceExtrasMutex);
         auto& extras = m_instanceExtras[instance->id()];
         auto window = extras.window;
@@ -1534,6 +1553,13 @@ bool Application::launch(BaseInstance* instance,
         auto& controller = extras.controller;
         controller.reset(new LaunchController());
         controller->setInstance(instance);
+        if(instance->property("deeraftDirectoryInstance").toBool() && m_mainWindow){
+            if(auto catalog=m_mainWindow->findChild<Deeraft::ExternalGameCatalog*>()){
+                const auto lock=catalog->acquireLaunchLock(instance->property("deeraftRootId").toString(),instance->property("deeraftVersionId").toString());
+                if(lock.isEmpty()){controller.reset();return false;}
+                connect(controller.get(),&Task::finished,catalog,[catalog,lock]{catalog->releaseLaunchLock(lock);});
+            }
+        }
         controller->setLaunchMode(mode);
         controller->setProfiler(profilers().value(instance->settings()->get("Profiler").toString(), nullptr).get());
         controller->setTargetToJoin(targetToJoin);

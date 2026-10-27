@@ -34,7 +34,7 @@ MD.TabBarBase {
                 return;
             }
             const indicatorWidth = control.type === MD.Enum.PrimaryTab ? (control.primaryIndicatorFraction>0 ? item.width*control.primaryIndicatorFraction : Math.min(item.width, Math.max(24, item.implicitContentWidth))) : item.width;
-            const indicatorX = item.x + (item.width - indicatorWidth) / 2;
+            const indicatorX = item.mapToItem(m_view.contentItem,0,0).x + (item.width - indicatorWidth) / 2;
             const scrollX = Math.max(0, Math.min(Math.max(0, contentWidth - width), item.x + item.width / 2 - width / 2));
             if (!_hasSelection) {
                 indicatorPosition.to = indicatorX;

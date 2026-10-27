@@ -18,19 +18,19 @@ Item {
  property var groups: {var list=["全部分组"];for(var i=0;i<app.allInstances.length;i++){var row=app.allInstances[i];var group=library.metadata[row.id]?.group || row.group || "未分组";if(list.indexOf(group)<0)list.push(group)}return list}
  property var filtered: {
    var query=search.searchText.toLowerCase();var source=sources.currentValue||"all";var group=groupPicker.currentText||"全部分组";
-   var values=app.allInstances.filter(function(row){var meta=library.metadata[row.id]||{};return (!query||row.name.toLowerCase().indexOf(query)>=0)&&(source==="all"||row.source===source)&&(group==="全部分组"||(meta.group||row.group||"未分组")===group)&&(filterIndex!==1||meta.favorite)&&(filterIndex!==2||row.external)});
+   var values=app.allInstances.filter(function(row){var meta=library.metadata[row.id]||{};return (!query||row.name.toLowerCase().indexOf(query)>=0)&&(source==="all"||row.source===source)&&(group==="全部分组"||(meta.group||row.group||"未分组")===group)&&(filterIndex!==1||meta.favorite)});
    return reverseOrder?values.slice().reverse():values;
  }
  function focusSearch(){search.forceActiveFocus()}
- function isRunning(){return !!selected && (selected.external ? externalLauncher.running && externalLauncher.rootId===selected.rootId && externalLauncher.versionId===selected.versionId : !!selected.running)}
- function launchSelected(){if(!selected||instanceMotion.running)return;if(isRunning()){if(selected.external)externalLauncher.stop();else desktop.action("actionKillInstance",selected.id)}else app.start(selected,"")}
+ function isRunning(){return !!selected && !!selected.running}
+ function launchSelected(){if(!selected||instanceMotion.running)return;if(isRunning()){desktop.action("actionKillInstance",selected.id)}else app.start(selected,"")}
  property var account: desktop.accounts.find(function(a){return a.selected}) || null
  function selectInstance(id){if(selectedId===id&&!instanceMotion.running)return;instanceMotion.run(function(){page.selectedId=id;page.detailTab=0;page.reloadFiles()})}
  ContentTransition { id: instanceMotion; objectName: "instanceMotion"; target: detail }
- function reloadFiles(){if(!selected||selected.external){files=[];worlds=[];shots=[];logText="";return}files=desktop.resources(selected.id,"mods");worlds=desktop.resources(selected.id,"saves");shots=desktop.resources(selected.id,"screenshots");logText=detailTab===4?desktop.readGameLog(selected.id):""}
- onSelectedChanged:{reloadFiles();desktop.selectInstance(selected&&!selected.external?selected.id:"")}
+ function reloadFiles(){if(!selected){files=[];worlds=[];shots=[];logText="";return}files=desktop.resources(selected.id,"mods");worlds=desktop.resources(selected.id,"saves");shots=desktop.resources(selected.id,"screenshots");logText=detailTab===4?desktop.readGameLog(selected.id):""}
+ onSelectedChanged:{reloadFiles();desktop.selectInstance(selected?selected.id:"")}
  onDetailTabChanged:reloadFiles()
- Connections {target:desktop;function onChanged(){if(page.selected && !page.selected.external && page.detailTab===4)page.logText=desktop.readGameLog(page.selected.id)}}
+ Connections {target:desktop;function onChanged(){if(page.selected && page.detailTab===4)page.logText=desktop.readGameLog(page.selected.id)}}
  RowLayout {
   anchors.fill: parent
   anchors.leftMargin: 8
@@ -84,12 +84,12 @@ Item {
      animateWidth: false
      size: MD.Enum.S
      Repeater {
-      model: ["全部", "收藏", "已关联"]
+      model: ["全部", "收藏"]
       MD.ToggleButton {
        required property string modelData
        required property int index
        text: modelData
-       implicitWidth: (libraryPane.width-28)/3
+       implicitWidth: (libraryPane.width-26)/2
        checked: page.filterIndex===index
        icon.name: checked ? "check" : ""
        mdState.type: MD.Enum.BtFilledTonal
@@ -124,8 +124,12 @@ Item {
       height: 78
       flat: true
       type: MD.Enum.CardFilled
-      mdState.radius: selected ? 24 : 20
-      mdState.backgroundColor: selected ? app.colors.primaryContainer : "transparent"
+      mdState.radius: Math.max(4,8+12*selectionMotion.value)
+      mdState.backgroundColor: selectionColor.color
+      MD.SpringMotion { id: selectionMotion; targetValue: rowControl.selected?1:0; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
+      MD.ColorSpringMotion { id: selectionColor; targetColor: rowControl.selected?app.colors.secondaryContainer:rowControl.mdState.interactions.hovered?app.colors.surfaceContainerHigh:"transparent"; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.standard.fastEffects }
+      MD.SpringMotion { id: pressMotion; targetValue: rowControl.mdState.interactions.pressed?.985:1; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
+      scale: pressMotion.value
       horizontalPadding: 12
       onClicked: page.selectInstance(modelData.id)
       TapHandler { onDoubleTapped: app.start(rowControl.modelData, "") }
@@ -136,8 +140,8 @@ Item {
         Layout.preferredHeight: 48
         radius: rowControl.selected ? 24 : 16
         backgroundColor: app.colors.secondaryContainer
-        Image { anchors.fill: parent; anchors.margins: 8; source: !rowControl.modelData.external ? "image://instances/"+rowControl.modelData.icon : ""; fillMode: Image.PreserveAspectFit; smooth: false }
-        MD.Icon { visible: !!rowControl.modelData.external; anchors.centerIn: parent; name: "folder"; size: 28; color: app.colors.onSecondaryContainer }
+        Image { anchors.fill: parent; anchors.margins: 8; source: "image://instances/"+(rowControl.modelData.icon||"default"); fillMode: Image.PreserveAspectFit; smooth: false }
+        MD.Icon { visible: false; anchors.centerIn: parent; name: "folder"; size: 28; color: app.colors.onSecondaryContainer }
        }
        ColumnLayout {
         Layout.fillWidth: true
@@ -214,9 +218,9 @@ Item {
         Layout.fillWidth: true
         spacing: 7
         AppLabel { objectName: "instanceTitle"; text: page.selected ? page.selected.name : "开始游戏"; font.pixelSize: 45; font.weight: 650; lineHeight: 54; font.letterSpacing: -1; color: app.ink; Layout.fillWidth: true; elide: Text.ElideRight }
-        AppLabel { text: page.selected ? (page.selected.version||page.selected.description||"")+(page.selected.loader ? " · "+page.selected.loader : " · Vanilla") : "添加实例或关联 PCL / HMCL 目录"; font.pixelSize: 13; color: app.muted; Layout.fillWidth: true; elide: Text.ElideRight }
+        AppLabel { text: page.selected ? (page.selected.version||page.selected.description||"")+(page.selected.loader ? " · "+page.selected.loader : " · Vanilla") : "添加实例或添加实例目录"; font.pixelSize: 13; color: app.muted; Layout.fillWidth: true; elide: Text.ElideRight }
        }
-       IconButton { symbol: "tune"; hint: "实例设置"; enabled: !!page.selected; onClicked: page.selected.external ? rootsDialog.open() : desktop.action("actionEditInstance",page.selected.id) }
+       IconButton { symbol: "tune"; hint: "实例设置"; enabled: !!page.selected; onClicked: desktop.action("actionEditInstance",page.selected.id) }
        IconButton { symbol: "more_vert"; hint: "实例操作"; enabled: !!page.selected; onClicked: instanceMenu.showAt(this) }
       }
       RowLayout {
@@ -233,6 +237,10 @@ Item {
         text: page.isRunning() ? "结束游戏" : "启动游戏"
         icon.name: page.isRunning() ? "stop" : "play_arrow"
         mdState.type: MD.Enum.BtFilled
+        mdState.backgroundColor: page.isRunning()?app.colors.error:app.accent
+        mdState.textColor: page.isRunning()?app.colors.onError:app.colors.onPrimary
+        indicatorMdState.backgroundColor: page.isRunning()?app.colors.error:app.accent
+        indicatorMdState.textColor: page.isRunning()?app.colors.onError:app.colors.onPrimary
         mdState.size: MD.Enum.M
         leadingControl.font.pixelSize: 18
         leadingControl.font.weight: 650
@@ -250,8 +258,8 @@ Item {
         onClicked: accountMenu.showAt(this)
         contentItem: RowLayout {
          spacing: 10
-         RoundedImage { source: page.account ? "https://minotar.net/avatar/"+encodeURIComponent(page.account.name)+"/40" : ""; Layout.preferredWidth: 36; Layout.preferredHeight: 36; radius: 12; MD.Icon { visible: !page.account; anchors.centerIn: parent; name: "account_circle"; size: 32; color: app.accent } }
-         ColumnLayout { Layout.fillWidth: true; spacing: 0; AppLabel { text: page.account ? page.account.name : "选择游戏账号"; color: app.ink; font.pixelSize: 13; Layout.fillWidth: true; elide: Text.ElideRight } AppLabel { text: page.account ? page.account.type+" 账号" : "Minecraft 账号"; color: app.muted; font.pixelSize: 12 } }
+         RoundedImage { source: page.account ? page.account.avatar : ""; Layout.preferredWidth: 36; Layout.preferredHeight: 36; radius: 12; MD.Icon { visible: !page.account; anchors.centerIn: parent; name: "account_circle"; size: 32; color: app.accent } }
+         ColumnLayout { Layout.fillWidth: true; spacing: 0; AppLabel { text: page.account ? page.account.name : "选择游戏账号"; color: app.ink; font.pixelSize: 13; Layout.fillWidth: true; elide: Text.ElideRight } AppLabel { text: page.account ? page.account.type : "Minecraft 账号"; color: app.muted; font.pixelSize: 12 } }
          MD.Icon { name: "unfold_more"; size: 20; color: app.muted }
         }
        }
@@ -263,11 +271,12 @@ Item {
        objectName: "detailTabs"
        MD.MProp.backgroundColor: app.panel
        primaryIndicatorFraction: .44
+       mode: MD.TabBar.Fixed
        Layout.fillWidth: true
        Layout.preferredHeight: 48
        currentIndex: page.detailTab
        onCurrentIndexChangeRequested: function(index) {page.detailTab=index}
-       Repeater { model: ["概览","模组","世界","截图","日志"]; MD.TabButton { required property string modelData; text: modelData; width: tabs.width/5; font.pixelSize: 14 } }
+       Repeater { model: ["概览","模组","世界","截图","日志"]; MD.TabButton { required property string modelData; text: modelData; font.pixelSize: 14 } }
       }
       ColumnLayout {
        visible: page.detailTab===0
@@ -282,7 +291,7 @@ Item {
         MD.Icon { visible: !!page.selected; name: "schedule"; size: 18; color: app.muted }
         AppLabel { visible: !!page.selected; text: "游玩  "+Number(((page.selected||{}).seconds||0)/3600).toFixed(1)+" 小时"; font.pixelSize: 13; color: app.muted }
         Item { Layout.fillWidth: true }
-        ActionButton { text: "调整 ↗"; flat: true; enabled: !!page.selected; onClicked: page.selected.external ? rootsDialog.open() : desktop.action("actionEditInstance",page.selected.id) }
+        ActionButton { text: "调整 ↗"; flat: true; enabled: !!page.selected; onClicked: desktop.action("actionEditInstance",page.selected.id) }
        }
        MD.Pane {
         Layout.fillWidth: true
@@ -304,15 +313,15 @@ Item {
        Layout.fillWidth: true
        Layout.topMargin: 20
        spacing: 12
-       RowLayout { Layout.fillWidth: true; AppLabel { text: page.files.length+" 个模组"; Layout.fillWidth: true; color: app.ink } ActionButton { text: "添加模组"; symbol: "add"; enabled: !!page.selected && !page.selected.external; onClicked: desktop.action("instance-page:mods",page.selected.id) } }
+       RowLayout { Layout.fillWidth: true; AppLabel { text: page.files.length+" 个模组"; Layout.fillWidth: true; color: app.ink } ActionButton { text: "添加模组"; symbol: "add"; enabled: !!page.selected; onClicked: desktop.action("instance-page:mods",page.selected.id) } }
        Repeater { model: page.files; MD.ListItem { id: modRow; required property var modelData; Layout.fillWidth: true; text: modelData.name.replace(/\.disabled$/,""); icon.name: "extension"; trailing: MD.Switch { checked: modRow.modelData.enabled; enabled: !page.isRunning(); onCheckedChangeRequested: function(checked) {if(desktop.setModEnabled(page.selected.id,modRow.modelData.name,checked))page.reloadFiles()} } } }
-       AppLabel { visible: !page.files.length; text: page.selected && page.selected.external ? "通过文件夹管理外部实例模组" : "暂无模组"; color: app.muted }
+       AppLabel { visible: !page.files.length; text: "暂无模组"; color: app.muted }
       }
       ColumnLayout { visible: page.detailTab===2; Layout.fillWidth: true; Layout.topMargin: 20; spacing: 12; Repeater { model: page.worlds; MD.ListItem { required property var modelData; Layout.fillWidth: true; text: modelData.name; supportText: modelData.updated; icon.name: "public"; onClicked: desktop.openPath(modelData.path) } } AppLabel { visible: !page.worlds.length; text: "暂无本地存档"; color: app.muted } }
       Flow { visible: page.detailTab===3; Layout.fillWidth: true; Layout.topMargin: 20; spacing: 12; Repeater { model: page.shots; MD.Card { required property var modelData; width: 220; height: 140; onClicked: desktop.openPath(modelData.path); contentItem: RoundedImage { source: modelData.url; radius: 16 } } } AppLabel { visible: !page.shots.length; text: "暂无截图"; color: app.muted } }
-      TextArea { visible: page.detailTab===4; Layout.fillWidth: true; Layout.topMargin: 20; implicitHeight: Math.max(260,contentHeight+24); text: (page.selected && page.selected.external ? (externalLauncher.versionId===page.selected.versionId && externalLauncher.rootId===page.selected.rootId ? app.externalLog : "") : page.logText)||"暂无游戏日志"; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; font.family: "Consolas"; font.pixelSize: 12; color: app.ink }
+      TextArea { visible: page.detailTab===4; Layout.fillWidth: true; Layout.topMargin: 20; implicitHeight: Math.max(260,contentHeight+24); text: page.logText||"暂无游戏日志"; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; font.family: "Consolas"; font.pixelSize: 12; color: app.ink }
       Item { Layout.fillWidth: true; Layout.minimumHeight: 24; Layout.fillHeight: true }
-      RowLayout { Layout.fillWidth: true; spacing: 7; MD.Icon { name: "circle"; size: 8; color: app.accent } AppLabel { text: page.isRunning()?"运行中":"就绪"; color: app.muted; font.pixelSize: 12 } Item { Layout.fillWidth: true } AppLabel { text: page.selected&&page.selected.external?page.selected.sourceName||"已关联实例":"本地实例"; color: app.muted; font.pixelSize: 12 } }
+      RowLayout { Layout.fillWidth: true; spacing: 7; MD.Icon { name: "circle"; size: 8; color: app.accent } AppLabel { text: page.isRunning()?"运行中":"就绪"; color: app.muted; font.pixelSize: 12 } Item { Layout.fillWidth: true } AppLabel { Layout.maximumWidth: detailScroll.availableWidth*.65; elide: Text.ElideMiddle; text: page.selected?(page.selected.sourcePath||page.selected.path):""; color: app.muted; font.pixelSize: 12 } }
      }
     }
    }
@@ -321,45 +330,45 @@ Item {
  AppMenu {
   id: accountMenu
   model: desktop.accounts
-  contentDelegate: MD.MenuItem { required property var modelData; text: modelData.name+" · "+modelData.type; selected: modelData.selected; icon.name: "account_circle"; onTriggered: desktop.selectAccount(modelData.uuid) }
+  contentDelegate: MD.MenuItem { required property var modelData; text: modelData.name+" · "+modelData.type; selected: modelData.selected; icon.source: modelData.avatar; onTriggered: desktop.selectAccount(modelData.uuid) }
   MD.MenuSeparator {}
   MD.MenuItem { text: "管理账号"; icon.name: "manage_accounts"; onTriggered: app.showSettings() }
  }
  AppMenu {id:libraryMenu
   objectName: "libraryMenu"
   MD.MenuItem {text:"新建实例 / 导入整合包";onTriggered:desktop.action("actionAddInstance")}
-  MD.MenuItem {text:"关联 PCL / HMCL 目录";onTriggered:{var path=desktop.chooseDirectory();if(path)externalGames.addRoot(path)}}
+  MD.MenuItem {text:"添加实例目录";onTriggered:{var path=desktop.chooseDirectory();if(path)externalGames.addRoot(path)}}
   MD.MenuItem {text:"还原已删除实例";onTriggered:desktop.action("actionUndoTrashInstance")}
   MD.MenuItem {text:"管理实例目录";onTriggered:rootsDialog.open()}
   MD.MenuItem {text:"启动器设置";onTriggered:desktop.action("actionSettings")}
  }
  function chooseRunDirectory(){if(!selected||!selected.external)return;var directory=desktop.chooseDirectory();if(!directory)return;var options={};for(var i=0;i<externalGames.roots.length;i++)if(externalGames.roots[i].id===selected.rootId)options=externalGames.roots[i].options||{};var dirs=options.versionDirectories||{};dirs[selected.versionId]=directory;externalGames.setRootOptions(selected.rootId,{versionDirectories:dirs})}
  AppMenu {id:instanceMenu
-  MD.MenuItem {text:"设置 Java";visible:!!page.selected&&!!page.selected.external;onTriggered:{var file=desktop.chooseFile("Java (java.exe javaw.exe)");if(String(file))library.setMetadata(page.selected.id,{javaPath:String(file)})}}
-  MD.MenuItem {text:"设置运行目录";visible:!!page.selected&&!!page.selected.external;onTriggered:page.chooseRunDirectory()}
-  MD.MenuItem {text:"编辑实例";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionEditInstance",page.selected.id)}
+  MD.MenuItem {text:"设置 Java";visible:false;onTriggered:{var file=desktop.chooseFile("Java (java.exe javaw.exe)");if(String(file))library.setMetadata(page.selected.id,{javaPath:String(file)})}}
+  MD.MenuItem {text:"设置运行目录";visible:false;onTriggered:page.chooseRunDirectory()}
+  MD.MenuItem {text:"编辑实例";enabled:!!page.selected;onTriggered:desktop.action("actionEditInstance",page.selected.id)}
   MD.MenuItem {text:"更改分组";onTriggered:{if(page.selected.external){externalGroup.text=app.meta(page.selected).group||"";groupDialog.open()}else desktop.action("actionChangeInstGroup",page.selected.id)}}
-  MD.MenuItem {text:"重命名";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionRenameInstance",page.selected.id)}
-  MD.MenuItem {text:"更换图标";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionChangeInstIcon",page.selected.id)}
-  MD.MenuItem {text:"资源包";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("instance-page:resourcepacks",page.selected.id)}
-  MD.MenuItem {text:"光影";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("instance-page:shaderpacks",page.selected.id)}
-  MD.MenuItem {text:"创建快捷方式";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionCreateInstanceShortcut",page.selected.id)}
-  MD.MenuItem {text:"复制实例";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionCopyInstance",page.selected.id)}
-  MD.MenuItem {text:"导出实例";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionExportInstance",page.selected.id)}
+  MD.MenuItem {text:"重命名";enabled:!!page.selected;onTriggered:desktop.action("actionRenameInstance",page.selected.id)}
+  MD.MenuItem {text:"更换图标";enabled:!!page.selected;onTriggered:desktop.action("actionChangeInstIcon",page.selected.id)}
+  MD.MenuItem {text:"资源包";enabled:!!page.selected;onTriggered:desktop.action("instance-page:resourcepacks",page.selected.id)}
+  MD.MenuItem {text:"光影";enabled:!!page.selected;onTriggered:desktop.action("instance-page:shaderpacks",page.selected.id)}
+  MD.MenuItem {text:"创建快捷方式";enabled:!!page.selected;onTriggered:desktop.action("actionCreateInstanceShortcut",page.selected.id)}
+  MD.MenuItem {text:"复制实例";enabled:!!page.selected;onTriggered:desktop.action("actionCopyInstance",page.selected.id)}
+  MD.MenuItem {text:"导出实例";enabled:!!page.selected;onTriggered:desktop.action("actionExportInstanceZip",page.selected.id)}
   MD.MenuItem {text:"打开文件夹";onTriggered:desktop.openPath(page.selected.path)}
   MD.MenuSeparator {}
-  MD.MenuItem {text:"删除实例";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionDeleteInstance",page.selected.id)}
+  MD.MenuItem {text:"删除实例";enabled:!!page.selected;onTriggered:desktop.action("actionDeleteInstance",page.selected.id)}
  }
  AppMenu {id:launchMenu
   MD.MenuItem {text:"启动游戏";onTriggered:app.start(page.selected,"")}
-  MD.MenuItem {text:"离线启动";enabled:!!page.selected&&!page.selected.external;onTriggered:desktop.action("actionLaunchInstanceOffline",page.selected.id)}
+  MD.MenuItem {text:"离线启动";enabled:!!page.selected;onTriggered:desktop.action("actionLaunchInstanceOffline",page.selected.id)}
   MD.MenuItem {text:"查看日志";onTriggered:page.detailTab=4}
  }
  AppDialog {id:rootsDialog;title:"实例目录";width:Math.min(page.width-40,650);modal:true;standardButtons:Dialog.Close
   ColumnLayout {width:parent.width;spacing:12
    AppLabel { textFormat: Text.PlainText;text:"DeeraftApp";font.weight:Font.DemiBold}
-   Repeater {model:externalGames.roots;RowLayout {required property var modelData;Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:modelData.path;Layout.fillWidth:true;elide:Text.ElideMiddle}ActionButton {text:"刷新";flat:true;onClicked:externalGames.scanRoot(modelData.id)}ActionButton {text:"移除关联";flat:true;onClicked:externalGames.removeRoot(modelData.id)}}}
-   ActionButton {text:"关联目录";symbol:"add";onClicked:{var path=desktop.chooseDirectory();if(path)externalGames.addRoot(path)}}
+   Repeater {model:externalGames.roots;RowLayout {required property var modelData;Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:modelData.path;Layout.fillWidth:true;elide:Text.ElideMiddle}ActionButton {text:"刷新";flat:true;onClicked:externalGames.scanRoot(modelData.id)}ActionButton {text:"移除目录";flat:true;enabled:!app.allInstances.some(function(row){return row.rootId===modelData.id&&row.running});onClicked:externalGames.removeRoot(modelData.id)}}}
+   ActionButton {text:"添加实例目录";symbol:"add";onClicked:{var path=desktop.chooseDirectory();if(path)externalGames.addRoot(path)}}
   }
  }
  AppDialog {id:groupDialog;title:"分组";width:400;modal:true;standardButtons:Dialog.Save|Dialog.Cancel;onAccepted:library.setMetadata(page.selected.id,{group:externalGroup.text.trim()});AppTextField {id:externalGroup;width:parent.width;placeholderText:"分组名称"}}

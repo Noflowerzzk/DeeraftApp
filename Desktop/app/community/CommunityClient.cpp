@@ -132,6 +132,8 @@ CommunityClient::CommunityClient(const QString& dataDirectory, QObject* parent)
         if (!m_refreshToken.isEmpty() && tokenExpiring()) refreshAccess([](bool) {});
     });
     m_sessionTimer.start();
+    auto liveTimer=new QTimer(this);liveTimer->setInterval(60000);
+    connect(liveTimer,&QTimer::timeout,this,[this]{if(m_authenticated)loadLiveRooms();});liveTimer->start();
 }
 
 CommunityClient::~CommunityClient() { stopFeeds(); }
@@ -191,12 +193,13 @@ QNetworkReply* CommunityClient::request(const QByteArray& method, const QString&
         if (method != "GET") req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
         reply = m_network.sendCustomRequest(req, method, payload.isUndefined() || payload.isNull() ? QByteArray{} : compact(payload));
     }
-    ++m_pending;
+    const bool foreground=method!="GET";
+    if(foreground)++m_pending;
     emit changed();
     const int generation = m_generation;
     connect(reply, &QNetworkReply::finished, this,
-            [this, reply, method, path, payload, success, failure, auth, retried, multipart, usedToken, generation] {
-        --m_pending;
+            [this, reply, method, path, payload, success, failure, auth, retried, multipart, usedToken, generation, foreground] {
+        if(foreground)--m_pending;
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         const auto bytes = reply->readAll();
         QJsonParseError parseError;
@@ -386,6 +389,7 @@ void CommunityClient::refresh()
     m_error.clear();
     request("GET", "/api/v1/community/status", {}, [this](const QJsonValue& v) { m_community = v.toObject().toVariantMap(); emit changed(); });
     request("GET", "/api/v1/servers", {}, [this](const QJsonValue& v) { m_servers = v.toArray().toVariantList(); emit changed(); });
+    request("GET", "/api/v1/servers/status", {}, [this](const QJsonValue& v) { m_hostedStatus=v.toObject().toVariantMap();emit changed(); });
     request("GET", "/api/v1/servers/player/me/playtime", {}, [this](const QJsonValue& v) {
         m_playtime = v.toArray().toVariantList();
         std::stable_sort(m_playtime.begin(), m_playtime.end(), [](const QVariant& a, const QVariant& b) {
@@ -521,6 +525,7 @@ void CommunityClient::loadLiveRooms()
 {
     request("GET", "/api/v1/servers/live/rooms", {}, [this](const QJsonValue& v) {
         m_liveRooms = v.toArray().toVariantList(); emit changed();
+        for(const auto& room:m_liveRooms)loadLiveStatus(room.toMap().value("roomId").toString());
     });
 }
 
@@ -534,8 +539,10 @@ void CommunityClient::saveLiveRooms(const QVariantList& rooms)
 void CommunityClient::loadLiveStatus(const QString& id)
 {
     request("GET", "/api/v1/servers/live/status?room_id=" + segment(id), {}, [this, id](const QJsonValue& v) {
-        emit liveStatusReceived(id, v.toObject().toVariantMap());
-    });
+        const auto data=v.toObject().value("data").toObject();
+        for(auto& value:m_liveRooms){auto row=value.toMap();if(row.value("roomId").toString()!=id)continue;row["checked"]=data.contains("live_status");row["statusError"]=!data.contains("live_status");row["live"]=data.value("live_status").toInt()==1;value=row;}
+        emit changed();emit liveStatusReceived(id, v.toObject().toVariantMap());
+    },[this,id](int,const QString&){for(auto& value:m_liveRooms){auto row=value.toMap();if(row.value("roomId").toString()!=id)continue;row["statusError"]=true;value=row;}emit changed();});
 }
 
 void CommunityClient::loadLogs(const QString& name, int lines)

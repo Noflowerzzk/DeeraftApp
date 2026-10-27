@@ -4,12 +4,14 @@ import QtQuick.Controls
 import QtQuick.Layouts
 
 MD.Pane {
-    id: page; required property var app; padding: 24; backgroundColor: app.surface
+    id: page; objectName: "serversPage"; required property var app; padding: 24; backgroundColor: app.surface
     property string selected: ""
     property string pendingAction: ""
     property bool admin: communityClient.profile.role === "admin"
     function operate(action, name) { selected = name; pendingAction = action; confirm.open() }
     property bool onlyRunning:false
+    function serverRunning(server){var state=communityClient.hostedStatus;if(state.server_name===server.name && state.is_running!==undefined)return !!state.is_running;return !!(server.is_running||server.running||server.status==="running")}
+
     ScrollView {
      id: serverScroll
      anchors.fill: parent
@@ -33,11 +35,12 @@ MD.Pane {
        Layout.fillWidth: true
        spacing: 24
        Repeater {
-        model: communityClient.servers.filter(function(server){return !page.onlyRunning || server.is_running || server.running || server.status==="running"})
+        model: communityClient.servers.filter(function(server){return !page.onlyRunning || page.serverRunning(server)})
         MD.Pane {
          id: serverCard
+         objectName: "serverCard"
          required property var modelData
-         readonly property bool running: !!(modelData.is_running||modelData.running||modelData.status==="running")
+         readonly property bool running: page.serverRunning(modelData)
          readonly property int artHeight: app.width<=1050?190:240
          width: serverFlow.width<760?serverFlow.width:(serverFlow.width-24)/2
          height: artHeight+40+serverBody.implicitHeight+24
@@ -142,7 +145,7 @@ MD.Pane {
      ColumnLayout {width:parent.width;spacing:16
       AppTextField {id:personalName;placeholderText:"名称";Layout.fillWidth:true}
       AppTextField {id:personalAddress;placeholderText:"服务器地址（可含端口）";Layout.fillWidth:true}
-      AppSelect {id:personalInstance;caption:"关联实例";model:[{id:"",name:"未关联实例"}].concat(app.allInstances);textRole:"name";valueRole:"id";Layout.fillWidth:true}
+      AppSelect {id:personalInstance;caption:"关联实例";model:[{id:"",name:"未选择实例"}].concat(app.instanceChoices);textRole:"name";valueRole:"id";Layout.fillWidth:true}
       AppLabel { textFormat: Text.PlainText;text:library.error;visible:!!text;wrapMode:Text.Wrap;Layout.fillWidth:true;color:app.colors.error}
       RowLayout {Item {Layout.fillWidth:true}ActionButton {text:"取消";flat:true;onClicked:personalServer.close()}ActionButton {text:"保存";highlighted:true;onClicked:{if(library.saveServer(page.personalId,personalName.text,personalAddress.text,personalInstance.currentValue||""))personalServer.close()}}}
      }

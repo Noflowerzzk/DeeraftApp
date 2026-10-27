@@ -6,11 +6,41 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <QTcpServer>
+#include <QTcpSocket>
+#include <QNetworkProxy>
 
 class CommunityClientTest : public QObject
 {
     Q_OBJECT
 private slots:
+    void backgroundReadsDoNotKeepGlobalSpinnerActive()
+    {
+        QTemporaryDir dir;CommunityClient client(dir.path());QTcpServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        client.m_network.setProxy(QNetworkProxy(QNetworkProxy::HttpProxy,"127.0.0.1",server.serverPort()));
+        connect(&server,&QTcpServer::newConnection,this,[&]{auto socket=server.nextPendingConnection();connect(socket,&QTcpSocket::readyRead,socket,[socket]{socket->readAll();socket->write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}");socket->disconnectFromHost();});connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);});
+        bool read=false,write=false;
+        client.request("GET","/api/v1/probe",{},[&](const QJsonValue&){read=true;});
+        QVERIFY(!client.busy());QTRY_VERIFY(read);
+        client.request("POST","/api/v1/probe",QJsonObject{},[&](const QJsonValue&){write=true;});
+        QVERIFY(client.busy());QTRY_VERIFY(write);QVERIFY(!client.busy());
+    }
+
+    void liveStatusUsesRoomIdAndBackendName()
+    {
+        QTemporaryDir dir;CommunityClient client(dir.path());QTcpServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost));
+        client.m_network.setProxy(QNetworkProxy(QNetworkProxy::HttpProxy,"127.0.0.1",server.serverPort()));
+        bool numericRoomRequested=false;
+        connect(&server,&QTcpServer::newConnection,this,[&]{auto socket=server.nextPendingConnection();connect(socket,&QTcpSocket::readyRead,socket,[socket,&numericRoomRequested]{
+            const auto request=socket->readAll();const bool status=request.contains("/live/status?room_id=123");numericRoomRequested|=status;
+            const QByteArray body=status?QByteArray(R"({"data":{"live_status":1}})"):QByteArray(R"([{"id":"different-id","roomId":"123","name":"Streamer"}])");
+            socket->write("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: "+QByteArray::number(body.size())+"\r\nConnection: close\r\n\r\n"+body);socket->disconnectFromHost();});connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);});
+        client.loadLiveRooms();QTRY_VERIFY(!client.liveRooms().isEmpty()&&client.liveRooms().first().toMap().value("checked").toBool());
+        QVERIFY(numericRoomRequested);QVERIFY(client.liveRooms().first().toMap().value("live").toBool());
+        QCOMPARE(client.liveRooms().first().toMap().value("name").toString(),QString("Streamer"));QVERIFY(!client.busy());
+    }
     void activitySnapshotsDoNotNotifyAndUpdatesDeduplicate()
     {
         QTemporaryDir dir;

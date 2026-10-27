@@ -41,9 +41,9 @@ try{
   await command('Page.navigate',{url:file});await waitFor('!!window.designApp');await evaluate('document.fonts.ready');await pause(500);
   await check('实例筛选为自绘Material菜单，不使用原生select',"document.querySelectorAll('.library-selectors select').length===0 && document.querySelectorAll('.library-selectors [role=combobox]').length===2");
   await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");
-  await waitFor("document.querySelector('[aria-label=\"实例目录\"]').getAttribute('aria-expanded')==='true' && document.querySelector('.m3-select-menu').style.opacity==='1'");
+  await waitFor("document.querySelector('[aria-label=\"实例目录\"]').getAttribute('aria-expanded')==='true' && document.querySelector('.m3-select-menu').checkVisibility()");
   await check('菜单有来源说明与选中标记',"document.querySelectorAll('.m3-select-menu')[0].querySelectorAll('[role=option]').length===4 && document.querySelector('.m3-select-menu [aria-selected=true]').textContent.includes('全部目录')");
-  await waitFor("document.querySelector('.m3-select-menu').style.clipPath==='none'");await shot('material-menu-light');
+  await waitFor("getComputedStyle(document.querySelector('.m3-select-menu')).clipPath==='none'");await shot('material-menu-light');
   await key('End');await waitFor("document.activeElement.dataset.value==='PCL'");await check('End定位末项',"document.activeElement.dataset.value==='PCL'");
   await key('Enter');await waitFor("window.designApp.sourceFilter==='PCL'");
   await check('Enter选择、同步筛选并归还焦点',"window.designApp.filteredInstances.length===1 && document.activeElement.getAttribute('aria-label')==='实例目录'");
@@ -57,10 +57,10 @@ try{
   await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await evaluate("document.querySelector('h1').click()");await waitFor("document.querySelector('[aria-label=\"实例目录\"]').getAttribute('aria-expanded')==='false'");
   await check('点击外部关闭',"document.querySelector('.m3-select-menu').inert");
   const motion=await evaluate(`new Promise(resolve=>{const menu=document.querySelector('.m3-select-menu'),button=document.querySelector('[aria-label="实例目录"]');button.click();const start=performance.now(),samples=[];function tick(){samples.push({t:performance.now()-start,opacity:Number(menu.style.opacity),transform:menu.style.transform});if(performance.now()-start<450)requestAnimationFrame(tick);else resolve(samples);}requestAnimationFrame(tick);})`);
-  tests.push({name:'菜单空间弹簧与透明度effects分离',passed:motion.some(s=>s.opacity>0&&s.opacity<1)&&motion.every(s=>s.opacity>=0&&s.opacity<=1)&&new Set(motion.map(s=>s.transform)).size>3,samples:motion});
-  await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await pause(50);await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await waitFor("document.querySelector('.m3-select-menu').style.opacity==='1'");
-  await check('菜单途中反向后稳定展开',"getComputedStyle(document.querySelector('.m3-select-menu')).visibility==='visible' && document.querySelector('[aria-label=\"实例目录\"]').getAttribute('aria-expanded')==='true'");
-  await evaluate("window.designApp.setTheme('dark')");await waitFor("document.querySelector('.m3-select-menu').style.clipPath==='none'");await shot('material-menu-dark');await key('Escape');await evaluate("window.designApp.setTheme('light');window.designApp.groupFilter='all'");
+  tests.push({name:'目录菜单按新批注即时切换，无位置或透明度动画',passed:motion.every(s=>s.transform===''&&s.opacity===0),samples:motion});
+  await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await pause(50);await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await waitFor("document.querySelector('.m3-select-menu').checkVisibility()");
+  await check('菜单途中反向后稳定展开',"document.querySelector('.m3-select-menu').checkVisibility() && document.querySelector('[aria-label=\"实例目录\"]').getAttribute('aria-expanded')==='true'");
+  await evaluate("window.designApp.setTheme('dark')");await waitFor("getComputedStyle(document.querySelector('.m3-select-menu')).clipPath==='none'");await shot('material-menu-dark');await key('Escape');await evaluate("window.designApp.setTheme('light');window.designApp.groupFilter='all'");
   await evaluate("document.querySelector('.detail-tabs button:nth-of-type(2)').click()");await waitFor("window.designApp.detailTab==='模组'");
   await pause(500);await check('标签指示条移动到选中项',"Math.abs(parseFloat(document.querySelector('.detail-tab-indicator').style.left)-(document.querySelector('.detail-tabs button.active').offsetLeft+document.querySelector('.detail-tabs button.active').offsetWidth*.28))<1");
   await evaluate("window.designApp.openThirdParty()");await waitFor("window.designApp.thirdPartyOpen && document.querySelector('[aria-label=\"第三方服务器配置\"]').checkVisibility()");await pause(500);
@@ -77,8 +77,8 @@ try{
   await evaluate("window.designApp.refreshServerStatus('demo-online');window.designApp.removeThirdParty('demo-online')");await pause(1100);
   await check('移除服务器后丢弃迟到的状态响应',"!window.designApp.serverStatuses['demo-online'] && !window.designApp.thirdPartyServers.some(s=>s.id==='demo-online')");
   await evaluate("localStorage.removeItem('deeraft-design-server-config');window.designApp.setPage('launcher')");await waitFor("window.designApp.page==='launcher'");await pause(300);
-  await evaluate("window.designApp.toggleMotion();document.querySelector('[aria-label=\"实例目录\"]').click()");await waitFor("document.querySelector('.m3-select-menu').style.opacity==='1'");
-  await check('减少动态效果时菜单直接落位',"document.querySelector('.m3-select-menu').style.transform==='translateY(0px)'");
+  await evaluate("window.designApp.toggleMotion();document.querySelector('[aria-label=\"实例目录\"]').click()");await waitFor("document.querySelector('.m3-select-menu').checkVisibility()");
+  await check('减少动态效果时菜单直接落位',"getComputedStyle(document.querySelector('.m3-select-menu')).transform==='none'");
   await key('Escape');await evaluate("window.designApp.toggleMotion()");
   for(const [width,height] of [[1080,800],[920,720]]){
     await command('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});await pause(300);await evaluate("document.querySelector('[aria-label=\"实例目录\"]').click()");await pause(400);

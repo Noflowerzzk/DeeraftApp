@@ -28,148 +28,148 @@
     "passed": true
   },
   {
-    "name": "菜单空间弹簧与透明度effects分离",
+    "name": "目录菜单按新批注即时切换，无位置或透明度动画",
     "passed": true,
     "samples": [
       {
-        "t": 15.600000023841858,
-        "opacity": 0.362249,
-        "transform": "translateY(7.58741px)"
+        "t": 3.800000011920929,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 31.5,
-        "opacity": 0.660324,
-        "transform": "translateY(5.7258px)"
+        "t": 20.19999998807907,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 48,
-        "opacity": 0.825926,
-        "transform": "translateY(3.69891px)"
+        "t": 36.19999998807907,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 64.80000001192093,
-        "opacity": 0.911098,
-        "transform": "translateY(1.95453px)"
+        "t": 53.5,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 82.60000002384186,
-        "opacity": 0.954847,
-        "transform": "translateY(0.656239px)"
+        "t": 69.80000001192093,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 98.19999998807907,
-        "opacity": 0.977073,
-        "transform": "translateY(-0.164365px)"
+        "t": 86.59999996423721,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 115.60000002384186,
-        "opacity": 0.988359,
-        "transform": "translateY(-0.580746px)"
+        "t": 104,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 131.80000001192093,
-        "opacity": 0.994067,
-        "transform": "translateY(-0.704142px)"
+        "t": 120.30000001192093,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 148.80000001192093,
-        "opacity": 0.996988,
-        "transform": "translateY(-0.647551px)"
+        "t": 136.5,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 164.69999998807907,
-        "opacity": 0.998465,
-        "transform": "translateY(-0.50346px)"
+        "t": 153.80000001192093,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 181.30000001192093,
-        "opacity": 0.999221,
-        "transform": "translateY(-0.335955px)"
+        "t": 170,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 198.60000002384186,
-        "opacity": 0.999604,
-        "transform": "translateY(-0.185696px)"
+        "t": 186.39999997615814,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 214.39999997615814,
-        "opacity": 1,
-        "transform": "translateY(-0.0713384px)"
+        "t": 203,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 232.5,
-        "opacity": 1,
-        "transform": "translateY(0.0030078px)"
+        "t": 220.30000001192093,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 248.5,
-        "opacity": 1,
-        "transform": "translateY(0.0431336px)"
+        "t": 236.5999999642372,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 264.80000001192093,
-        "opacity": 1,
-        "transform": "translateY(0.0572946px)"
+        "t": 253.0999999642372,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 281.60000002384186,
-        "opacity": 1,
-        "transform": "translateY(0.0549115px)"
+        "t": 270,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 298,
-        "opacity": 1,
-        "transform": "translateY(0.0440131px)"
+        "t": 287,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 316.10000002384186,
-        "opacity": 1,
-        "transform": "translateY(0.0302984px)"
+        "t": 303.0999999642372,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 331.30000001192093,
-        "opacity": 1,
-        "transform": "translateY(0.0174312px)"
+        "t": 319.5,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 348.39999997615814,
-        "opacity": 1,
-        "transform": "translateY(0.0074637px)"
+        "t": 336.69999998807907,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 364.80000001192093,
-        "opacity": 1,
-        "transform": "translateY(0.0006979px)"
+        "t": 353.0999999642372,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 381.39999997615814,
-        "opacity": 1,
-        "transform": "translateY(-0.0030832px)"
+        "t": 370.30000001192093,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 398.80000001192093,
-        "opacity": 1,
-        "transform": "translateY(0px)"
+        "t": 386.19999998807907,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 414.80000001192093,
-        "opacity": 1,
-        "transform": "translateY(0px)"
+        "t": 403.0999999642372,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 430.89999997615814,
-        "opacity": 1,
-        "transform": "translateY(0px)"
+        "t": 419.69999998807907,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 447.69999998807907,
-        "opacity": 1,
-        "transform": "translateY(0px)"
+        "t": 436.69999998807907,
+        "opacity": 0,
+        "transform": ""
       },
       {
-        "t": 464.5,
-        "opacity": 1,
-        "transform": "translateY(0px)"
+        "t": 453.5999999642372,
+        "opacity": 0,
+        "transform": ""
       }
     ]
   },

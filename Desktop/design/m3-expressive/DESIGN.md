@@ -84,7 +84,12 @@ CSS 形状变化使用官网提供的 Web 近似曲线；按钮为 fast spatial�
 - 状态属于短期运行信息，不写入个人服务器配置。正式客户端在本地用 Minecraft Java Server List Ping 查询，保留 SRV、协议/超时处理与缓存；不将个人服务器地址发送到网站后端。显示服务端返回的实际版本，关联实例版本不充当服务端版本。
 - HTML 无法建立 Minecraft TCP 查询连接。本稿刷新仅演示“检测中→查询失败”，不把任意输入的服务器伪装成在线。`index.html?state=server-status` 展示在线、离线及失败三种设计数据，不表示真实查询；真实接入仍在原生客户端阶段。
 - 实例目录和分组改为自绘 M3 filled select + 单选菜单。移除这两个选择器的系统原生弹出层；包含 tonal surface、标签、展开箭头、选中标记、来源路径、hover / focus state layer。支持 Enter / Space、方向键、Home / End、Escape、Tab、前缀检索与外部点击关闭，并将焦点归还触发器。
-- 菜单位置 / 裁切展开用 fastSpatial，透明度单独用 fastEffects；展开和收起可以打断并反向。过滤后列表用 FLIP 记录原位置，现有条目平移，新条目短距离进入；空间与 effects 分开，文本不做整体缩放。
+- 按最新批注，实例目录与分组菜单直接显示 / 收起，不再使用菜单弹簧、透明度动画或箭头过渡，筛选后的列表也直接更新。弹层复用启动菜单的表面色、20px 圆角、阴影、8px 内边距和 44px 选项行。
 - 实例标签的指示条使用 fastSpatial 平移与变宽，替代原先瞬间换位。配置对话框用 defaultSpatial 进入，透明度用 fastEffects；状态反馈只短促淡入。沿用全局减少动态效果设置，正在进行的 Spring 在下一帧直接到目标值。
 
 原文依据：[Motion physics — How it works](https://m3.material.io/styles/motion/overview/how-it-works)、[Menus guidelines](https://m3.material.io/components/menus/guidelines)。前者区分可回弹的 spatial 与不回弹的 effects，并按元素覆盖面积区分快 / 默认 / 慢；本稿使用已有官方 token 数值，不额外发明另一套参数。
+
+
+### 下拉菜单层级修正
+
+三点菜单的 z-index 高于整个 library-selectors 堆叠上下文；打开三点菜单会关闭目录与分组菜单，两个选择菜单也互斥。三点触发器停止 click 冒泡，避免尚在退出过渡中的弹层将快速重开误判成外部点击。已经检查明暗主题下三个菜单项中心点的实际命中元素，确认没有被选择器遮住。目录和分组的键盘操作仍保留。

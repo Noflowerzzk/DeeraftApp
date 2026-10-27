@@ -1,0 +1,43 @@
+[
+  {
+    "name": "目录菜单即时出现且无动画",
+    "passed": true
+  },
+  {
+    "name": "箭头无旋转过渡",
+    "passed": true
+  },
+  {
+    "name": "目录菜单与启动菜单样式一致",
+    "passed": true
+  },
+  {
+    "name": "三点菜单出现时关闭目录菜单",
+    "passed": true
+  },
+  {
+    "name": "三点菜单不会被选择栏遮住",
+    "passed": true
+  },
+  {
+    "name": "分组菜单打开时关闭三点菜单",
+    "passed": true
+  },
+  {
+    "name": "分组菜单即时显示且无动画",
+    "passed": true
+  },
+  {
+    "name": "选择分组仍正确过滤，列表不做重排动效",
+    "passed": true
+  },
+  {
+    "name": "深色主题三点菜单仍在选择栏上方",
+    "passed": true
+  },
+  {
+    "name": "无运行时异常",
+    "passed": true,
+    "details": []
+  }
+]

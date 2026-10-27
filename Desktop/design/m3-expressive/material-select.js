@@ -4,13 +4,16 @@ document.addEventListener('alpine:init', () => {
   Alpine.data('materialSelect', options => ({
     value: 'all', open: false, active: 'all', options, menuId: 'material-options-'+(++nextId), typed: '', typedTimer: 0,
     get selectedLabel() { return this.options().find(option => option.value===this.value)?.label || ''; },
+    init() { this.$watch('libraryMenu', open => { if(open)this.close(false); }); },
     toggle() { this.open ? this.close(true) : this.focusOption(0); },
     focusOption(direction) {
+      this.libraryMenu=false;
+      this.$dispatch('select-open',{id:this.menuId});
       this.$refs.trigger.focus({preventScroll:true});
       this.open=true;
       const options=this.options();
       this.active=direction==='first'?options[0].value:direction==='last'?options.at(-1).value:this.value;
-      this.$nextTick(() => { if(this.open){DeeraftMotion.disclose(this.$refs.menu,true);this.focusActive();} });
+      this.$nextTick(() => { if(this.open){this.focusActive();} });
     },
     focusActive() { if(!this.open)return; [...this.$refs.menu.querySelectorAll('[role=option]')].find(item=>item.dataset.value===this.active)?.focus({preventScroll:true}); },
     move(direction) {
@@ -20,11 +23,9 @@ document.addEventListener('alpine:init', () => {
       this.$nextTick(() => this.focusActive());
     },
     choose(value) {
-      DeeraftMotion.captureList(document.querySelector('.instance-list'));
       this.value=value; this.close(true);
-      this.$nextTick(() => requestAnimationFrame(() => DeeraftMotion.settleList(document.querySelector('.instance-list'))));
     },
-    close(restoreFocus) { this.open=false; DeeraftMotion.disclose(this.$refs.menu,false); if(restoreFocus)this.$refs.trigger.focus({preventScroll:true}); },
+    close(restoreFocus) { this.open=false; if(restoreFocus)this.$refs.trigger.focus({preventScroll:true}); },
     typeahead(event) {
       if(event.key.length!==1 || event.ctrlKey || event.metaKey || event.altKey || event.key===' ')return;
       clearTimeout(this.typedTimer); this.typed+=event.key.toLowerCase();

@@ -1,0 +1,137 @@
+import QtQuick
+import Qcm.Material as MD
+import Qcm.Material.Layouts as Lite
+
+MD.SelectionButtonBase {
+    id: control
+
+    property MD.StateFilterChip mdState: MD.StateFilterChip {
+        focusIndicationEnabled: false
+        item: control
+    }
+
+    Binding {
+        control.mdState.selected: control.selected
+    }
+
+    property alias elevated: control.mdState.elevated
+
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+
+    leftInset: 0
+    rightInset: 0
+    topInset: 0
+    bottomInset: 0
+    verticalPadding: 0
+    leftPadding: control.selected ? 8 : 16
+    rightPadding: !icon.empty ? 8 : 16
+    spacing: 8
+
+    Behavior on leftPadding {
+        NumberAnimation {
+            duration: MD.Token.duration.short1
+            easing: MD.Token.easing.linear
+        }
+    }
+
+    icon.width: 18
+    icon.height: 18
+    icon.color: control.mdState.trailingIconColor
+    font.capitalization: Font.MixedCase
+
+    contentItem: Lite.Row {
+        alignment: Qt.AlignHCenter | Qt.AlignVCenter
+        opacity: control.mdState.contentOpacity
+
+        Item {
+            id: m_leading
+            // Direct bindings (not State.PropertyChanges) so the leading-icon
+            // width tracks the inner Row even for chips that are unchecked at
+            // construction. PropertyChanges captures the binding's *value* at
+            // state-entry time, which for chips first entering "hidden" before
+            // their children exist froze implicitWidth at 0 forever — every
+            // chip past index 0 in a Repeater never showed its check icon.
+            //
+            // `visible` is driven by `implicitWidth` (animated on the GUI
+            // thread) rather than `opacity` — OpacityAnimator runs on the
+            // render thread and never ticks the QML-side opacity value, so
+            // an opacity-derived visible would only flip at the animation
+            // edges and the icon would pop instead of fade.
+            implicitWidth: control.selected ? m_leading_inner.implicitWidth : 0
+            implicitHeight: m_leading_inner.implicitHeight
+            opacity: control.selected ? 1 : 0
+            visible: implicitWidth > 0
+
+            Behavior on implicitWidth {
+                NumberAnimation {
+                    duration: MD.Token.duration.short2
+                    easing: MD.Token.easing.linear
+                }
+            }
+            Behavior on opacity {
+                OpacityAnimator {
+                    duration: MD.Token.duration.short2
+                    easing: MD.Token.easing.linear
+                }
+            }
+
+            Lite.Row {
+                id: m_leading_inner
+                rightPadding: control.spacing
+                alignment: Qt.AlignVCenter
+
+                MD.Icon {
+                    name: MD.Token.icon.check
+                    size: control.icon.width
+                    color: control.mdState.leadingIconColor
+                }
+            }
+        }
+
+        Lite.Row {
+            alignment: Qt.AlignVCenter
+            spacing: control.spacing
+            Lite.Layout.fillWidth: true
+
+            MD.Label {
+                text: control.text
+                verticalAlignment: Text.AlignVCenter
+                typescale: MD.Token.typescale.label_large
+                wrapMode: Text.NoWrap
+                Lite.Layout.fillWidth: true
+            }
+
+            MD.IconView {
+                visible: !icon.empty
+                icon: control.icon
+            }
+        }
+    }
+
+    background: MD.ElevationRectangle {
+        implicitWidth: 32
+        implicitHeight: 32
+
+        radius: 8
+        color: control.mdState.backgroundColor
+        opacity: control.mdState.backgroundOpacity
+
+        border.width: control.selected ? 0 : 1
+        border.color: control.mdState.outlineColor
+        elevation: control.mdState.elevation
+
+        MD.Ripple {
+            anchors.fill: parent
+            radius: parent.radius
+            interactionSource: control.interactionSource
+            indication: control.mdState.indication
+            color: control.mdState.stateLayerColor
+        }
+
+        MD.FocusIndicator {
+            corners: MD.Util.corners(parent.radius)
+            active: control.focusVisible
+        }
+    }
+}

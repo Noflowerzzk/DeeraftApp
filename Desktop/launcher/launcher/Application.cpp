@@ -1542,7 +1542,7 @@ bool Application::launch(BaseInstance* instance,
         if (window) {
             controller->setParentWidget(window);
         } else if (m_mainWindow) {
-            controller->setParentWidget(m_mainWindow);
+            controller->setParentWidget(m_mainWindow->deeraftWindow());
         }
         connect(controller.get(), &LaunchController::finished, this, &Application::controllerFinished);
         addRunningInstance();
@@ -1660,17 +1660,16 @@ void Application::ShowGlobalSettings(class QWidget* parent, QString open_page)
 MainWindow* Application::showMainWindow(bool minimized)
 {
     if (m_mainWindow) {
-        m_mainWindow->setWindowState(m_mainWindow->windowState() & ~Qt::WindowMinimized);
-        m_mainWindow->raise();
-        m_mainWindow->activateWindow();
+        auto window=m_mainWindow->deeraftWindow();
+        window->setWindowState(window->windowState() & ~Qt::WindowMinimized);
+        window->show();window->raise();window->activateWindow();
     } else {
         m_mainWindow = new MainWindow();
-        m_mainWindow->restoreState(QByteArray::fromBase64(APPLICATION->settings()->get("MainWindowState").toString().toUtf8()));
-        m_mainWindow->restoreGeometry(QByteArray::fromBase64(APPLICATION->settings()->get("MainWindowGeometry").toString().toUtf8()));
+        // App window geometry is independent of the legacy Prism toolbar state.
 
         m_mainWindow->deeraftSetAdvanced(false);
         if (minimized) {
-            m_mainWindow->showMinimized();
+            m_mainWindow->deeraftWindow()->showMinimized();
         } else {
             m_mainWindow->show();
         }
@@ -1744,7 +1743,7 @@ void Application::on_windowClose()
         auto& extras = m_instanceExtras[instWindow->instanceId()];
         extras.window = nullptr;
         if (extras.controller) {
-            extras.controller->setParentWidget(m_mainWindow);
+            extras.controller->setParentWidget(m_mainWindow->deeraftWindow());
         }
     }
     auto mainWindow = qobject_cast<MainWindow*>(sender());

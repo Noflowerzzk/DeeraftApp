@@ -1,0 +1,114 @@
+#pragma once
+
+#include <QtCore/QList>
+#include <QtCore/QMetaObject>
+#include <QtCore/QPointer>
+#include <QtQml/QQmlEngine>
+
+namespace qml_material
+{
+class PageContext : public QObject {
+    Q_OBJECT
+    QML_ELEMENT
+    Q_PROPERTY(PageContext* inherit READ inherit WRITE setInherit NOTIFY inheritChanged FINAL)
+    Q_PROPERTY(QObject* leadingAction READ leadingAction WRITE setLeadingAction RESET
+                   resetLeadingAction NOTIFY leadingActionChanged FINAL)
+    Q_PROPERTY(qint32 headerType READ headerType WRITE setHeaderType RESET resetHeaderType NOTIFY
+                   headerTypeChanged FINAL)
+    Q_PROPERTY(qint32 backgroundRadius READ backgroundRadius WRITE setBackgroundRadius RESET
+                   resetBackgroundRadius NOTIFY backgroundRadiusChanged FINAL)
+    Q_PROPERTY(
+        double headerBackgroundOpacity READ headerBackgroundOpacity WRITE setHeaderBackgroundOpacity
+            RESET resetHeaderBackgroundOpacity NOTIFY headerBackgroundOpacityChanged FINAL)
+    Q_PROPERTY(
+        qint32 radius READ radius WRITE setRadius RESET resetRadius NOTIFY radiusChanged FINAL)
+    Q_PROPERTY(bool showHeader READ showHeader WRITE setShowHeader RESET resetShowHeader NOTIFY
+                   showHeaderChanged FINAL)
+    Q_PROPERTY(bool showBackground READ showBackground WRITE setShowBackground RESET
+                   resetShowBackground NOTIFY showBackgroundChanged FINAL)
+    Q_PROPERTY(qint32 leftMargin READ leftMargin WRITE setLeftMargin RESET resetLeftMargin NOTIFY
+                   leftMarginChanged FINAL)
+    Q_PROPERTY(qint32 rightMargin READ rightMargin WRITE setRightMargin RESET resetRightMargin
+                   NOTIFY rightMarginChanged FINAL)
+    Q_PROPERTY(qint32 topMargin READ topMargin WRITE setTopMargin RESET resetTopMargin NOTIFY
+                   topMarginChanged FINAL)
+    Q_PROPERTY(qint32 bottomMargin READ bottomMargin WRITE setBottomMargin RESET resetBottomMargin
+                   NOTIFY bottomMarginChanged FINAL)
+public:
+    PageContext(QObject* parent = nullptr);
+    ~PageContext();
+
+    auto inherit() const -> PageContext*;
+    auto leadingAction() const -> QObject*;
+    auto backgroundRadius() const -> qint32;
+    auto headerBackgroundOpacity() const -> double;
+    auto radius() const -> qint32;
+    auto headerType() const -> qint32;
+    auto showHeader() const -> bool;
+    auto showBackground() const -> bool;
+    auto leftMargin() const -> qint32;
+    auto rightMargin() const -> qint32;
+    auto topMargin() const -> qint32;
+    auto bottomMargin() const -> qint32;
+
+    Q_SLOT void setInherit(PageContext*);
+    Q_SLOT void setLeadingAction(QObject*);
+    Q_SLOT void setBackgroundRadius(qint32);
+    Q_SLOT void setHeaderBackgroundOpacity(double);
+    Q_SLOT void setRadius(qint32);
+    Q_SLOT void setHeaderType(qint32);
+    Q_SLOT void setShowHeader(bool);
+    Q_SLOT void setShowBackground(bool);
+    Q_SLOT void setLeftMargin(qint32);
+    Q_SLOT void setRightMargin(qint32);
+    Q_SLOT void setTopMargin(qint32);
+    Q_SLOT void setBottomMargin(qint32);
+
+    Q_SLOT void resetLeadingAction();
+    Q_SLOT void resetBackgroundRadius();
+    Q_SLOT void resetHeaderBackgroundOpacity();
+    Q_SLOT void resetRadius();
+    Q_SLOT void resetHeaderType();
+    Q_SLOT void resetShowHeader();
+    Q_SLOT void resetShowBackground();
+    Q_SLOT void resetLeftMargin();
+    Q_SLOT void resetRightMargin();
+    Q_SLOT void resetTopMargin();
+    Q_SLOT void resetBottomMargin();
+
+    Q_SIGNAL void inheritChanged();
+    Q_SIGNAL void leadingActionChanged();
+    Q_SIGNAL void backgroundRadiusChanged();
+    Q_SIGNAL void headerBackgroundOpacityChanged();
+    Q_SIGNAL void radiusChanged();
+    Q_SIGNAL void headerTypeChanged();
+    Q_SIGNAL void showHeaderChanged();
+    Q_SIGNAL void showBackgroundChanged();
+    Q_SIGNAL void leftMarginChanged();
+    Q_SIGNAL void rightMarginChanged();
+    Q_SIGNAL void topMarginChanged();
+    Q_SIGNAL void bottomMarginChanged();
+
+    Q_SIGNAL void pushItem(const QJSValue& url_or_comp, const QVariantMap& props = {});
+    Q_SIGNAL void pop();
+
+private:
+    void disconnectInherit();
+    void notifyInheritedProperties();
+
+    QPointer<PageContext>          m_inherit;
+    QList<QMetaObject::Connection> m_inherit_connections;
+
+    std::optional<QObject*> m_leading_action;
+    std::optional<qint32>   m_header_type;
+    std::optional<qint32>   m_background_radius;
+    std::optional<double>   m_header_background_opacity;
+    std::optional<qint32>   m_radius;
+    std::optional<bool>     m_show_header;
+    std::optional<bool>     m_show_background;
+    std::optional<qint32>   m_left_margin;
+    std::optional<qint32>   m_right_margin;
+    std::optional<qint32>   m_top_margin;
+    std::optional<qint32>   m_bottom_margin;
+};
+} // namespace qml_material

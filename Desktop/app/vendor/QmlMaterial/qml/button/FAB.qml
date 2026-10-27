@@ -1,0 +1,175 @@
+import QtQuick
+import Qcm.Material as MD
+
+MD.CommandButtonBase {
+    id: control
+
+    property int color: MD.Enum.FABColorPrimary
+    property bool flat: false
+    property QtObject flickable: null
+    property MD.StateFAB mdState: MD.StateFAB {
+        focusIndicationEnabled: false
+        item: control
+    }
+
+    Binding {
+        control.mdState.color: control.color
+    }
+
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+
+    topInset: 0
+    bottomInset: 0
+    leftInset: 0
+    rightInset: 0
+
+    padding: _size(mdState.type, 8, 16, 30)
+    spacing: 0
+
+    icon.width: _size(mdState.type, 24, 24, 36)
+    icon.height: _size(mdState.type, 24, 24, 36)
+    icon.color: control.mdState.textColor
+    icon.weight: control.font.weight
+
+    font.weight: MD.Token.typescale.label_large.weight
+    font.pixelSize: Math.min(icon.width, icon.height)
+    font.family: MD.Token.font.icon_family
+
+    contentItem: Item {
+        implicitWidth: control.icon.width
+        implicitHeight: control.icon.height
+        MD.IconView {
+            anchors.centerIn: parent
+            icon: control.icon
+        }
+    }
+
+    background: MD.ElevationRectangle {
+        implicitWidth: control._size(control.mdState.type, 40, 56, 96)
+        implicitHeight: control._size(control.mdState.type, 40, 56, 96)
+
+        radius: control.mdState.corner
+        Behavior on radius {
+            NumberAnimation {
+                duration: MD.Token.duration.short2
+                easing: MD.Token.easing.standard
+            }
+        }
+        color: control.mdState.backgroundColor
+
+        border.width: control.mdState.type == MD.Enum.BtOutlined ? 1 : 0
+        border.color: control.mdState.ctx.color.outline
+
+        elevationVisible: elevation && color.a > 0 && !control.flat
+        elevation: control.mdState.elevation
+
+        MD.Ripple {
+            anchors.fill: parent
+            radius: parent.radius
+            interactionSource: control.interactionSource
+            indication: control.mdState.indication
+            color: control.mdState.stateLayerColor
+        }
+
+        MD.FocusIndicator {
+            corners: MD.Util.corners(parent.radius)
+            active: control.focusVisible
+        }
+    }
+
+    function _size(t, small, normal, large) {
+        return t == MD.Enum.FABSmall ? small : (t == MD.Enum.FABLarge ? large : normal);
+    }
+
+    MD.InputBlock {
+        id: m_input_block
+        when: m_show_state.state == 'hide'
+        target: control
+    }
+
+    Item {
+        id: m_show_state
+        visible: false
+        state: "show"
+        states: [
+            State {
+                name: "hide"
+                when: {
+                    const fk = control.flickable;
+                    const fk_end = fk && !MD.Util.epsilonEqual(fk.visibleArea.heightRatio, 1.0) && (1.0 - fk.visibleArea.heightRatio - fk.visibleArea.yPosition) * fk.height < 4.0;
+                    return !control.visible || fk_end;
+                }
+                PropertyChanges {
+                    control.scale: 0.5
+                    control.opacity: 0.0
+                }
+            },
+            State {
+                name: "show"
+                when: true
+                PropertyChanges {
+                    control.scale: 1.0
+                    control.opacity: 1.0
+                }
+            }
+        ]
+
+        transitions: [
+            Transition {
+                to: 'show'
+                ParallelAnimation {
+                    XAnimator {
+                        target: control
+                        from: control.x + 16
+                        to: control.x
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                    YAnimator {
+                        target: control
+                        from: control.y + 16
+                        to: control.y
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                    ScaleAnimator {
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                    OpacityAnimator {
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                }
+            },
+            Transition {
+                to: 'hide'
+                ParallelAnimation {
+                    XAnimator {
+                        target: control
+                        from: control.x
+                        to: control.x + 16
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                    YAnimator {
+                        target: control
+                        from: control.y
+                        to: control.y + 16
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                    ScaleAnimator {
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                    OpacityAnimator {
+                        duration: MD.Token.duration.short4
+                        easing: MD.Token.easing.linear
+                    }
+                }
+            }
+        ]
+    }
+}

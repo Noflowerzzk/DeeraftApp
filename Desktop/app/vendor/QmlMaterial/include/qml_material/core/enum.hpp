@@ -1,0 +1,238 @@
+#pragma once
+#include <QObject>
+#include <QQmlEngine>
+#include "qml_material/export.hpp"
+
+namespace qml_material
+{
+
+/**
+ * @brief Enum
+ *
+ */
+class QML_MATERIAL_API Enum : public QObject {
+    Q_OBJECT
+    QML_ELEMENT
+public:
+    using QObject::QObject;
+
+    enum class ThemeMode
+    {
+        Light = 0, ///< Light
+        Dark       ///< Dark
+    };
+    Q_ENUM(ThemeMode)
+
+    enum class IconLabelStyle
+    {
+        IconAndText = 0, ///< Icon And Test
+        IconOnly,        ///< Icon Only
+        TextOnly         ///< Text Only
+    };
+    Q_ENUM(IconLabelStyle)
+
+    enum class BusyState
+    {
+        Idle = 0,
+        Busy,
+        Progress
+    };
+    Q_ENUM(BusyState)
+
+    enum class ButtonSize
+    {
+        XS = 0,
+        S,
+        M,
+        L,
+        XL
+    };
+    Q_ENUM(ButtonSize)
+
+    enum class ButtonWidthMode
+    {
+        DefaultWidth = 0,
+        NarrowWidth,
+        WideWidth
+    };
+    Q_ENUM(ButtonWidthMode)
+
+    enum class ButtonType
+    {
+        BtElevated = 0, ///< Elevated
+        BtFilled,       ///< Filled
+        BtFilledTonal,  ///< Filled Tonal
+        BtOutlined,     ///< Outlined
+        BtText          ///< Text
+    };
+    Q_ENUM(ButtonType)
+
+    enum class IconButtonType
+    {
+        IBtFilled = 0,  ///< Filled
+        IBtFilledTonal, ///< Filled Tonal
+        IBtOutlined,    ///< Outlined
+        IBtStandard     ///< Standard
+    };
+    Q_ENUM(IconButtonType)
+
+    enum class FABType
+    {
+        FABSmall = 0, ///< Small floating action button
+        FABNormal,    ///< Normal sized floating action button
+        FABLarge      ///< Large floating action button
+    };
+    Q_ENUM(FABType)
+
+    enum class FABColor
+    {
+        FABColorPrimary = 0, ///< Primary color
+        FABColorSurfaec,     ///< Surface color
+        FABColorSecondary,   ///< Secondary color
+        FABColorTertiary,    ///< Tertiary color
+        FABColorSurface = FABColorSurfaec
+    };
+    Q_ENUM(FABColor)
+
+    enum class CardType
+    {
+        CardElevated = 0, ///< Elevated card style
+        CardFilled,       ///< Filled card style
+        CardOutlined      ///< Outlined card style
+    };
+    Q_ENUM(CardType)
+
+    enum class TextFieldType
+    {
+        TextFieldFilled = 0, ///< Filled text field style
+        TextFieldOutlined    ///< Outlined text field style
+    };
+    Q_ENUM(TextFieldType)
+
+    enum class ListItemHeightMode
+    {
+        ListItemOneLine = 0, ///< Single line list item
+        ListItemTwoLine,     ///< Two line list item
+        ListItemThreeLine    ///< Three line list item
+    };
+    Q_ENUM(ListItemHeightMode)
+
+    enum class TabType
+    {
+        PrimaryTab,  ///< Primary tab style
+        SecondaryTab ///< Secondary tab style
+    };
+    Q_ENUM(TabType)
+
+    enum class AppBarType
+    {
+        AppBarCenterAligned, ///< Center aligned app bar
+        AppBarSmall,         ///< Small app bar
+        AppBarMedium,        ///< Medium app bar
+        AppBarLarge          ///< Large app bar
+    };
+    Q_ENUM(AppBarType)
+
+    enum class ToastFlag
+    {
+        TFCloseable = 1,      ///< Toast can be closed
+        TFSave      = 1 << 1, ///< Toast can be saved
+    };
+    Q_ENUM(ToastFlag)
+    Q_DECLARE_FLAGS(ToastFlags, ToastFlag)
+
+    enum class WindowClassType
+    {
+        WindowClassCompact,    ///< Compact window size
+        WindowClassMedium,     ///< Medium window size
+        WindowClassExpanded,   ///< Expanded window size
+        WindowClassLarge,      ///< Large window size
+        WindowClassExtraLarge, ///< Extra large window size
+    };
+    Q_ENUM(WindowClassType)
+
+    enum class PaletteType
+    {
+        PaletteNeutral = 0,
+        PaletteRainbow,
+        PaletteTonalSpot,
+        PaletteMonochrome,
+        PaletteVibrant,
+        PaletteContent,
+        PaletteFidelity,
+        PaletteExpressive,
+        PaletteFruitSalad,
+    };
+    Q_ENUM(PaletteType)
+
+    enum class ItemPosition
+    {
+        PosFirst = 0, ///< First item in a group
+        PosMiddle,    ///< Middle item in a group
+        PosLast,      ///< Last item in a group
+        PosSingle     ///< Single item (not in a group or alone)
+    };
+    Q_ENUM(ItemPosition)
+
+    enum class RailArrangement
+    {
+        RailTop = 0, ///< Items aligned to top
+        RailCenter,  ///< Items centered vertically
+        RailBottom   ///< Items aligned to bottom
+    };
+    Q_ENUM(RailArrangement)
+
+    enum class BottomSheetType
+    {
+        BottomSheetModal = 0, ///< Modal bottom sheet
+        BottomSheetStandard   ///< Standard bottom sheet
+    };
+    Q_ENUM(BottomSheetType)
+    enum class CarouselLayout
+    {
+        CarouselUncontained = 0,        ///< Items scroll to container edge
+        CarouselMultiBrowse,            ///< Large, medium, and small items
+        CarouselHero,                   ///< Start-aligned hero
+        CarouselHeroCenter,             ///< Center-aligned hero
+        CarouselFullScreen,             ///< One edge-to-edge item
+        CarouselUncontainedMultiAspect, ///< Uncontained with per-item aspect widths
+    };
+    Q_ENUM(CarouselLayout)
+
+    enum class CarouselSizeClass
+    {
+        CarouselSizeSmall = 0,
+        CarouselSizeMedium,
+        CarouselSizeLarge,
+    };
+    Q_ENUM(CarouselSizeClass)
+
+    enum class SliderLabelBehavior
+    {
+        SliderLabelFloating = 0, ///< Show value indicator while interacting
+        SliderLabelVisible,      ///< Always show value indicator
+        SliderLabelGone,         ///< Never show value indicator
+        SliderLabelWithinBounds, ///< Show within track bounds while interacting
+    };
+    Q_ENUM(SliderLabelBehavior)
+
+    enum class SliderTickVisibilityMode
+    {
+        SliderTickAutoLimit = 0, ///< Cap discrete stops; no caps on continuous
+        SliderTickAll,           ///< Show all stops (discrete) or end caps (continuous)
+        SliderTickNone,          ///< Hide all stop indicators
+    };
+    Q_ENUM(SliderTickVisibilityMode)
+
+    enum class SliderSize
+    {
+        SliderSizeXSmall = 0, ///< 16dp active track
+        SliderSizeSmall,      ///< 24dp
+        SliderSizeMedium,     ///< 40dp — minimum for inset icon
+        SliderSizeLarge,      ///< 56dp
+        SliderSizeXLarge,     ///< 96dp
+    };
+    Q_ENUM(SliderSize)
+};
+Q_DECLARE_OPERATORS_FOR_FLAGS(Enum::ToastFlags);
+} // namespace qml_material

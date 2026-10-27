@@ -366,6 +366,7 @@ void CommunityClient::clearSession(bool notifyServer)
     m_refreshing = false;
     m_refreshWaiters.clear();
     m_profile.clear(); m_community.clear(); m_hostedStatus.clear(); m_rconConfig.clear();
+    m_dailyWeek.clear();m_dailyWeekKey.clear();++m_dailyWeekGeneration;
     m_activity.clear(); m_servers.clear(); m_chat.clear(); m_playtime.clear(); m_daily.clear(); m_liveRooms.clear();
     m_users.clear(); m_logLines.clear(); m_backups.clear();
     m_logServer.clear(); m_error.clear(); m_commandResult.clear();
@@ -408,8 +409,35 @@ void CommunityClient::loadDaily(const QString& date)
     request("GET", "/api/v1/mobile/daily-playtime?date=" + date, {}, [this, date](const QJsonValue& v) {
         if (m_dailyDate != date) return;
         m_daily = v.toObject().value("players").toArray().toVariantList();
+        for(int index=0;index<m_dailyWeek.size();++index){auto row=m_dailyWeek[index].toMap();if(row["date"].toString()!=date)continue;double minutes=0;for(const auto& value:m_daily){auto player=value.toMap();minutes+=player.value("playtime_minutes",player.value("minutes",0)).toDouble();}row["minutes"]=minutes;row["available"]=true;m_dailyWeek[index]=row;}
         emit changed();
     });
+}
+
+void CommunityClient::loadDailyWeek(const QString& date)
+{
+    const auto selected=QDate::fromString(date,Qt::ISODate);
+    if(!m_authenticated || !selected.isValid()) return;
+    const auto start=selected.addDays(1-selected.dayOfWeek());
+    const QString key=start.toString(Qt::ISODate);
+    if(key==m_dailyWeekKey && m_dailyWeek.size()==7) return;
+    m_dailyWeekKey=key;
+    const quint64 generation=++m_dailyWeekGeneration;
+    m_dailyWeek.clear();
+    for(int day=0;day<7;++day) m_dailyWeek.append(QVariantMap{{"date",start.addDays(day).toString(Qt::ISODate)},{"available",false},{"minutes",0}});
+    emit changed();
+    for(int day=0;day<7;++day) {
+        const QString dayDate=start.addDays(day).toString(Qt::ISODate);
+        request("GET","/api/v1/mobile/daily-playtime?date="+dayDate,{},[this,generation,day](const QJsonValue& value){
+            if(generation!=m_dailyWeekGeneration || day>=m_dailyWeek.size())return;
+            const auto players=value.toObject().value("players").toArray();
+            double minutes=0;for(const auto& entry:players){const auto row=entry.toObject();minutes+=row.value("playtime_minutes").toDouble(row.value("minutes").toDouble());}
+            auto row=m_dailyWeek[day].toMap();row["minutes"]=minutes;row["available"]=true;m_dailyWeek[day]=row;emit changed();
+        },[this,generation,day](int,const QString&){
+            if(generation!=m_dailyWeekGeneration || day>=m_dailyWeek.size())return;
+            auto row=m_dailyWeek[day].toMap();row["failed"]=true;m_dailyWeek[day]=row;emit changed();
+        });
+    }
 }
 
 void CommunityClient::updateProfile(const QString& username, const QString& bio)

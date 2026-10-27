@@ -1,14 +1,16 @@
 import QtQuick
-import QtQuick.Controls
-AbstractButton {
- id: control
- property string symbol: "more_vert"
- property string hint: ""
- property color ink: desktop.dark ? "#c0c9c4" : "#3f4946"
- implicitWidth: 40; implicitHeight: 40
- contentItem: AppIcon { name: control.symbol; color: control.ink }
- background: Rectangle { radius: 20; color: control.down ? (desktop.dark?"#38534b":"#d7e4de") : control.hovered ? (desktop.dark?"#293b34":"#e3eae6") : "transparent" }
- ToolTip.visible: hovered && hint.length>0
- ToolTip.text: hint
- Accessible.name: hint
+import Qcm.Material as MD
+MD.IconButton {
+    id: control
+    property string symbol: ""
+    property string hint: ""
+    property color ink: MD.MProp.color.on_surface_variant
+    icon.name: symbol
+    icon.color: ink
+    mdState.type: MD.Enum.IBtStandard
+    MD.ToolTip.text: hint
+    MD.ToolTip.visible: control.mdState.interactions.hovered && hint.length > 0
+    animationsEnabled: !library.reducedMotion
+    implicitWidth: 40
+    implicitHeight: 40
 }

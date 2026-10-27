@@ -33,7 +33,9 @@ QPointer<DesktopBridge> DesktopBridge::s_instance;
 DesktopBridge::DesktopBridge(MainWindow* window)
     : QObject(window), m_window(window), m_settings(APPLICATION->dataRoot()+"/desktop.ini",QSettings::IniFormat) {
     s_instance=this;
-    qApp->setStyle(QStyleFactory::create("Fusion"));
+    for(const auto& style : {"Windows11", "windowsvista", "windows"}) {
+        if(auto nativeStyle=QStyleFactory::create(style)) { qApp->setStyle(nativeStyle); qInfo()<<"Prism secondary style:"<<style; break; }
+    }
     connect(APPLICATION,&Application::globalSettingsApplied,this,[this]{applyPalette();});
     connect(APPLICATION->instances(), &QAbstractItemModel::modelReset,this,&DesktopBridge::changed);
     connect(APPLICATION->instances(), &QAbstractItemModel::dataChanged,this,&DesktopBridge::changed);
@@ -60,7 +62,7 @@ QVariantList DesktopBridge::instances() const {
           {"version",version},{"loader",loader},{"external",false},{"source","native"},{"sourceName","DeeraftApp"},
           {"group",list->getInstanceGroup(instance->id())},{"seconds",instance->totalTimePlayed()},
           {"maxMemory",instance->settings()->get("MaxMemAlloc")},{"java",instance->settings()->get("JavaPath")},
-          {"running",instance->isRunning()},{"path",instance->gameRoot()},{"valid",true}});
+          {"lastPlayed",instance->lastLaunch()>0?QDateTime::fromMSecsSinceEpoch(instance->lastLaunch()).toString("M月d日 HH:mm"):QString()},{"running",instance->isRunning()},{"path",instance->gameRoot()},{"valid",true}});
     }
     return result;
 }
@@ -74,6 +76,14 @@ QVariantList DesktopBridge::accounts() const {
     }
     return result;
 }
+QFont DesktopBridge::interfaceFont() const {
+    QFont font;
+    font.setFamilies({"Roboto Flex","Noto Sans SC","Microsoft YaHei UI","Segoe UI"});
+    font.setPixelSize(14);
+    font.setStyleHint(QFont::SansSerif);
+    font.setStyleStrategy(QFont::PreferTypoLineMetrics);
+    return font;
+}
 QString DesktopBridge::theme() const { return m_settings.value("theme","system").toString(); }
 bool DesktopBridge::dark() const { return theme()=="dark" || (theme()=="system" && qApp->styleHints()->colorScheme()==Qt::ColorScheme::Dark); }
 void DesktopBridge::setTheme(const QString& value) {
@@ -81,21 +91,13 @@ void DesktopBridge::setTheme(const QString& value) {
     m_settings.setValue("theme",value);m_settings.sync();applyPalette();emit themeChanged();
 }
 void DesktopBridge::applyPalette() {
-    QPalette p;
-    const bool d=dark();
-    p.setColor(QPalette::Window,QColor(d?"#0e1512":"#f5fbf7"));
-    p.setColor(QPalette::Base,QColor(d?"#171d1b":"#ffffff"));
-    p.setColor(QPalette::AlternateBase,QColor(d?"#202b22":"#eff5f1"));
-    p.setColor(QPalette::WindowText,QColor(d?"#dce5df":"#171d1b"));
-    p.setColor(QPalette::Text,p.color(QPalette::WindowText));
-    p.setColor(QPalette::Button,QColor(d?"#334b45":"#cde8e0"));
-    p.setColor(QPalette::ButtonText,p.color(QPalette::WindowText));
-    p.setColor(QPalette::Highlight,QColor(d?"#84d6c3":"#056b5b"));
-    p.setColor(QPalette::HighlightedText,QColor(d?"#00382d":"#ffffff"));
-    p.setColor(QPalette::ToolTipBase,p.color(QPalette::Base));
-    p.setColor(QPalette::ToolTipText,p.color(QPalette::Text));
-    p.setColor(QPalette::Disabled,QPalette::Text,QColor(d?"#8a958b":"#748074"));
-    qApp->setPalette(p);
+    // The QML window owns its Material palette. Secondary QWidget dialogs use
+    // the Windows 11 style's own palette and system appearance.
+    if(qApp->style()->objectName().compare("windows11",Qt::CaseInsensitive)!=0 && QStyleFactory::keys().contains("Windows11",Qt::CaseInsensitive))qApp->setStyle(QStyleFactory::create("Windows11"));
+    auto hints=qApp->styleHints();
+    const auto scheme=theme()=="system"?Qt::ColorScheme::Unknown:(theme()=="dark"?Qt::ColorScheme::Dark:Qt::ColorScheme::Light);
+    hints->setColorScheme(scheme);
+    qApp->setPalette(qApp->style()->standardPalette());
 }
 void DesktopBridge::action(const QString& name,const QString& id) {
  m_error.clear();
@@ -105,11 +107,11 @@ void DesktopBridge::action(const QString& name,const QString& id) {
 }
 void DesktopBridge::selectInstance(const QString& id){m_window->deeraftSelectInstance(id);}
 void DesktopBridge::advanced(){m_window->deeraftAction("actionSettings");}
-QString DesktopBridge::chooseDirectory(){return QFileDialog::getExistingDirectory(m_window,tr("选择游戏目录"));}
-QUrl DesktopBridge::chooseFile(const QString& filter){auto path=QFileDialog::getOpenFileName(m_window,tr("选择文件"),{},filter);return path.isEmpty()?QUrl():QUrl::fromLocalFile(path);}
+QString DesktopBridge::chooseDirectory(){return QFileDialog::getExistingDirectory(m_window->deeraftWindow(),tr("选择游戏目录"));}
+QUrl DesktopBridge::chooseFile(const QString& filter){auto path=QFileDialog::getOpenFileName(m_window->deeraftWindow(),tr("选择文件"),{},filter);return path.isEmpty()?QUrl():QUrl::fromLocalFile(path);}
 void DesktopBridge::openPath(const QString& path){QDesktopServices::openUrl(QUrl::fromLocalFile(path));}
 void DesktopBridge::openWebsite(){QDesktopServices::openUrl(QUrl("http://mc.ainfinitythecoder.cn/"));}
-void DesktopBridge::openLive(const QString& roomId){showLivePlayer(m_window,roomId,APPLICATION->dataRoot());}
+void DesktopBridge::openLive(const QString& roomId){showLivePlayer(m_window->deeraftWindow(),roomId,APPLICATION->dataRoot());}
 void DesktopBridge::setExternalLauncher(Deeraft::NativeExternalLaunchController* launcher){
  setProperty("externalLauncher",QVariant::fromValue<QObject*>(launcher));
  connect(launcher,&Deeraft::NativeExternalLaunchController::started,this,[this,launcher]{emit gameStarted(launcher->versionId(),launcher->versionId().left(128));emit changed();});
@@ -121,7 +123,7 @@ void DesktopBridge::launchExternal(const QString& rootId,const QString& versionI
     if(!launcher || !account){m_error=tr("请先在设置中添加并选择 Minecraft 账号");emit changed();return;}
     if(account->accountType()!=AccountType::Offline){
         if(account->shouldRefresh() || account->accountState()!=AccountState::Online){
-            account->refresh();auto task=account->currentTask();if(task){ProgressDialog progress(m_window);progress.execWithTask(task.get());}
+            account->refresh();auto task=account->currentTask();if(task){ProgressDialog progress(m_window->deeraftWindow());progress.execWithTask(task.get());}
         }
         if(account->accountState()!=AccountState::Online || !account->ownsMinecraft()){m_error=tr("账号无法用于启动，请重新登录或选择离线账号");emit changed();return;}
     }
@@ -130,7 +132,7 @@ void DesktopBridge::launchExternal(const QString& rootId,const QString& versionI
     auto settings=APPLICATION->settings();QString java=javaOverride;if(QUrl(java).isLocalFile())java=QUrl(java).toLocalFile();if(java.isEmpty())java=settings->get("JavaPath").toString();
     if(java.isEmpty())java=m_settings.value("externalJavaPath").toString();
     if(java.isEmpty()){
-        java=QFileDialog::getOpenFileName(m_window,tr("选择 Java 可执行文件"),{},"Java (java.exe javaw.exe)");
+        java=QFileDialog::getOpenFileName(m_window->deeraftWindow(),tr("选择 Java 可执行文件"),{},"Java (java.exe javaw.exe)");
         if(java.isEmpty()) return;
         m_settings.setValue("externalJavaPath",java);
     }

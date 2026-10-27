@@ -1,6 +1,8 @@
 <RCC>
  <qresource prefix="/deeraft">
   <file>qml/Main.qml</file>
+  <file>qml/AppLabel.qml</file>
+  <file>qml/AppTextField.qml</file>
   <file>qml/RoundedImage.qml</file>
   <file>qml/ActionButton.qml</file>
   <file>qml/AppDialog.qml</file>

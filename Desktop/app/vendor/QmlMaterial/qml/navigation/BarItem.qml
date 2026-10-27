@@ -1,0 +1,94 @@
+import QtQuick
+import QtQuick.Layouts
+import Qcm.Material as MD
+
+MD.NavigationItemBase {
+    id: control
+
+    property int iconStyle: hasIcon ? MD.Enum.IconAndText : MD.Enum.TextOnly
+    readonly property bool hasIcon: !icon.empty
+
+    property MD.StateBarItem mdState: MD.StateBarItem {
+        item: control
+    }
+
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+
+    topInset: 0
+    bottomInset: 0
+    leftInset: 0
+    rightInset: 0
+
+    padding: 0
+    spacing: 8
+
+    icon.width: 24
+    icon.height: 24
+    icon.color: control.mdState.supportTextColor
+    icon.fill: control.selected
+
+    font.weight: MD.Token.typescale.label_large.weight
+    font.pointSize: MD.Token.typescale.label_large.size
+    property int lineHeight: MD.Token.typescale.label_large.line_height
+
+    contentItem: Item {
+        implicitWidth: children[0].implicitWidth
+        implicitHeight: children[0].implicitHeight
+        ColumnLayout {
+            anchors.centerIn: parent
+            spacing: 4
+
+            MD.IconView {
+                Layout.fillWidth: true
+                implicitWidth: 64
+                implicitHeight: 32
+                icon: control.icon
+            }
+
+            MD.Text {
+                Layout.alignment: Qt.AlignVCenter | Qt.AlignHCenter
+                font.capitalization: Font.MixedCase
+                typescale: MD.Token.typescale.label_medium
+                text: control.text
+                prominent: control.selected
+                color: control.mdState.textColor
+            }
+        }
+    }
+
+    background: Item {
+        implicitWidth: 64
+        implicitHeight: 32
+
+        MD.ElevationRectangle {
+            x: (parent.width - width) / 2
+            y: 0
+            height: 32
+            width: 64
+
+            NumberAnimation on width {
+                alwaysRunToEnd: true
+                from: 48
+                to: 64
+                duration: MD.Token.duration.short2
+                easing: MD.Token.easing.linear
+                running: control.selected
+            }
+
+            radius: height / 2
+            color: control.mdState.backgroundColor
+            elevation: control.mdState.elevation
+        }
+        MD.Ripple {
+            x: (parent.width - width) / 2
+            y: 0
+            height: 32
+            width: 64
+            radius: height / 2
+            interactionSource: control.interactionSource
+            indication: control.mdState.indication
+            color: control.mdState.stateLayerColor
+        }
+    }
+}

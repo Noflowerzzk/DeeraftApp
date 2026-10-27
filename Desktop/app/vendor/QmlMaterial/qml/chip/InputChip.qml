@@ -1,0 +1,129 @@
+import QtQuick
+import QtQml.Models
+import Qcm.Material as MD
+import Qcm.Material.Layouts as Lite
+
+MD.SelectionButtonBase {
+    id: control
+
+    property MD.StateInputChip mdState: MD.StateInputChip {
+        focusIndicationEnabled: false
+        item: control
+    }
+
+    Binding {
+        control.mdState.selected: control.selected
+    }
+
+    property bool edit: false
+    property alias elevated: control.mdState.elevated
+    property Item leadingItem: null
+    property Component editDelegate: null
+    property MD.Action trailingAction: null
+
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+
+    leftInset: 0
+    rightInset: 0
+    topInset: 0
+    bottomInset: 0
+    verticalPadding: 0
+    leftPadding: leadingItem ? 8 : 16
+    rightPadding: !icon.empty ? 8 : 16
+    spacing: 8
+
+    icon.width: 18
+    icon.height: 18
+    icon.color: control.mdState.textColor
+    icon.actionIcon: trailingAction?.icon ?? null
+
+    contentItem: contentItemRO
+
+    property Item contentItemRO: Lite.Row {
+        alignment: Qt.AlignHCenter | Qt.AlignVCenter
+        opacity: control.mdState.contentOpacity
+        spacing: control.spacing
+
+        Lite.Box {
+            id: m_leading
+            alignment: Qt.AlignCenter
+            visible: control.leadingItem !== null
+            data: control.leadingItem ? [control.leadingItem] : []
+        }
+
+        Lite.Row {
+            alignment: Qt.AlignVCenter
+            spacing: control.spacing
+            Lite.Layout.fillWidth: true
+
+            MD.Label {
+                text: control.text
+                verticalAlignment: Text.AlignVCenter
+                typescale: MD.Token.typescale.label_large
+                wrapMode: Text.NoWrap
+                Lite.Layout.fillWidth: true
+            }
+
+            Item {
+                implicitWidth: control.icon.width
+                implicitHeight: control.icon.height
+                visible: !control.icon.empty
+
+                MD.StandardIconButton {
+                    anchors.centerIn: parent
+
+                    implicitBackgroundSize: 0
+                    contentItem: MD.IconView {
+                        icon: control.icon
+                    }
+                    MD.ActionCommand.action: control.trailingAction
+                    enabled: MD.ActionCommand.enabled
+                }
+            }
+        }
+    }
+
+    background: Rectangle {
+        implicitWidth: 32
+        implicitHeight: 32
+
+        radius: 8
+        color: control.mdState.backgroundColor
+        opacity: control.mdState.backgroundOpacity
+
+        border.width: control.selected ? 0 : 1
+        border.color: control.mdState.outlineColor
+
+        MD.Ripple {
+            anchors.fill: parent
+            radius: parent.radius
+            interactionSource: control.interactionSource
+            indication: control.mdState.indication
+            color: control.mdState.stateLayerColor
+        }
+
+        MD.FocusIndicator {
+            corners: MD.Util.corners(parent.radius)
+            active: control.focusVisible
+        }
+    }
+
+    onFocusChanged: {
+        if (focus && edit && control.contentItem !== control.contentItemRO)
+            control.contentItem.focus = true;
+    }
+
+    Instantiator {
+        model: control.edit ? 1 : null
+        delegate: control.editDelegate
+        onObjectAdded: (idx, obj) => {
+            control.contentItem = obj;
+            obj.focus = true;
+        }
+        onObjectRemoved: (idx, obj) => {
+            control.contentItem = control.contentItemRO;
+            control.contentItem.visible = true;
+        }
+    }
+}

@@ -43,6 +43,7 @@
 #include <memory>
 
 #include <QMainWindow>
+#include <QPointer>
 #include <QProcess>
 #include <QTimer>
 
@@ -81,7 +82,9 @@ class MainWindow : public QMainWindow {
     void updatesAllowedChanged(bool allowed);
 
     void processURLs(QList<QUrl> urls);
-    void deeraftInstallCentral(QWidget* shell);
+    void deeraftSetWindow(QWidget* window);
+    QWidget* deeraftWindow() const;
+    void setVisible(bool visible) override;
     void deeraftSetAdvanced(bool advanced);
     void deeraftAction(const QString& name, const QString& instanceId = {});
     void deeraftSelectInstance(const QString& id);
@@ -236,8 +239,7 @@ class MainWindow : public QMainWindow {
 
    private:
     Ui::MainWindow* ui;
-    class QStackedWidget* m_deeraftStack = nullptr;
-    class QToolBar* m_deeraftReturnBar = nullptr;
+    QPointer<QWidget> m_deeraftWindow;
     // these are managed by Qt's memory management model!
     InstanceView* view = nullptr;
     InstanceProxyModel* proxymodel = nullptr;

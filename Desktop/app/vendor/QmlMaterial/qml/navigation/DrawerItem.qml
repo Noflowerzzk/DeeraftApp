@@ -1,0 +1,79 @@
+import QtQuick
+import QtQuick.Layouts
+import Qcm.Material as MD
+
+MD.NavigationItemBase {
+    id: control
+
+    property alias mdState: item_state
+
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+
+    topInset: 0
+    bottomInset: 0
+    leftInset: 0
+    rightInset: 0
+
+    verticalPadding: 0
+    leftPadding: 16
+    rightPadding: 24
+    spacing: 0
+
+    icon.width: 24
+    icon.height: 24
+    icon.color: control.MD.MProp.color.on_background
+    icon.fill: control.selected
+
+    font.capitalization: Font.MixedCase
+
+    property alias trailing: item_holder_trailing.contentItem
+
+    contentItem: RowLayout {
+        opacity: control.mdState.contentOpacity
+        spacing: 12
+
+        MD.IconView {
+            id: item_holder_leader
+            icon: control.icon
+        }
+        MD.Text {
+            Layout.fillWidth: true
+            font: control.font
+            text: control.text
+            typescale: MD.Token.typescale.label_large
+            maximumLineCount: 1
+            verticalAlignment: Qt.AlignVCenter
+        }
+        MD.Control {
+            id: item_holder_trailing
+            Layout.alignment: Qt.AlignVCenter
+            visible: contentItem
+        }
+    }
+
+    background: MD.ElevationRectangle {
+        opacity: control.mdState.backgroundOpacity
+        implicitWidth: 336
+        implicitHeight: 56
+
+        radius: 28
+        color: control.mdState.backgroundColor
+
+        elevationVisible: control.enabled && color.a > 0
+        elevation: control.mdState.elevation
+
+        MD.Ripple {
+            anchors.fill: parent
+            radius: parent.radius
+            interactionSource: control.interactionSource
+            indication: item_state.indication
+            color: item_state.stateLayerColor
+        }
+    }
+
+    MD.StateDrawerItem {
+        id: item_state
+        item: control
+    }
+}

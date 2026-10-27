@@ -20,7 +20,7 @@ if (!(Test-Path (Join-Path $toolchain 'msys64/usr/bin/bash.exe'))) {
 $env:MSYSTEM = 'UCRT64'
 $env:CHERE_INVOKING = '1'
 $bash = Join-Path $toolchain 'msys64/usr/bin/bash.exe'
-$packages = @('toolchain','cmake','ninja','qt6-base','qt6-declarative','qt6-svg','qt6-imageformats','qt6-5compat','qt6-networkauth','qt6-websockets','extra-cmake-modules','cmark','libarchive','tomlplusplus','zlib','quazip-qt6','qrencode','openssl') | ForEach-Object { 'mingw-w64-ucrt-x86_64-' + $_ }
+$packages = @('toolchain','cmake','ninja','qt6-base','qt6-declarative','qt6-shadertools','qt6-svg','qt6-imageformats','qt6-5compat','qt6-networkauth','qt6-websockets','extra-cmake-modules','cmark','libarchive','tomlplusplus','zlib','quazip-qt6','qrencode','openssl') | ForEach-Object { 'mingw-w64-ucrt-x86_64-' + $_ }
 if ($RefreshPackages -or !(Test-Path (Join-Path $toolchain 'msys64/ucrt64/bin/qmake6.exe'))) {
     & $bash -lc 'pacman -Sy --noconfirm'
     if ($LASTEXITCODE) { throw 'Package index update failed' }

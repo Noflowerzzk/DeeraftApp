@@ -139,6 +139,7 @@ mingw-w64-ucrt-x86_64-qt6-base 6.12.0-1
 mingw-w64-ucrt-x86_64-qt6-declarative 6.12.0-1
 mingw-w64-ucrt-x86_64-qt6-imageformats 6.12.0-1
 mingw-w64-ucrt-x86_64-qt6-networkauth 6.12.0-1
+mingw-w64-ucrt-x86_64-qt6-shadertools 6.12.0-1
 mingw-w64-ucrt-x86_64-qt6-svg 6.12.0-1
 mingw-w64-ucrt-x86_64-qt6-websockets 6.12.0-1
 mingw-w64-ucrt-x86_64-quazip 1.7.2-1

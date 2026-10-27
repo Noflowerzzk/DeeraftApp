@@ -1,0 +1,115 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import QtQuick.Layouts
+import Qcm.Material as MD
+
+/** @ingroup control */
+MD.DialogBase {
+    id: control
+
+    property int titleCapitalization: Font.Capitalize
+    property MD.MState mdState: MD.MState {
+        target: control
+
+        elevation: MD.Token.elevation.level3
+        textColor: ctx.color.primary
+        backgroundColor: ctx.color.surface_container_high
+        supportTextColor: ctx.color.on_surface_variant
+    }
+    property MD.typescale typescale: MD.Token.typescale.body_medium
+
+    font.pixelSize: typescale.size
+    font.weight: typescale.weight
+    font.letterSpacing: typescale.tracking
+
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, contentWidth + leftPadding + rightPadding, implicitHeaderWidth, implicitFooterWidth)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, contentHeight + topPadding + bottomPadding + (implicitHeaderHeight > 0 ? implicitHeaderHeight + spacing : 0) + (implicitFooterHeight > 0 ? implicitFooterHeight + spacing : 0))
+
+    width: Math.min(implicitWidth, 560)
+    height: implicitHeight
+
+    x: parent ? (parent.width - width) / 2 : 0
+    y: parent ? (parent.height - height) / 2 : 0
+
+    spacing: 0
+    topPadding: 12
+    bottomPadding: 12
+    horizontalPadding: 24
+    property real buttonBoxPadding: 24
+
+    modal: true
+
+    enter: Transition {
+        // grow_fade_in
+        NumberAnimation {
+            property: "scale"
+            from: 0.9
+            to: 1.0
+            easing: MD.Token.easing.emphasized_decelerate
+            duration: MD.Token.duration.medium1
+        }
+        NumberAnimation {
+            property: "opacity"
+            from: 0.0
+            to: 1.0
+            easing: MD.Token.easing.standard
+            duration: MD.Token.duration.short3
+        }
+    }
+
+    exit: Transition {
+        // shrink_fade_out
+        NumberAnimation {
+            property: "scale"
+            from: 1.0
+            to: 0.9
+            easing: MD.Token.easing.emphasized_accelerate
+            duration: MD.Token.duration.short3
+        }
+        NumberAnimation {
+            property: "opacity"
+            from: 1.0
+            to: 0.0
+            easing: MD.Token.easing.standard
+            duration: MD.Token.duration.short3
+        }
+    }
+
+    background: MD.ElevationRectangle {
+        implicitWidth: 280
+        // FullScale doesn't make sense for Dialog.
+        radius: MD.Token.shape.corner.extra_large
+        color: control.mdState.backgroundColor
+        elevation: control.mdState.elevation
+    }
+
+    header: MD.DialogHeader {
+        title: control.title
+    }
+
+    footer: MD.DialogButtonBox {
+        bottomPadding: control.buttonBoxPadding
+        horizontalPadding: control.buttonBoxPadding
+        visible: count > 0
+    }
+
+    MD.Overlay.modal: Rectangle {
+        color: MD.Util.transparent(control.mdState.ctx.color.scrim, 0.32)
+        Behavior on opacity {
+            NumberAnimation {
+                duration: MD.Token.duration.short3
+                easing: MD.Token.easing.linear
+            }
+        }
+    }
+
+    MD.Overlay.modeless: Rectangle {
+        color: MD.Util.transparent(control.mdState.ctx.color.scrim, 0.32)
+        Behavior on opacity {
+            NumberAnimation {
+                duration: MD.Token.duration.short3
+                easing: MD.Token.easing.linear
+            }
+        }
+    }
+}

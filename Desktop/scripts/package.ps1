@@ -12,10 +12,13 @@ New-Item -ItemType Directory -Force $output,"$output/jars","$output/licenses" | 
 Copy-Item "$build/DeeraftApp.exe" $output
 Copy-Item "$build/jars/*.jar" "$output/jars"
 if(Test-Path "$build/prismlauncher_filelink.exe"){Copy-Item "$build/prismlauncher_filelink.exe" $output}
-& "$prefix/bin/windeployqt6.exe" --release --no-translations --compiler-runtime --qmldir "$desktop/app/qml" "$output/DeeraftApp.exe"
+& "$prefix/bin/windeployqt6.exe" --release --no-translations --compiler-runtime --qmldir "$desktop/app/qml" --qmlimport "$build/qml_modules" "$output/DeeraftApp.exe"
 if($LASTEXITCODE){throw 'Qt deployment failed'}
 & "$prefix/bin/python.exe" "$PSScriptRoot/collect-dlls.py" $prefix $output
 if($LASTEXITCODE){throw 'DLL dependency collection failed'}
+Copy-Item "$desktop/app/vendor/QmlMaterial/LICENSE" "$output/licenses/QmlMaterial-MIT.txt"
+Copy-Item "$desktop/app/vendor/QmlMaterial/LICENSE.androidx" "$output/licenses/QmlMaterial-AndroidX.txt"
+Copy-Item "$desktop/app/vendor/QmlMaterial/UPSTREAM.md","$desktop/app/vendor/QmlMaterial/PATCHES.md" "$output/licenses/"
 Copy-Item "$desktop/launcher/LICENSE" "$output/licenses/Prism-GPL-3.0.txt"
 Copy-Item "$desktop/launcher/COPYING.md" "$output/licenses/" -ErrorAction SilentlyContinue
 Copy-Item "$desktop/app/webview/vendor/LICENSE" "$output/licenses/webview-MIT.txt"

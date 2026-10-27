@@ -29,6 +29,7 @@ class CommunityClient final : public QObject
     Q_PROPERTY(QVariantList activity READ activity NOTIFY changed)
     Q_PROPERTY(QVariantList playtime READ playtime NOTIFY changed)
     Q_PROPERTY(QVariantList daily READ daily NOTIFY changed)
+    Q_PROPERTY(QVariantList dailyWeek READ dailyWeek NOTIFY changed)
     Q_PROPERTY(QString dailyDate READ dailyDate NOTIFY changed)
     Q_PROPERTY(QVariantMap hostedStatus READ hostedStatus NOTIFY changed)
     Q_PROPERTY(QVariantList liveRooms READ liveRooms NOTIFY changed)
@@ -55,6 +56,7 @@ public:
     QVariantList activity() const {return m_activity;}
     QVariantList playtime() const { return m_playtime; }
     QVariantList daily() const { return m_daily; }
+    QVariantList dailyWeek() const { return m_dailyWeek; }
     QString dailyDate() const { return m_dailyDate; }
     QVariantMap hostedStatus() const { return m_hostedStatus; }
     QVariantList liveRooms() const { return m_liveRooms; }
@@ -77,6 +79,7 @@ public:
     Q_INVOKABLE void updateProfile(const QString& username, const QString& bio);
     Q_INVOKABLE void uploadAvatar(const QUrl& fileUrl);
     Q_INVOKABLE void loadDaily(const QString& date);
+    Q_INVOKABLE void loadDailyWeek(const QString& date);
     // action: start, stop, update, backup, backups, restore, delete; args match the website API.
     Q_INVOKABLE void serverAction(const QString& action, const QString& name, const QVariantMap& args = {});
     Q_INVOKABLE void loadBackups(const QString& name);
@@ -141,6 +144,9 @@ private:
     std::vector<std::function<void(bool)>> m_refreshWaiters;
     QString m_error, m_dailyDate, m_connectionStatus, m_commandResult, m_logServer;
     QVariantMap m_profile, m_community, m_hostedStatus, m_rconConfig;
+    QVariantList m_dailyWeek;
+    QString m_dailyWeekKey;
+    quint64 m_dailyWeekGeneration = 0;
     QVariantList m_servers, m_chat, m_playtime, m_daily, m_liveRooms, m_users, m_logLines, m_backups;
     std::vector<std::unique_ptr<Feed>> m_feeds;
     QTimer m_pollTimer, m_sessionTimer;

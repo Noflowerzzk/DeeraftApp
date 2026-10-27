@@ -1,0 +1,977 @@
+cmake_minimum_required(VERSION 3.16)
+
+set(QM_VERSION 0.6.1)
+project(
+  QmlMaterial
+  VERSION ${QM_VERSION}
+  LANGUAGES CXX)
+
+# Enable MSVC multi-processor compilation
+if(MSVC)
+  add_compile_options(/MP)
+endif()
+
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOMOC_PATH_PREFIX ON)
+
+option(QM_BUILD_EXAMPLE "" ${PROJECT_IS_TOP_LEVEL})
+option(QM_BUILD_TESTS "" ${PROJECT_IS_TOP_LEVEL})
+option(QM_USE_PCH "Use precompiled headers for qml_material" ON)
+
+set(QM_ICON_FONT_URL
+    ""
+    CACHE
+      STRING
+      "default empty, there is an already embed file: qrc:/Qcm/Material/assets/MaterialSymbolsRounded.wght_400.opsz_24.woff2"
+)
+
+set(QT_QML_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/qml_modules")
+list(APPEND QML_DIRS "${QT_QML_OUTPUT_DIRECTORY}")
+
+if(UNIX)
+  include(GNUInstallDirs)
+
+  if("${QT_INSTALL_QML}" STREQUAL "")
+    set(QT_INSTALL_QML "${CMAKE_INSTALL_LIBDIR}/qt6/qml")
+  endif()
+endif()
+
+set(QML_INSTALL_DIR
+    "${QT_INSTALL_QML}"
+    CACHE STRING "")
+message("QML_INSTALL_DIR: ${QML_INSTALL_DIR}")
+
+if(UNIX AND NOT APPLE)
+  set(LINUX CACHE INTERNAL TRUE "")
+endif()
+
+find_package(Qt6 REQUIRED COMPONENTS Core Quick Gui Qml ShaderTools)
+if(NOT TARGET Qt6::QuickShapesPrivate)
+  find_package(Qt6 REQUIRED COMPONENTS QuickShapesPrivate)
+endif()
+# Qt < ~6.9 often exposes Qt6::QuickPrivate via Quick; Qt 6.9+ needs an
+# explicit private package (aqt 6.8.3 CI has no Qt6QuickPrivateConfig).
+if(NOT TARGET Qt6::QuickPrivate)
+  find_package(Qt6 REQUIRED COMPONENTS QuickPrivate)
+endif()
+
+if(UNIX AND NOT ANDROID AND NOT EMSCRIPTEN)
+  find_package(Qt6 REQUIRED COMPONENTS DBus)
+endif()
+
+find_package(PkgConfig REQUIRED)
+if(QT_KNOWN_POLICY_QTP0004)
+  qt_policy(SET QTP0004 NEW)
+endif()
+
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+set(LIBNAME qml_material)
+
+set(SOURCES
+    include/qml_material/input/input_host.hpp
+    src/input/input_host.cpp
+    include/qml_material/input/clickable.hpp
+    src/input/clickable.cpp
+    include/qml_material/input/interactive_item.hpp
+    src/input/interactive_item.cpp
+    include/qml_material/input/toggleable.hpp
+    include/qml_material/input/selectable.hpp
+    include/qml_material/input/interaction_source.hpp
+    src/input/interaction_source.cpp
+    include/qml_material/anim/spring_motion.hpp
+    src/anim/spring_motion.cpp
+    include/qml_material/anim/ripple_motion.hpp
+    src/anim/ripple_motion.cpp
+    include/qml_material/input/slider_key.hpp
+    include/qml_material/style/indication_policy.hpp
+    src/style/indication_policy.cpp
+    include/qml_material/clock/clock_source.hpp
+    src/clock/clock_source.cpp
+    include/qml_material/control/clock.hpp
+    src/control/clock.cpp
+    include/qml_material/core/item_activity.hpp
+    src/core/item_activity.cpp
+    include/qml_material/util/time_format.hpp
+    src/util/time_format.cpp
+    include/qml_material/shape/rounded_polygon.hpp
+    include/qml_material/shape/material_shapes.hpp
+    src/shape/rounded_polygon.cpp
+    src/shape/morph.cpp
+    src/shape/material_shapes.cpp
+    src/shape/material_shape_path.hpp
+    src/shape/material_shape_path.cpp
+    include/qml_material/path/measured_path.hpp
+    src/path/measured_path.cpp
+    include/qml_material/indicator/progress_indicator_geometry.hpp
+    src/indicator/progress_indicator_geometry.cpp
+    src/indicator/progress_indicator_shape.hpp
+    src/indicator/progress_indicator_shape.cpp
+    include/qml_material/indicator/squiggly_progress_geometry.hpp
+    src/indicator/squiggly_progress_geometry.cpp
+    src/indicator/squiggly_progress.hpp
+    src/indicator/squiggly_progress.cpp
+    include/qml_material/control/progress_indicator.hpp
+    src/control/progress_indicator.cpp
+    include/qml_material/core/state_bindings.hpp
+    include/qml_material/core/attached_property.hpp
+    include/qml_material/core/helper.hpp
+    include/qml_material/token/badge.hpp
+    include/qml_material/token/duration.hpp
+    include/qml_material/token/motion.hpp
+    include/qml_material/token/combo_box.hpp
+    include/qml_material/token/text_field.hpp
+    include/qml_material/util/loggingcategory.hpp
+    include/qml_material/math/scalar.hpp
+    include/qml_material/math/color.hpp
+    include/qml_material/math/gaussian.hpp
+    include/qml_material/math/rrect.hpp
+    include/qml_material/math/shadow_light.hpp
+    include/qml_material/scenegraph/geometry.h
+    include/qml_material/scenegraph/rectangle_material.h
+    include/qml_material/scenegraph/shadow_material.h
+    include/qml_material/scenegraph/blur_mask_material.h
+    include/qml_material/scenegraph/texture_cache.h
+    include/qml_material/scenegraph/mesh/quad.hpp
+    include/qml_material/scenegraph/mesh/nine_patch.hpp
+    include/qml_material/scenegraph/mesh/corner_fan.hpp
+    src/math/gaussian.cpp
+    src/math/shadow_light.cpp
+    src/scenegraph/geometry.cpp
+    src/scenegraph/skia/skia_shadow.cpp
+    src/scenegraph/rectangle_material.cpp
+    src/scenegraph/shadow_material.cpp
+    src/scenegraph/blur_mask_material.cpp
+    src/scenegraph/texture_cache.cpp
+    src/core/enum.cpp
+    src/core/attached_property.cpp
+    src/core/helper.cpp
+    src/style/theme.cpp
+    src/style/common_state.cpp
+    include/qml_material/style/common_state.hpp
+    src/style/chip_state.cpp
+    include/qml_material/style/chip_state.hpp
+    src/style/check_box_state.cpp
+    include/qml_material/style/check_box_state.hpp
+    src/style/radio_button_state.cpp
+    include/qml_material/style/radio_button_state.hpp
+    src/style/button_interaction_state.cpp
+    include/qml_material/style/button_interaction_state.hpp
+    src/style/tab_button_state.cpp
+    include/qml_material/style/tab_button_state.hpp
+    src/style/bar_item_state.cpp
+    include/qml_material/style/bar_item_state.hpp
+    src/style/rail_item_state.cpp
+    include/qml_material/style/rail_item_state.hpp
+    src/style/drawer_item_state.cpp
+    include/qml_material/style/drawer_item_state.hpp
+    src/style/menu_item_state.cpp
+    include/qml_material/style/menu_item_state.hpp
+    src/style/list_item_state.cpp
+    include/qml_material/style/list_item_state.hpp
+    src/style/table_view_delegate_state.cpp
+    include/qml_material/style/table_view_delegate_state.hpp
+    src/style/card_state.cpp
+    include/qml_material/style/card_state.hpp
+    src/style/fab_state.cpp
+    include/qml_material/style/fab_state.hpp
+    src/style/segmented_button_state.cpp
+    include/qml_material/style/segmented_button_state.hpp
+    src/style/switch_state.cpp
+    include/qml_material/style/switch_state.hpp
+    src/style/slider_state.cpp
+    include/qml_material/style/slider_state.hpp
+    src/style/drag_handle_state.cpp
+    include/qml_material/style/drag_handle_state.hpp
+    src/style/search_bar_state.cpp
+    include/qml_material/style/search_bar_state.hpp
+    src/style/input_state.cpp
+    include/qml_material/style/input_state.hpp
+    src/style/text_field_state.cpp
+    include/qml_material/style/text_field_state.hpp
+    src/style/combo_box_state.cpp
+    include/qml_material/style/combo_box_state.hpp
+    src/style/standard_icon_button_state.cpp
+    include/qml_material/style/standard_icon_button_state.hpp
+    src/style/icon_button_state.cpp
+    include/qml_material/style/icon_button_state.hpp
+    src/style/button_state.cpp
+    src/style/app_bar_state.cpp
+    src/style/snake_bar_state.cpp
+    include/qml_material/style/snake_bar_state.hpp
+    src/style/carousel_item_state.cpp
+    include/qml_material/style/carousel_item_state.hpp
+    src/style/bottom_sheet_state.cpp
+    include/qml_material/style/bottom_sheet_state.hpp
+    include/qml_material/style/app_bar_state.hpp
+    include/qml_material/style/button_state.hpp
+    src/style/split_button_state.cpp
+    include/qml_material/style/split_button_state.hpp
+    src/style/split_button_indicator_state.cpp
+    include/qml_material/style/split_button_indicator_state.hpp
+    src/anim/circular_indicator_updator.cpp
+    src/anim/linear_indicator_updator.cpp
+    src/anim/loading_indicator_updator.cpp
+    src/util/corner.cpp
+    src/util/control_environment.cpp
+    src/util/pool.cpp
+    src/util/image.cpp
+    src/util/qml_util.cpp
+    src/util/hct.cpp
+    src/control/page_context.cpp
+    src/control/color_picker.cpp
+    src/control/color_picker_button.cpp
+    include/qml_material/control/color_picker_button.hpp
+    src/control/application_window.cpp
+    include/qml_material/control/application_window.hpp
+    src/control/control.cpp
+    src/control/slider.cpp
+    src/control/range_slider.cpp
+    src/control/range_slider_input.cpp
+    include/qml_material/control/range_slider.hpp
+    src/control/scroll_indicator.cpp
+    src/control/scroll_bar.cpp
+    include/qml_material/control/scroll_bar.hpp
+    include/qml_material/control/scroll_indicator.hpp
+    include/qml_material/control/slider.hpp
+    src/control/label.cpp
+    src/control/combo_box.cpp
+    include/qml_material/control/combo_box.hpp
+    src/control/text_field.cpp
+    include/qml_material/control/text_field.hpp
+    include/qml_material/control/label.hpp
+    src/util/text_control_background.cpp
+    include/qml_material/util/text_control_background.hpp
+    src/control/progress_bar.cpp
+    src/control/page_indicator.cpp
+    include/qml_material/control/page_indicator.hpp
+    include/qml_material/control/progress_bar.hpp
+    include/qml_material/control/busy_indicator.hpp
+    include/qml_material/control/tool_separator.hpp
+    src/control/button_control.cpp
+    include/qml_material/control/button_control.hpp
+    include/qml_material/control/command_button.hpp
+    include/qml_material/control/combined_command_button.hpp
+    include/qml_material/control/repeat_button.hpp
+    include/qml_material/control/number_input.hpp
+    src/control/number_input.cpp
+    include/qml_material/control/color_input.hpp
+    src/control/color_input.cpp
+    include/qml_material/control/floating_toolbar.hpp
+    src/control/floating_toolbar.cpp
+    include/qml_material/control/time_field.hpp
+    src/control/time_field.cpp
+    include/qml_material/input/date_picker_state.hpp
+    src/input/date_picker_state.cpp
+    src/input/control_accessibility.cpp
+    src/input/control_accessibility_p.hpp
+    include/qml_material/control/action_command.hpp
+    src/control/action_command.cpp
+    include/qml_material/control/toggle_button.hpp
+    src/control/check_box.cpp
+    src/control/switch.cpp
+    src/control/tab_bar.cpp
+    src/control/container.cpp
+    src/control/split_view.cpp
+    src/control/split_layout.cpp
+    include/qml_material/control/split_view.hpp
+    src/control/segmented_button_group.cpp
+    src/control/button_group_container.cpp
+    src/control/fab_menu.cpp
+    include/qml_material/control/fab_menu.hpp
+    include/qml_material/token/fab_menu.hpp
+    include/qml_material/token/extended_fab.hpp
+    include/qml_material/token/floating_toolbar.hpp
+    include/qml_material/control/button_group_container.hpp
+    include/qml_material/token/button_group.hpp
+    include/qml_material/control/check_box.hpp
+    include/qml_material/control/radio_button.hpp
+    include/qml_material/control/selection_button.hpp
+    include/qml_material/control/navigation_control.hpp
+    src/control/navigation_control.cpp
+    include/qml_material/control/standard_drawer.hpp
+    src/control/standard_drawer.cpp
+    include/qml_material/control/navigation_rail.hpp
+    src/control/navigation_rail.cpp
+    include/qml_material/control/switch.hpp
+    include/qml_material/control/item_delegate.hpp
+    src/control/item_delegate.cpp
+    include/qml_material/control/tab_button.hpp
+    include/qml_material/control/tab_bar.hpp
+    include/qml_material/control/container.hpp
+    include/qml_material/control/segmented_button_group.hpp
+    src/control/icon_spec.cpp
+    src/control/action.cpp
+    src/control/action_group.cpp
+    src/control/button_group.cpp
+    src/control/dialog_button_box.cpp
+    include/qml_material/control/dialog_button_box.hpp
+    include/qml_material/control/action.hpp
+    include/qml_material/control/action_group.hpp
+    include/qml_material/control/button_group.hpp
+    include/qml_material/control/button_presentation.hpp
+    src/control/button_presentation.cpp
+    include/qml_material/control/search_bar.hpp
+    src/control/search_bar.cpp
+    include/qml_material/control/search_view.hpp
+    src/control/search_view.cpp
+    include/qml_material/input/search_state.hpp
+    include/qml_material/control/icon_spec.hpp
+    src/control/panel.cpp
+    src/control/page.cpp
+    src/control/page_stack.cpp
+    src/anim/size_transition.cpp
+    include/qml_material/anim/size_transition.hpp
+    src/control/page_container.cpp
+    include/qml_material/control/page_container.hpp
+    src/control/page_stack_entries.cpp
+    src/control/page_stack_entries_p.hpp
+    include/qml_material/control/page_stack.hpp
+    include/qml_material/control/page.hpp
+    include/qml_material/control/panel.hpp
+    include/qml_material/control/tool_bar.hpp
+    include/qml_material/control/control.hpp
+    src/control/popup_placement.hpp
+    src/control/popup.cpp
+    src/control/dialog.cpp
+    src/control/menu.cpp
+    include/qml_material/control/menu.hpp
+    src/control/menu_button.cpp
+    include/qml_material/control/menu_button.hpp
+    src/control/split_button.cpp
+    include/qml_material/control/split_button.hpp
+    src/control/snake_bar.cpp
+    include/qml_material/control/snake_bar.hpp
+    include/qml_material/control/dialog.hpp
+    include/qml_material/control/popup.hpp
+    src/control/overlay.cpp
+    include/qml_material/control/overlay.hpp
+    src/control/popup_presenter.cpp
+    include/qml_material/control/popup_presenter.hpp
+    src/control/adaptive_presenter.cpp
+    include/qml_material/control/adaptive_presenter.hpp
+    src/control/tool_tip.cpp
+    src/control/tool_tip_popup.cpp
+    include/qml_material/control/tool_tip_popup.hpp
+    src/control/drawer.cpp
+    include/qml_material/control/drawer.hpp
+    src/control/side_sheet.cpp
+    include/qml_material/control/side_sheet.hpp
+    include/qml_material/control/tool_tip.hpp
+    src/layout/width_provider.cpp
+    src/layout/toolbar_layout.cpp
+    src/layout/toolbar_layout_delegate.cpp
+    src/layout/toolbar_layout_delegate.hpp
+    include/qml_material/layout/toolbar_layout.hpp
+    src/path/path_wave.cpp
+    src/path/path_arc_wave.cpp
+    include/qml_material/path/path_wave.hpp
+    include/qml_material/path/path_arc_wave.hpp
+    src/scrollable/flickable.cpp
+    include/qml_material/scrollable/flickable.hpp
+    include/qml_material/scrollable/scroll_motion.hpp
+    src/input/wheel_handler.cpp
+    src/input/date_validator.cpp
+    src/input/time_state.cpp
+    src/input/time_dial.cpp
+    include/qml_material/input/time_state.hpp
+    include/qml_material/input/time_dial.hpp
+    include/qml_material/token/time_picker.hpp
+    include/qml_material/input/date_validator.hpp
+    src/input/nested_scroll.cpp
+    src/input/app_bar_scroll.cpp
+    src/input/pull_to_refresh_state.cpp
+    src/input/swipe_to_dismiss_state.cpp
+    src/input/floating_toolbar_scroll.cpp
+    include/qml_material/input/floating_toolbar_scroll.hpp
+    src/input/floating_toolbar_exit.cpp
+    include/qml_material/input/floating_toolbar_exit.hpp
+    src/input/scroll_participant.cpp
+    include/qml_material/input/nested_scroll.hpp
+    include/qml_material/input/app_bar_scroll.hpp
+    include/qml_material/input/pull_to_refresh_state.hpp
+    include/qml_material/input/swipe_to_dismiss_state.hpp
+    include/qml_material/input/nested_scroll_connection.hpp
+    include/qml_material/input/wheel_handler.hpp
+    src/carousel/carousel_attached.cpp
+    src/carousel/carousel_control.cpp
+    src/carousel/carousel_item.cpp
+    src/carousel/carousel_view.cpp
+    src/carousel/carousel_strategies.cpp
+    src/carousel/carousel_keylines.cpp
+    src/carousel/carousel_scroll_strategy.cpp
+    include/qml_material/carousel/carousel_attached.hpp
+    include/qml_material/carousel/carousel_control.hpp
+    include/qml_material/carousel/carousel_item.hpp
+    include/qml_material/carousel/carousel_keylines.hpp
+    include/qml_material/carousel/carousel_scroll_strategy.hpp
+    include/qml_material/carousel/carousel_strategy.hpp
+    include/qml_material/carousel/carousel_view.hpp
+    src/model/palette_model.cpp
+    src/model/item_source.cpp
+    include/qml_material/model/item_source.hpp
+    src/model/item_model_source.cpp
+    include/qml_material/model/item_model_source.hpp
+    src/model/lazy_row.cpp
+    include/qml_material/model/lazy_row.hpp
+    src/view/delegate_recycler.cpp
+    src/view/lazy_list.cpp
+    include/qml_material/view/lazy_list.hpp
+    src/model/combo_box_model.cpp
+    include/qml_material/model/combo_box_model.hpp
+    src/model/calendar_month_model.cpp
+    include/qml_material/model/calendar_month_model.hpp
+    src/model/header_data_model.cpp
+    include/qml_material/model/header_data_model.hpp
+    src/model/header_list_model.cpp
+    include/qml_material/model/header_list_model.hpp
+    src/model/header_model.cpp
+    include/qml_material/model/header_model.hpp
+    src/control/header_view.cpp
+    include/qml_material/control/header_view.hpp
+    src/model/appstream_release_model.cpp
+    src/model/snake_model.cpp
+    include/qml_material/model/snake_model.hpp
+    src/token/color.cpp
+    src/token/icon.cpp
+    src/token/token.cpp
+    src/token/type_scale.cpp
+    src/item/item_proxy.cpp
+    src/item/item_holder.cpp
+    include/qml_material/item/item_holder.hpp
+    src/item/round_item.cpp
+    src/style/material_state.cpp
+    include/qml_material/style/material_state.hpp
+    src/item/rectangle.cpp
+    src/item/rrect_shadow.cpp
+    src/item/blur_mask.cpp
+    src/item/input_block.cpp
+    src/dialog/file_dialog.cpp
+    src/dialog/file_dialog_p.hpp
+    include/qml_material/dialog/file_dialog.hpp)
+
+set(QML_FILES
+    qml/control/Clock.qml
+    qml/Token.qml
+    qml/Util.qml
+    qml/button/BusyButton.qml
+    qml/button/BusyIconButton.qml
+    qml/button/Button.qml
+    qml/button/ToggleButton.qml
+    qml/button/IconToggleButton.qml
+    qml/button/ActionButton.qml
+    qml/button/ActionIconButton.qml
+    qml/button/ButtonContent.qml
+    qml/button/IconButtonContent.qml
+    qml/button/ButtonSurface.qml
+    qml/button/FAB.qml
+    qml/button/ExtendedFAB.qml
+    qml/button/FABMenu.qml
+    qml/button/FABMenuItem.qml
+    qml/button/ToggleFAB.qml
+    qml/button/IconButton.qml
+    qml/button/SegmentedButton.qml
+    qml/button/SplitButton.qml
+    qml/button/SplitButtonIndicator.qml
+    qml/button/StandardIconButton.qml
+    qml/chip/AssistChip.qml
+    qml/chip/EmbedChip.qml
+    qml/chip/FilterChip.qml
+    qml/chip/InputChip.qml
+    qml/chip/SuggestionChip.qml
+    qml/container/Card.qml
+    qml/container/Page.qml
+    qml/container/Pane.qml
+    qml/container/SplitView.qml
+    qml/indicator/BusyIndicator.qml
+    qml/indicator/CircleIndicatorShape.qml
+    qml/indicator/CircleIndicatorWaveShape.qml
+    qml/indicator/CircularIndicator.qml
+    qml/indicator/FocusIndicator.qml
+    qml/indicator/LinearIndicator.qml
+    qml/indicator/LinearIndicatorShape.qml
+    qml/indicator/LinearIndicatorWaveShape.qml
+    qml/indicator/PageIndicator.qml
+    qml/input/CheckBox.qml
+    qml/input/CheckShape.qml
+    qml/input/ComboBox.qml
+    qml/input/FilledTextFieldShape.qml
+    qml/input/FloatingPlaceholderText.qml
+    qml/input/NumberStepper.qml
+    qml/input/OutlineTextFieldShape.qml
+    qml/input/RadioButton.qml
+    qml/input/RadioIndicatorShape.qml
+    qml/input/SearchBar.qml
+    qml/input/SearchView.qml
+    qml/input/Slider.qml
+    qml/input/RangeSlider.qml
+    qml/input/SliderHandle.qml
+    qml/input/SliderHandleM2.qml
+    qml/input/SliderM2.qml
+    qml/input/StepperInput.qml
+    qml/input/NumberStepperButtons.qml
+    qml/input/Switch.qml
+    qml/input/TextField.qml
+    qml/input/TextFieldEmbed.qml
+    qml/misc/AutoDivider.qml
+    qml/misc/Badge.qml
+    qml/misc/Changelog.qml
+    qml/misc/ChangelogDialog.qml
+    qml/misc/ColorRadio.qml
+    qml/misc/Divider.qml
+    qml/misc/DragHandle.qml
+    qml/misc/Loader.qml
+    qml/misc/PlainToolTip.qml
+    qml/misc/RichToolTip.qml
+    qml/misc/SnakeBar.qml
+    qml/misc/SnakeView.qml
+    qml/misc/Space.qml
+    qml/motion/ButtonMotion.qml
+    qml/motion/FadeInMotion.qml
+    qml/motion/FadeInThroughMotion.qml
+    qml/motion/FadeOutMotion.qml
+    qml/motion/FadeOutThroughMotion.qml
+    qml/navigation/ActionToolBar.qml
+    qml/navigation/FloatingToolbar.qml
+    qml/navigation/AppBar.qml
+    qml/navigation/BarItem.qml
+    qml/navigation/Drawer.qml
+    qml/navigation/DrawerItem.qml
+    qml/navigation/DrawerSubheader.qml
+    qml/navigation/NavigationRail.qml
+    qml/navigation/RailItem.qml
+    qml/navigation/StandardDrawer.qml
+    qml/navigation/TabBar.qml
+    qml/navigation/TabButton.qml
+    qml/picker/ChannelSlider.qml
+    qml/picker/ColorChannelRow.qml
+    qml/picker/ColorPicker.qml
+    qml/picker/ColorPickerButton.qml
+    qml/picker/ColorPickerDialog.qml
+    qml/picker/ColorTriangle.qml
+    qml/picker/ColorWheel.qml
+    qml/picker/DatePicker.qml
+    qml/picker/DatePickerDialog.qml
+    qml/picker/DateTextField.qml
+    qml/picker/TimeInput.qml
+    qml/picker/TimePicker.qml
+    qml/picker/TimePickerDialog.qml
+    qml/picker/TimeTextField.qml
+    qml/picker/HueChannelSlider.qml
+    qml/popup/ActionMenu.qml
+    qml/popup/BottomSheet.qml
+    qml/popup/SideSheet.qml
+    qml/popup/SideSheetDialog.qml
+    qml/popup/Dialog.qml
+    qml/popup/DialogButtonBox.qml
+    qml/popup/DialogHeader.qml
+    qml/popup/Menu.qml
+    qml/popup/MenuItem.qml
+    qml/popup/MenuItemStyle.qml
+    qml/popup/SelectionMenuItem.qml
+    qml/popup/ToggleMenuItem.qml
+    qml/popup/ActionMenuItem.qml
+    qml/popup/MenuSeparator.qml
+    qml/popup/Popup.qml
+    qml/popup/SheetActionBar.qml
+    qml/scrollable/Carousel.qml
+    qml/scrollable/CarouselImageDelegate.qml
+    qml/scrollable/CarouselItem.qml
+    qml/scrollable/Flickable.qml
+    qml/scrollable/FlickablePane.qml
+    qml/scrollable/GridView.qml
+    qml/scrollable/HorizontalHeaderView.qml
+    qml/scrollable/HorizontalHeaderViewDelegate.qml
+    qml/scrollable/HorizontalListView.qml
+    qml/scrollable/ListBusyFooter.qml
+    qml/scrollable/ListGridBaseDelegate.qml
+    qml/scrollable/ListItem.qml
+    qml/scrollable/ListItemStyle.qml
+    qml/scrollable/SelectionListItem.qml
+    qml/scrollable/ToggleListItem.qml
+    qml/scrollable/ListView.qml
+    qml/scrollable/PageHorizontalListView.qml
+    qml/scrollable/PageVerticalFlickable.qml
+    qml/scrollable/PageVerticalListView.qml
+    qml/scrollable/ScrollBar.qml
+    qml/scrollable/PullToRefresh.qml
+    qml/scrollable/SwipeToDismiss.qml
+    qml/scrollable/TableView.qml
+    qml/scrollable/TableViewDelegate.qml
+    qml/scrollable/VerticalFlickable.qml
+    qml/scrollable/VerticalGridView.qml
+    qml/scrollable/VerticalHeaderView.qml
+    qml/scrollable/VerticalHeaderViewDelegate.qml
+    qml/scrollable/VerticalListView.qml
+    qml/text/ActionLabel.qml
+    qml/text/CursorDelegate.qml
+    qml/text/FontMetrics.qml
+    qml/text/IconLabel.qml
+    qml/text/Label.qml
+    qml/text/Text.qml
+    qml/text/TextEdit.qml
+    qml/text/TextInput.qml
+    qml/text/TextMetrics.qml
+    qml/visual/Elevation.qml
+    qml/visual/ElevationRectangle.qml
+    qml/visual/Icon.qml
+    qml/visual/IconSvg.qml
+    qml/visual/IconView.qml
+    qml/visual/Image.qml
+    qml/visual/RectPath.qml
+    qml/visual/Rectangle.qml
+    qml/visual/Ripple.qml
+    qml/visual/RippleShape.qml
+    qml/visual/RippleSkia.qml
+    qml/visual/RoundClip.qml
+    qml/visual/RoundPath.qml
+    qml/visual/SdfRectangle.qml
+    qml/visual/Shape.qml)
+
+set(RESOURCES assets/MaterialSymbolsRounded.wght_400.opsz_24.woff2)
+
+set(QML_REG_INCLUDE_DIRS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/clock"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/shape"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/shape"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/indicator"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/view"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/anim"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/core"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/style"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/control"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/layout"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/path"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/scrollable"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/input"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/item"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/token"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/model"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/util"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/dialog"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/carousel")
+
+set(LAYOUT_SOURCES
+    include/qml_material/layout/layout.hpp
+    include/qml_material/layout/layout_container.hpp
+    src/layout/layout.cpp
+    src/layout/layout_container.cpp
+    src/layout/layout_item_adapter.cpp
+    src/layout/layout_item_adapter_p.hpp)
+
+set(LAYOUT_REG_INCLUDE_DIRS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/qml_material/layout")
+
+set(SHADER_DEFINES)
+
+set(QML_MATERIAL_BUILD_TYPE
+    SHARED
+    CACHE STRING "")
+
+set(QM_ICON_FILL_0_FONT_FILE)
+set(QM_ICON_FILL_1_FONT_FILE)
+
+if(EMSCRIPTEN)
+  list(APPEND SOURCES src/platform/wasm/wasm.cpp)
+  list(APPEND SHADER_DEFINES "GLES=1")
+  set(QM_ICON_FILL_0_FONT_FILE
+      assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_0.ttf)
+  set(QM_ICON_FILL_1_FONT_FILE
+      assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_1.ttf)
+
+  set(QML_MATERIAL_BUILD_TYPE STATIC)
+  add_compile_options(-flto -oz)
+  add_link_options("-sEXPORT_NAME=qml_material" "-sFULL_ES3=1" -flto -lembind)
+else()
+
+  set(QM_ICON_FILL_0_FONT_FILE
+      assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_0.woff2)
+  set(QM_ICON_FILL_1_FONT_FILE
+      assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_1.woff2)
+
+  if(UNIX)
+   if(ANDROID)
+      set(QM_ICON_FILL_0_FONT_FILE
+          assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_0.ttf)
+      set(QM_ICON_FILL_1_FONT_FILE
+          assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_1.ttf)
+      list(APPEND SOURCES src/platform/android/android.cpp)
+      list(APPEND SHADER_DEFINES "GLES=1")
+      list(APPEND SOURCES src/dialog/file_dialog_stub.cpp)
+    else()
+      list(APPEND SOURCES src/platform/linux/xdp.cpp
+           src/platform/linux/file_dialog_xdp.cpp
+           src/platform/linux/file_dialog_xdp.hpp
+           src/platform/linux/open_uri_xdp.cpp)
+    endif()
+  elseif(WIN32)
+    set(QM_ICON_FILL_0_FONT_FILE
+        assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_0.ttf)
+    set(QM_ICON_FILL_1_FONT_FILE
+        assets/MaterialSymbolsRounded.wght_400.opsz_24.fill_1.ttf)
+
+    set(QML_MATERIAL_BUILD_TYPE STATIC)
+    list(APPEND SOURCES src/platform/win/win.cpp)
+    list(APPEND SOURCES src/dialog/file_dialog_stub.cpp)
+  endif()
+endif()
+
+if(EMSCRIPTEN)
+  list(APPEND SOURCES src/dialog/file_dialog_stub.cpp)
+endif()
+
+list(APPEND RESOURCES "${QM_ICON_FILL_0_FONT_FILE}"
+     "${QM_ICON_FILL_1_FONT_FILE}")
+
+set_source_files_properties(qml/Token.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+set_source_files_properties(qml/Util.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+include_directories(include)
+
+set(LAYOUT_LIBNAME qml_material_layouts)
+qt_add_qml_module(
+  ${LAYOUT_LIBNAME}
+  URI
+  Qcm.Material.Layouts
+  ${QML_MATERIAL_BUILD_TYPE}
+  DEPENDENCIES
+  QtQuick
+  OUTPUT_TARGETS
+  qml_material_layout_targets
+  RESOURCE_PREFIX
+  /
+  SOURCES
+  ${LAYOUT_SOURCES}
+  NO_PLUGIN_OPTIONAL)
+add_library("${LIBNAME}::${LAYOUT_LIBNAME}" ALIAS ${LAYOUT_LIBNAME})
+
+target_compile_features(${LAYOUT_LIBNAME} PRIVATE cxx_std_20)
+target_compile_definitions(${LAYOUT_LIBNAME} PRIVATE QML_MATERIAL_EXPORT)
+if(QML_MATERIAL_BUILD_TYPE MATCHES STATIC)
+  target_compile_definitions(${LAYOUT_LIBNAME} PUBLIC QML_MATERIAL_STATIC_DEFINE)
+endif()
+set_source_files_properties(
+  "${CMAKE_CURRENT_BINARY_DIR}/${LAYOUT_LIBNAME}_qmltyperegistrations.cpp"
+  TARGET_DIRECTORY "${LAYOUT_LIBNAME}" PROPERTIES INCLUDE_DIRECTORIES
+                                                   "${LAYOUT_REG_INCLUDE_DIRS}")
+set_target_properties(${LAYOUT_LIBNAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
+target_include_directories(
+  ${LAYOUT_LIBNAME}
+  PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+  PRIVATE src/layout)
+target_link_libraries(
+  ${LAYOUT_LIBNAME}
+  PUBLIC Qt6::Core Qt6::Qml Qt6::Quick
+  PRIVATE Qt6::QuickPrivate)
+
+qt_add_qml_module(
+  ${LIBNAME}
+  URI
+  Qcm.Material
+  ${QML_MATERIAL_BUILD_TYPE}
+  IMPORTS
+  QtQuick.Layouts
+  QtQuick.Shapes
+  Qcm.Material.Layouts
+  DEPENDENCIES
+  QtQuick
+  OUTPUT_TARGETS
+  qml_material_targets
+  RESOURCE_PREFIX
+  /
+  QML_FILES
+  ${QML_FILES}
+  SOURCES
+  ${SOURCES}
+  RESOURCES
+  ${RESOURCES})
+add_library("${LIBNAME}::${LIBNAME}" ALIAS ${LIBNAME})
+
+target_compile_features(${LIBNAME} PUBLIC cxx_std_20)
+if(QM_USE_PCH)
+  target_precompile_headers(${LIBNAME} PRIVATE
+    <algorithm>
+    <memory>
+    <optional>
+    <vector>
+    <QtCore/QObject>
+    <QtCore/QPointer>
+    <QtCore/QVariant>
+    <QtGui/QColor>
+    <QtGui/QFont>
+    <QtGui/QPainterPath>
+    <QtQml/QQmlComponent>
+    <QtQml/QQmlEngine>
+    <QtQml/qqmlprivate.h>
+    <QtQuick/QQuickItem>
+    <QtQuick/QQuickWindow>)
+  target_compile_options(${LIBNAME} PRIVATE
+    "$<$<CXX_COMPILER_ID:Clang,AppleClang>:-Xclang;-fno-pch-timestamp>")
+endif()
+target_compile_definitions(${LIBNAME} PRIVATE QML_MATERIAL_EXPORT)
+if(QML_MATERIAL_BUILD_TYPE MATCHES STATIC)
+  target_compile_definitions(${LIBNAME} PUBLIC QML_MATERIAL_STATIC_DEFINE)
+endif()
+set_source_files_properties(
+  "${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME}_qmltyperegistrations.cpp"
+  TARGET_DIRECTORY "${LIBNAME}" PROPERTIES INCLUDE_DIRECTORIES
+                                           "${QML_REG_INCLUDE_DIRS}")
+
+# QT_QMLCACHEGEN_ARGUMENTS "--only-bytecode"
+set_target_properties(${LIBNAME} PROPERTIES CXX_VISIBILITY_PRESET hidden)
+
+set(TOKEN_COMPILE_DEFINITIONS
+    QM_ICON_FONT_URL="${QM_ICON_FONT_URL}"
+    QM_ICON_FILL_0_FONT_URL="qrc:/Qcm/Material/${QM_ICON_FILL_0_FONT_FILE}"
+    QM_ICON_FILL_1_FONT_URL="qrc:/Qcm/Material/${QM_ICON_FILL_1_FONT_FILE}"
+    QM_VERSION="${QM_VERSION}")
+
+# The token definitions differ from the target-wide PCH compilation.
+set_source_files_properties(
+  src/token/token.cpp PROPERTIES COMPILE_DEFINITIONS
+                                 "${TOKEN_COMPILE_DEFINITIONS}"
+                                 SKIP_PRECOMPILE_HEADERS ON)
+
+set(SHADER_GLSLS "assets/shader/common.glsl" "assets/shader/sdf.glsl")
+set(SHADER_SOURCES
+    "assets/shader/default.vert"
+    "assets/shader/icon_tint.frag"
+    "assets/shader/round_clip.frag"
+    "assets/shader/sdf_rectangle.frag"
+    "assets/shader/rectangle.vert"
+    "assets/shader/rectangle.frag"
+    "assets/shader/shadow.vert"
+    "assets/shader/shadow.frag"
+    "assets/shader/blur_mask.vert"
+    "assets/shader/blur_mask.frag"
+    "assets/shader/ripple.frag"
+    "assets/shader/rect_glow.frag")
+set(SHADER_OPT BATCHABLE OPTIMIZED)
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+  list(APPEND SHADER_OPT DEBUGINFO)
+endif()
+if(NOT WIN32)
+  list(APPEND SHADER_OPT NOHLSL)
+endif()
+
+qt_add_shaders(
+  ${LIBNAME}
+  "shader"
+  PREFIX
+  "/Qcm/Material"
+  GLSL
+  "150,140,130,330,300es"
+  ${SHADER_OPT}
+  DEFINES
+  ${SHADER_DEFINES}
+  FILES
+  ${SHADER_SOURCES})
+
+foreach(file ${SHADER_SOURCES})
+  set(output_file ".qsb/${file}.qsb")
+  add_custom_command(
+    OUTPUT ${output_file}
+    DEPENDS ${SHADER_GLSLS}
+    APPEND)
+endforeach()
+
+target_include_directories(
+  ${LIBNAME}
+  PUBLIC "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
+  PRIVATE "include/${LIBNAME}" src)
+
+add_subdirectory(third_party)
+target_link_libraries(
+  ${LIBNAME}
+  PUBLIC Qt6::Core Qt6::Quick
+         Qt6::QuickPrivate # QQuickStateGroup
+  PRIVATE material_color Qt6::QmlModelsPrivate Qt6::QuickShapesPrivate)
+
+if(UNIX AND NOT ANDROID AND NOT EMSCRIPTEN)
+  target_link_libraries(${LIBNAME} PRIVATE Qt6::DBus)
+endif()
+
+if(QML_MATERIAL_BUILD_TYPE MATCHES STATIC)
+  add_subdirectory(qml)
+  target_link_libraries("${LIBNAME}plugin"
+                        PUBLIC qml_material_qml_imports
+                               "${LAYOUT_LIBNAME}plugin")
+endif()
+
+if(QM_BUILD_EXAMPLE)
+  add_subdirectory(example)
+endif()
+if(QM_BUILD_TESTS)
+  enable_testing()
+  add_subdirectory(tests)
+endif()
+
+if(NOT QML_MATERIAL_BUILD_TYPE MATCHES STATIC)
+  include(CMakePackageConfigHelpers)
+  install(FILES LICENSE.androidx
+          DESTINATION share/licenses/qml_material)
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME}-config-version.cmake"
+    VERSION ${QM_VERSION}
+    COMPATIBILITY SameMajorVersion)
+
+  configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${LIBNAME}-config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME}-config.cmake"
+    INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBNAME})
+
+  install(FILES "${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME}-config.cmake"
+                "${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME}-config-version.cmake"
+          DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBNAME})
+
+  install(
+    DIRECTORY include/${LIBNAME}
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+    FILES_MATCHING
+    PATTERN "*.h"
+    PATTERN "*.hpp")
+
+  install(TARGETS ${qml_material_targets} ${qml_material_layout_targets}
+          EXPORT ${LIBNAME}-targets)
+  install(TARGETS ${LIBNAME} EXPORT ${LIBNAME}-targets)
+  install(TARGETS ${LAYOUT_LIBNAME} EXPORT ${LIBNAME}-targets)
+  install(
+    EXPORT ${LIBNAME}-targets
+    FILE ${LIBNAME}-targets.cmake
+    NAMESPACE ${LIBNAME}::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${LIBNAME})
+
+  function(qt_install_qml_module target_)
+    get_target_property(QML_TARGET_PATH ${target_} QT_QML_MODULE_TARGET_PATH)
+    get_target_property(QML_TYEPINFO ${target_} QT_QML_MODULE_TYPEINFO)
+    get_target_property(QML_PLUGIN_TARGET ${target_}
+                        QT_QML_MODULE_PLUGIN_TARGET)
+    set(QML_TARGET_INSTALL_DIR "${QML_INSTALL_DIR}/${QML_TARGET_PATH}")
+
+    install(TARGETS ${QML_PLUGIN_TARGET}
+            LIBRARY DESTINATION ${QML_TARGET_INSTALL_DIR})
+
+    if(ARGC GREATER 1)
+      install(
+        DIRECTORY ${ARGV1}
+        DESTINATION ${QML_TARGET_INSTALL_DIR}
+        FILES_MATCHING
+        PATTERN "*.qml"
+        PATTERN "*.mjs")
+    endif()
+
+    install(
+      FILES "${QT_QML_OUTPUT_DIRECTORY}/${QML_TARGET_PATH}/qmldir"
+            "${QT_QML_OUTPUT_DIRECTORY}/${QML_TARGET_PATH}/${QML_TYEPINFO}"
+      DESTINATION ${QML_TARGET_INSTALL_DIR})
+  endfunction()
+
+  qt_install_qml_module(${LIBNAME} qml)
+  qt_install_qml_module(${LAYOUT_LIBNAME})
+
+endif()

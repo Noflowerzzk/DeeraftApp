@@ -1,0 +1,340 @@
+pragma ComponentBehavior: Bound
+import QtQuick
+import QtQuick.Window
+
+import Qcm.Material as MD
+
+// M3 expressive wide navigation rail. Collapsed (96dp, vertical items) and
+// expanded (220-360dp, horizontal items) share the same RailItem and transition
+// into each other. When embedded it occupies layout space; otherwise the
+// expanded rail is shown as a modal/modeless overlay (ModalWideNavigationRail).
+MD.NavigationRailBase {
+    id: control
+    focusPolicy: Qt.NoFocus
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, (useModal || drawerOpened ? 0 : implicitContentWidth) + leftPadding + rightPadding)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+
+    // -- data --
+    property var model: null
+
+    // -- form state --
+    // embedded (occupies space) when window is large enough
+    useEmbed: MD.MProp.size.windowClass >= MD.Enum.WindowClassLarge
+    // force the expanded rail to overlay even when it could embed
+    // user-togglable expanded state for embedded mode
+    property bool drawerGestureEnabled: true
+    // automatically expand when the window becomes large enough to embed
+    // items use the horizontal (expanded) layout
+    readonly property bool useLarge: useModal ? drawerRequested : expanded
+    readonly property real expansionProgress: drawerOpened ? m_drawer.position : (useModal ? 0 : m_private.embeddedProgress)
+    readonly property bool drawerOpened: m_popup_content.current
+
+    // -- sizes --
+    property real collapsedWidth: 96
+    property real itemHeight: 0
+    property real itemSpacing: 6
+    property real itemVerticalPadding: 0
+    // M3 wide rail expanded default = 220dp (narrower than the old drawer)
+    property real expandedWidth: 220
+
+    // -- arrangement --
+    property int arrangement: MD.Enum.RailCenter
+
+    // hide the collapsed rail completely on compact windows (no footprint)
+    property bool hideWhenCollapsed: false
+
+    // -- content slots --
+    property Component header: defaultHeader
+    property Component footer: null
+    // custom FAB component; if unset, fabAction renders the built-in morphing FAB
+    property Component fab: null
+    // drives the built-in FAB: icon only when collapsed, extended icon+label when expanded
+    property MD.Action fabAction: null
+    readonly property Component defaultHeader: m_header_comp
+
+    property MD.Action headerAction: defaultHeaderAction
+    defaultHeaderAction.icon.name: MD.Token.icon.menu
+    drawer: m_drawer
+    popupSite: m_popup_content
+    headerControl: header === defaultHeader ? (m_header_loader.item?.menuControl ?? null) : null
+
+    QtObject {
+        id: m_private
+        property bool ready: false
+        property real embeddedProgress: control.drawerOpened ? m_drawer.position : (control.expanded ? 1 : 0)
+        Behavior on embeddedProgress {
+            enabled: m_private.ready && !control.useModal && !control.drawerOpened
+            NumberAnimation {
+                duration: MD.Token.duration.long2
+                easing: MD.Token.easing.emphasized
+            }
+        }
+    }
+
+    MD.AdaptivePresenter {
+        id: m_presenter
+        content: m_flick
+        destination: control.useModal && control.drawerRequested ? m_popup_content : m_embed_content
+    }
+
+    Component.onCompleted: m_private.ready = true
+
+    background: Item {
+        implicitWidth: {
+            if (control.hideWhenCollapsed && MD.MProp.size.isCompact)
+                return 0;
+            if (control.useModal || control.drawerOpened)
+                return control.collapsedWidth;
+            return MD.Util.lerp(control.collapsedWidth, control.expandedWidth, control.expansionProgress);
+        }
+        implicitHeight: 400
+    }
+
+    contentItem: MD.PresentationSite {
+        id: m_embed_content
+        presenter: m_presenter
+    }
+
+    Component {
+        id: m_header_comp
+        Item {
+            readonly property MD.CommandButtonBase menuControl: m_menu_btn
+            implicitWidth: MD.Util.lerp(control.collapsedWidth, control.expandedWidth, control.expansionProgress)
+            implicitHeight: m_menu_btn.y + m_menu_btn.height + (m_fab.visible ? m_fab.height + 12 : 0) + 12
+
+            MD.StandardIconButton {
+                id: m_menu_btn
+                // expanded x aligns the menu icon left edge (btn is 40 wide, icon 24 centered)
+                // with the nav item icons at x=32; collapsed target keeps it centered in the rail
+                x: MD.Util.lerp((control.collapsedWidth - width) / 2, 32 - (width - 24) / 2, control.expansionProgress)
+                y: 4
+                icon.name: control.useLarge ? MD.Token.icon.menu_open : MD.Token.icon.menu
+                MD.ActionCommand.action: control.headerAction ?? control.defaultHeaderAction
+                enabled: MD.ActionCommand.enabled
+            }
+
+            // built-in morphing FAB (icon-only -> extended)
+            MD.ExtendedFAB {
+                id: m_fab
+                MD.ActionCommand.action: control.fabAction
+                text: MD.ActionCommand.text
+                icon.actionIcon: MD.ActionCommand.icon
+                enabled: MD.ActionCommand.enabled
+                flat: true
+                animationsEnabled: false
+                minimumExpandedWidth: 0
+                expansionProgress: control.expansionProgress
+                labelOpacity: control.expansionProgress
+                visible: !control.fab && control.fabAction
+                x: MD.Util.lerp((control.collapsedWidth - 56) / 2, 16, control.expansionProgress)
+                y: m_menu_btn.y + m_menu_btn.height + 12
+            }
+
+            // custom FAB slot
+            Loader {
+                id: m_fab_loader
+                x: MD.Util.lerp((control.collapsedWidth - width) / 2, 12, control.expansionProgress)
+                y: m_menu_btn.y + m_menu_btn.height + 12
+                visible: sourceComponent
+                sourceComponent: control.fab
+            }
+        }
+    }
+
+    MD.Drawer {
+        id: m_drawer
+        revealMode: MD.DrawerBase.Expand
+        width: control.expandedWidth
+        enter: Transition {
+            NumberAnimation {
+                duration: MD.Token.duration.long2
+                easing: MD.Token.easing.emphasized
+            }
+        }
+        exit: Transition {
+            NumberAnimation {
+                duration: MD.Token.duration.long2
+                easing: MD.Token.easing.emphasized
+            }
+        }
+        parent: control.MD.Overlay.overlay
+        modal: control.useModal
+        interactive: control.drawerGestureEnabled && control.useModal
+        MD.MProp.textColor: MD.MProp.color.on_surface
+        MD.MProp.backgroundColor: MD.MProp.color.surface_container
+
+        topPadding: 4
+        bottomPadding: 4
+
+        MD.Overlay.modal: Rectangle {
+            color: MD.Util.transparent(MD.Token.color.scrim, 0.32)
+        }
+        MD.Overlay.modeless: Rectangle {
+            color: MD.Util.transparent(MD.Token.color.scrim, 0.32)
+        }
+
+        background: Item {
+            implicitWidth: control.expandedWidth
+            Rectangle {
+                anchors.fill: parent
+                color: MD.MProp.color.surface_container
+                layer.enabled: true
+                layer.effect: MD.RoundClip {
+                    corners: MD.Util.corners(0, 16, 0, 16)
+                    size: Qt.vector2d(parent.width, parent.height)
+                }
+            }
+        }
+
+        contentItem: MD.PresentationSite {
+            id: m_popup_content
+            presenter: m_presenter
+            popup: m_drawer
+            originSite: m_embed_content
+            autoOpen: false
+            activationEnabled: control.useModal
+        }
+    }
+
+    Item {
+        visible: false
+
+        MD.VerticalFlickable {
+            id: m_flick
+            enabled: control.enabled && control.visible
+            topMargin: 12
+            bottomMargin: 12
+            contentHeight: m_content.implicitHeight
+            implicitWidth: m_content.implicitWidth
+            implicitHeight: m_content.implicitHeight + 12 * 2
+
+            Item {
+                id: m_content
+                width: parent.width
+                height: Math.max(implicitHeight, m_flick.height - 12 * 2)
+                implicitWidth: MD.Util.lerp(control.collapsedWidth, control.expandedWidth, control.expansionProgress)
+                implicitHeight: m_header_loader.height + m_rail_container.implicitHeight + m_footer_container.implicitHeight
+
+                // -- header --
+                Loader {
+                    id: m_header_loader
+                    width: parent.width
+                    y: 0
+                    visible: sourceComponent
+                    sourceComponent: control.header
+                }
+
+                // -- rail items --
+                Item {
+                    id: m_rail_container
+                    y: m_header_loader.y + m_header_loader.height
+                    width: parent.width
+                    height: Math.max(implicitHeight, m_content.height - m_header_loader.height - m_footer_container.implicitHeight)
+                    implicitHeight: m_rail_view.implicitHeight
+
+                    MD.VerticalListView {
+                        id: m_rail_view
+                        expand: true
+                        y: {
+                            const max = Math.max(parent.height - height, 0);
+                            switch (control.arrangement) {
+                            case MD.Enum.RailCenter:
+                                // center within the whole control, not just the
+                                // space left between header and footer
+                                return (1 - control.expansionProgress) * MD.Util.clamp((m_content.height - height) / 2 - m_header_loader.height, 0, max);
+                            case MD.Enum.RailBottom:
+                                return (1 - control.expansionProgress) * max;
+                            default:
+                                return 0;
+                            }
+                        }
+                        height: implicitHeight
+                        width: parent.width
+
+                        spacing: control.itemSpacing * (1 - control.expansionProgress)
+
+                        interactive: false
+                        reuseItems: false
+                        currentIndex: control.currentIndex
+                        model: control.model
+                        // a model entry with a `section` field renders as a group
+                        // header (text when expanded, a short divider when collapsed)
+                        delegate: Item {
+                            id: m_delegate
+                            required property var model
+                            required property int index
+                            readonly property bool isHeader: m_delegate.model.section !== undefined
+                            width: ListView.view.contentWidth
+                            implicitHeight: isHeader ? m_section.implicitHeight : Math.max(control.itemHeight,m_nav.implicitHeight)
+                            height: implicitHeight
+
+                            Item {
+                                id: m_section
+                                visible: m_delegate.isHeader
+                                width: parent.width
+                                implicitHeight: MD.Util.lerp(21, 12 + m_section_label.implicitHeight + 8, control.expansionProgress)
+
+                                MD.Text {
+                                    id: m_section_label
+                                    visible: opacity > 0
+                                    opacity: control.expansionProgress
+                                    x: 16
+                                    y: 12
+                                    width: parent.width - 32
+                                    text: m_delegate.model.section ?? ''
+                                    typescale: MD.Token.typescale.title_small
+                                    color: MD.MProp.color.on_surface_variant
+                                }
+                                Rectangle {
+                                    visible: opacity > 0
+                                    opacity: 1 - control.expansionProgress
+                                    width: 48
+                                    height: 1
+                                    x: (parent.width - width) / 2
+                                    y: (parent.implicitHeight - height) / 2
+                                    color: MD.MProp.color.outline_variant
+                                }
+                            }
+
+                            MD.RailItem {
+                                id: m_nav
+                                topPadding: control.itemVerticalPadding
+                                bottomPadding: control.itemVerticalPadding
+                                visible: !m_delegate.isHeader
+                                width: parent.width
+                                icon.name: {
+                                    const ic = m_delegate.model.icon;
+                                    if (typeof ic == 'number')
+                                        return MD.Token.icon[ic];
+                                    return ic ?? '';
+                                }
+                                text: m_delegate.model.name ?? ''
+                                expand: control.useLarge
+                                expansionProgress: control.expansionProgress
+                                selected: control.currentIndex === m_delegate.index
+                                navigation: control
+                                navigationIndex: m_delegate.index
+                            }
+                        }
+                    }
+                }
+
+                // -- footer --
+                Item {
+                    id: m_footer_container
+                    y: m_rail_container.y + m_rail_container.height
+                    width: parent.width
+                    height: implicitHeight
+                    implicitHeight: m_footer_loader.sourceComponent ? m_footer_loader.implicitHeight : 0
+
+                    Loader {
+                        id: m_footer_loader
+                        asynchronous: true
+                        width: parent.width
+                        sourceComponent: control.footer
+                    }
+                }
+            }
+        }
+    }
+}

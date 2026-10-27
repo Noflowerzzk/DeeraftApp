@@ -1,0 +1,147 @@
+#pragma once
+#include <QObject>
+#include <QQmlEngine>
+#include <QColor>
+#include <QQuickItem>
+#include <QPointer>
+#include <QQuickWindow>
+#include <memory>
+
+#include "qml_material/util/corner.hpp"
+#include "qml_material/core/enum.hpp"
+#include "qml_material/token/token.hpp"
+#include "qml_material/core.hpp"
+#include "qml_material/export.hpp"
+#include "qml_material/control/icon_spec.hpp"
+
+namespace qml_material
+{
+
+struct QML_MATERIAL_API ComponentSource {
+    QPointer<QQmlComponent>        component;
+    std::unique_ptr<QQmlComponent> ownedComponent;
+    QString                        errorString;
+
+    explicit operator bool() const { return component != nullptr; }
+};
+
+class Util : public QObject {
+    Q_OBJECT
+    QML_NAMED_ELEMENT(UtilCpp)
+public:
+    Util(QObject* parent = nullptr);
+    ~Util();
+
+    enum Track
+    {
+        TrackCreate = 0,
+        TrackDelete
+    };
+    Q_ENUMS(Track)
+
+    Q_INVOKABLE void track(QVariant, Track);
+
+    /// Hand off `url` to the system URL handler. Implementation is
+    /// per-platform; today only Linux is wired (via xdg-desktop-portal
+    /// `org.freedesktop.portal.OpenURI`). Logs a warning on platforms
+    /// that don't have a backend yet.
+    Q_INVOKABLE void openUrlExternally(const QString& url);
+    Q_INVOKABLE void openFolderExternally(const QString& url);
+
+    Q_INVOKABLE bool hasIcon(ActionIcon* icon) const;
+
+    Q_INVOKABLE static void closePopup(QObject* obj);
+
+    Q_INVOKABLE static QColor transparent(QColor in, float alpha) noexcept;
+    Q_INVOKABLE static QColor hoverColor(QColor in) noexcept;
+    Q_INVOKABLE static QColor pressColor(QColor in) noexcept;
+    // QColor channels are interpreted as sRGB; alpha is interpolated linearly.
+    Q_INVOKABLE static QML_MATERIAL_API QColor mixColorOklab(QColor from, QColor to,
+                                                             qreal progress) noexcept;
+
+    Q_INVOKABLE static qreal devicePixelRatio(QQuickItem* in);
+
+    Q_INVOKABLE static CornersGroup listCorners(qint32 idx, qint32 count, qint32 radius) noexcept;
+    Q_INVOKABLE static CornersGroup tableCorners(qint32 row, qint32 column, qint32 rows,
+                                                 qint32 columns, qint32 radius) noexcept;
+    Q_INVOKABLE static CornersGroup tableWithHeaderCorners(qint32 row, qint32 column, qint32 rows,
+                                                           qint32 columns, qint32 radius) noexcept;
+
+    Q_INVOKABLE static CornersGroup cornerArray(QVariant in) noexcept;
+    Q_INVOKABLE static CornersGroup corners(qreal in) noexcept;
+    Q_INVOKABLE static CornersGroup corners(qreal, qreal) noexcept;
+    Q_INVOKABLE static CornersGroup corners(qreal tl, qreal tr, qreal bl, qreal br) noexcept;
+
+    QString type_str(const QJSValue&);
+
+    Q_INVOKABLE void print_parents(const QJSValue&);
+
+    Q_INVOKABLE static qreal lightness(QColor color) noexcept;
+
+    Q_INVOKABLE static token::Elevation tokenElevation() noexcept;
+    Q_INVOKABLE static token::Shape     tokenShape() noexcept;
+    Q_INVOKABLE static token::State     tokenState() noexcept;
+
+    Q_INVOKABLE QObject* createItem(const QJSValue& url_or_comp, const QVariantMap& props,
+                                    QObject* parent = nullptr);
+
+    Q_INVOKABLE QObject* showPopup(const QJSValue& url_or_comp, const QVariantMap& props,
+                                   QObject* parent = nullptr, bool open_and_destry = true);
+
+    Q_INVOKABLE static QString paramsString(const QVariantMap& props);
+    Q_INVOKABLE static void    setCursor(QQuickItem* item, Qt::CursorShape shape);
+
+    Q_INVOKABLE static double clamp(double t, double low, double high);
+    Q_INVOKABLE static double teleportCurve(double t, double left, double right);
+
+    // Cubic Bezier ease — given a normalized fraction `t` in [0,1] and a curve
+    // (0,0) → (p1x,p1y) → (p2x,p2y) → (1,1), returns the eased y. Matches
+    // Android's pathInterpolator.
+    Q_INVOKABLE static double bezierY(double t, double p1x, double p1y, double p2x,
+                                      double p2y) noexcept;
+    // Convenience for the M3 indeterminate animation drivers: clamp
+    // `(playtime - delay) / duration` to [0,1] then ease via bezierY.
+    Q_INVOKABLE static double segFrac(double playtime, double delay, double duration, double p1x,
+                                      double p1y, double p2x, double p2y) noexcept;
+
+    Q_INVOKABLE static QString stateText(bool enabled, bool pressed, bool hovered,
+                                         bool focused) noexcept;
+
+    Q_INVOKABLE static void forceSetImplicitHeight(QQuickItem* item, qreal height);
+    Q_INVOKABLE static void forceSetImplicitWidth(QQuickItem* item, qreal width);
+
+    Q_INVOKABLE static void        cellHoveredOn(QQuickItem* item, bool hovered, qint32 row,
+                                                 qint32 column);
+    Q_INVOKABLE static QObject*    getParent(QObject* obj);
+    Q_INVOKABLE static QQuickItem* controlAncestor(QQuickItem* item);
+    Q_INVOKABLE static bool        disconnectAll(QObject* obj, const QString&);
+
+    Q_INVOKABLE static quint32 poolObjectCount() noexcept;
+    Q_INVOKABLE static qint32  i32Max() noexcept;
+
+private:
+    Q_SLOT void onPopupFinished();
+
+private:
+    usize m_tracked { 0 };
+};
+
+QML_MATERIAL_API auto resolveComponentSource(const QVariant& source, QQmlEngine* engine,
+                                             QQmlContext*                   context,
+                                             QQmlComponent::CompilationMode mode)
+    -> ComponentSource;
+
+/// Platform-split entry point. Each `src/platform/<os>/` provides its
+/// own implementation. Linux uses xdg-desktop-portal `OpenURI`; other
+/// platforms get a no-op stub today.
+void sysOpenUrl(const QString& url);
+void sysOpenFolder(const QString& url);
+} // namespace qml_material
+
+namespace qcm
+{
+auto qml_dyn_count() -> std::atomic<i32>&;
+auto createItem(QQmlEngine* engine, const QJSValue& url_or_comp, const QVariantMap& props,
+                QObject* parent, QQmlContext* context) -> QObject*;
+
+} // namespace qcm

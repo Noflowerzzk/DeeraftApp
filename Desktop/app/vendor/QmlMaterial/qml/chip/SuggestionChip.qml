@@ -1,0 +1,83 @@
+import QtQuick
+import Qcm.Material as MD
+import Qcm.Material.Layouts as Lite
+
+MD.CommandButtonBase {
+    id: control
+
+    readonly property bool hasIcon: !icon.empty
+    property MD.StateSuggestionChip mdState: MD.StateSuggestionChip {
+        focusIndicationEnabled: false
+        item: control
+    }
+
+    property alias elevated: control.mdState.elevated
+
+    implicitWidth: Math.max(implicitBackgroundWidth + leftInset + rightInset, implicitContentWidth + leftPadding + rightPadding)
+    implicitHeight: Math.max(implicitBackgroundHeight + topInset + bottomInset, implicitContentHeight + topPadding + bottomPadding)
+
+    leftInset: 0
+    rightInset: 0
+    topInset: 0
+    bottomInset: 0
+    verticalPadding: 0
+    leftPadding: hasIcon ? 8 : 16
+    rightPadding: 16
+    spacing: 8
+
+    icon.width: 18
+    icon.height: 18
+    icon.color: control.mdState.iconColor
+    property MD.typescale typescale: MD.Token.typescale.label_large
+    font.capitalization: Font.MixedCase
+    font.pixelSize: typescale.size
+    font.weight: typescale.weight
+    font.letterSpacing: typescale.tracking
+
+    contentItem: Lite.Row {
+        alignment: Qt.AlignHCenter | Qt.AlignVCenter
+        spacing: control.spacing
+        opacity: control.mdState.contentOpacity
+
+        MD.IconView {
+            visible: control.hasIcon
+            icon: control.icon
+        }
+
+        MD.Label {
+            text: control.text
+            color: control.mdState.textColor
+            useTypescale: false
+            font: control.font
+            lineHeight: control.typescale.line_height
+            wrapMode: Text.NoWrap
+            Lite.Layout.fillWidth: true
+        }
+    }
+
+    background: MD.ElevationRectangle {
+        implicitWidth: 32
+        implicitHeight: 32
+
+        radius: 8
+        color: control.mdState.backgroundColor
+        opacity: control.mdState.backgroundOpacity
+
+        border.width: control.elevated ? 0 : 1
+        border.color: control.mdState.outlineColor
+        elevation: control.mdState.elevation
+
+        MD.Ripple {
+            anchors.fill: parent
+            radius: parent.radius
+            interactionSource: control.interactionSource
+            indication: control.mdState.indication
+            color: control.mdState.stateLayerColor
+        }
+
+        MD.FocusIndicator {
+            corners: MD.Util.corners(parent.radius)
+            active: control.focusVisible
+        }
+    }
+}

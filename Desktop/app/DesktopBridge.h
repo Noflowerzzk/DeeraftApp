@@ -4,6 +4,7 @@
 #include <QPointer>
 #include <QSettings>
 #include <QUrl>
+#include <QFont>
 #include <QSet>
 class MainWindow;
 class Task;
@@ -13,6 +14,7 @@ class DesktopBridge final : public QObject {
     Q_PROPERTY(QVariantList instances READ instances NOTIFY changed)
     Q_PROPERTY(QVariantList accounts READ accounts NOTIFY changed)
     Q_PROPERTY(QVariantList tasks READ tasks NOTIFY tasksChanged)
+    Q_PROPERTY(QFont interfaceFont READ interfaceFont CONSTANT)
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(bool dark READ dark NOTIFY themeChanged)
     Q_PROPERTY(QString error READ error NOTIFY changed)
@@ -21,6 +23,7 @@ public:
     QVariantList instances() const;
     QVariantList accounts() const;
     QVariantList tasks() const { return m_tasks; }
+    QFont interfaceFont() const;
     QString theme() const;
     void setTheme(const QString& value);
     bool dark() const;

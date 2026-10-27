@@ -439,29 +439,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     installDeeraftShell(this);
 }
 
-void MainWindow::deeraftInstallCentral(QWidget* shell)
-{
-    auto original = takeCentralWidget();
-    m_deeraftStack = new QStackedWidget(this);
-    m_deeraftStack->addWidget(shell);
-    m_deeraftStack->addWidget(original);
-    setCentralWidget(m_deeraftStack);
-    m_deeraftReturnBar = addToolBar(tr("DeeraftApp"));
-    m_deeraftReturnBar->setObjectName("deeraftReturnBar");
-    m_deeraftReturnBar->setMovable(false);
-    auto back = m_deeraftReturnBar->addAction(tr("返回 DeeraftApp"));
-    connect(back, &QAction::triggered, this, [this]{deeraftSetAdvanced(false);});
-    deeraftSetAdvanced(false);
+void MainWindow::deeraftSetWindow(QWidget* window) { m_deeraftWindow=window; }
+QWidget* MainWindow::deeraftWindow() const { return m_deeraftWindow ? m_deeraftWindow.data() : const_cast<MainWindow*>(this); }
+void MainWindow::setVisible(bool visible) {
+    if(m_deeraftWindow) m_deeraftWindow->setVisible(visible);
+    // This object hosts only inherited commands and secondary dialogs.
+    // It must never become a visible top-level Prism window.
+    QMainWindow::setVisible(false);
 }
-
-void MainWindow::deeraftSetAdvanced(bool advanced)
-{
-    if (!m_deeraftStack) return;
-    if(advanced){ui->actionSettings->trigger();return;}
-    m_deeraftStack->setCurrentIndex(0);
-    for (auto bar : findChildren<QToolBar*>(QString(), Qt::FindDirectChildrenOnly)) bar->setVisible(false);
-    ui->menuBar->setVisible(false);
-    statusBar()->setVisible(false);
+void MainWindow::deeraftSetAdvanced(bool advanced) {
+    if(advanced) ui->actionSettings->trigger();
 }
 
 void MainWindow::deeraftSelectInstance(const QString& id){setSelectedInstanceById(id);}
@@ -477,7 +464,7 @@ void MainWindow::deeraftAction(const QString& name, const QString& instanceId)
 #ifndef Q_OS_MAC
 void MainWindow::keyReleaseEvent(QKeyEvent* event)
 {
-    if (m_deeraftStack && m_deeraftStack->currentIndex()==0) { QMainWindow::keyReleaseEvent(event);return; }
+    if (m_deeraftWindow) { QMainWindow::keyReleaseEvent(event);return; }
     if (event->key() == Qt::Key_Alt && !APPLICATION->settings()->get("MenuBarInsteadOfToolBar").toBool())
         ui->menuBar->setVisible(!ui->menuBar->isVisible());
     else

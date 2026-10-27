@@ -1,4 +1,5 @@
 import QtQuick
+import Qcm.Material as MD
 Text {
  property string name: ""
  text: name

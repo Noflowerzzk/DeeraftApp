@@ -43,6 +43,7 @@ Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
 #include <QDir>
 #include <QDesktopServices>
 #include <QCoreApplication>
+#include <functional>
 
 class InstanceIcons final : public QQuickImageProvider {
 public:
@@ -163,6 +164,68 @@ void installDeeraftShell(MainWindow* window){
         auto item=[quick](const char* name){return quick->rootObject()->findChild<QQuickItem*>(QString::fromUtf8(name));};
         auto click=[quick,item](const char* name){if(auto target=item(name)){auto point=target->mapToItem(quick->rootObject(),QPointF(target->width()/2,target->height()/2));QMouseEvent press(QEvent::MouseButtonPress,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(quick,&press);QMouseEvent release(QEvent::MouseButtonRelease,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(quick,&release);}};
         auto escape=[quick]{QKeyEvent press(QEvent::KeyPress,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&press);QKeyEvent release(QEvent::KeyRelease,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&release);};
+        if(qEnvironmentVariableIsSet("DEERAFT_MOTION_PROBE")) {
+            auto captureRail=[quick,report](const QString& name){
+                QJsonArray rows;
+                QList<QQuickItem*> icons;
+                std::function<void(QQuickItem*)> visit=[&](QQuickItem* item){
+                    if(item->objectName()=="railItemIcon")icons.append(item);
+                    for(auto child:item->childItems())visit(child);
+                };
+                visit(quick->rootObject());
+                for(auto icon:icons) {
+                    auto owner=icon->parentItem() ? icon->parentItem()->parentItem() : nullptr;
+                    if(!owner || !owner->isVisible())continue;
+                    auto background=owner->findChild<QQuickItem*>("railIndicatorBounds");
+                    if(!background)continue;
+                    const auto a=icon->mapToItem(quick->rootObject(),{icon->width()/2,icon->height()/2});
+                    const auto b=background->mapToItem(quick->rootObject(),{background->width()/2,background->height()/2});
+                    rows.append(QJsonObject{{"label",owner->property("text").toString()},{"dx",a.x()-b.x()},{"dy",a.y()-b.y()}});
+                }
+                (*report)[name]=rows;
+            };
+            auto frameProbe=new QTimer(window);
+            frameProbe->setInterval(25);
+            QObject::connect(frameProbe,&QTimer::timeout,window,[quick,report,take]{
+                auto motion=quick->rootObject()->findChild<QObject*>("pageMotion");
+                if(!motion)return;
+                auto target=qvariant_cast<QQuickItem*>(motion->property("target"));
+                if(!target || !motion->property("running").toBool())return;
+                const bool exiting=quick->rootObject()->property("displayedPage").toInt()==1;
+                const auto key=exiting ? "outgoingFrameCaptured" : "incomingFrameCaptured";
+                if(!report->value(key).toBool() && target->opacity()>.05 && target->opacity()<.95){
+                    (*report)[key]=true;
+                    take(exiting ? "exit-observed" : "enter-observed");
+                }
+            });
+            frameProbe->start();
+            QTimer::singleShot(1200,window,[take,captureRail]{take("rail-collapsed");captureRail("railCollapsedCenters");});
+            QTimer::singleShot(1500,window,[quick]{quick->rootObject()->setProperty("page",0);});
+            QTimer::singleShot(1545,window,[take]{take("page-exit");});
+            QTimer::singleShot(1640,window,[take]{take("page-enter");});
+            QTimer::singleShot(1950,window,[take,quick,report]{take("page-settled");(*report)["pageSettled"]=quick->rootObject()->property("displayedPage").toInt()==0;});
+            QTimer::singleShot(2100,window,[quick]{quick->rootObject()->setProperty("page",2);});
+            QTimer::singleShot(2120,window,[quick]{quick->rootObject()->setProperty("page",4);});
+            QTimer::singleShot(2140,window,[quick]{quick->rootObject()->setProperty("page",1);});
+            QTimer::singleShot(2600,window,[quick,report]{(*report)["rapidNavigationLastRequestWins"]=quick->rootObject()->property("displayedPage").toInt()==1;});
+            QTimer::singleShot(2750,window,[quick]{quick->rootObject()->setProperty("railExpanded",true);});
+            QTimer::singleShot(3350,window,[take,captureRail]{take("rail-expanded");captureRail("railExpandedCenters");});
+            QTimer::singleShot(3550,window,[quick]{
+                if(auto page=quick->rootObject()->findChild<QObject*>("launcherPage")) {
+                    QMetaObject::invokeMethod(page,"selectInstance",Q_ARG(QVariant,QVariant("ctf")));
+                }
+            });
+            QTimer::singleShot(3595,window,[take]{take("instance-exit");});
+            QTimer::singleShot(3690,window,[take]{take("instance-enter");});
+            QTimer::singleShot(4000,window,[quick,report]{
+                if(auto page=quick->rootObject()->findChild<QObject*>("launcherPage"))(*report)["instanceSwapSettled"]=page->property("selectedId").toString()=="ctf";
+                if(auto motion=quick->rootObject()->findChild<QObject*>("pageMotion"))motion->setProperty("reducedMotion",true);
+                quick->rootObject()->setProperty("page",2);
+                (*report)["reducedMotionImmediate"]=quick->rootObject()->property("displayedPage").toInt()==2;
+            });
+            QTimer::singleShot(4300,window,[take,writeReport]{take("reduced-motion");writeReport();qApp->quit();});
+            return;
+        }
         QTimer::singleShot(1100,window,[window,host,quick,report,item,writeReport]{
             QMetaObject::invokeMethod(window,"defaultAccountChanged",Qt::DirectConnection);
             QMetaObject::invokeMethod(window,"globalSettingsClosed",Qt::DirectConnection);

@@ -1,0 +1,66 @@
+{
+    "cjkGlyphFonts": [
+        "Roboto Flex",
+        "Noto Sans SC"
+    ],
+    "incomingFrameCaptured": true,
+    "instanceSwapSettled": true,
+    "outgoingFrameCaptured": true,
+    "pageSettled": true,
+    "railCollapsedCenters": [
+        {
+            "dx": 0,
+            "dy": 0,
+            "label": "社区"
+        },
+        {
+            "dx": 0,
+            "dy": 0,
+            "label": "启动器"
+        },
+        {
+            "dx": 0,
+            "dy": 0,
+            "label": "服务器"
+        },
+        {
+            "dx": 0,
+            "dy": 0,
+            "label": "我的"
+        },
+        {
+            "dx": 0,
+            "dy": 0,
+            "label": "设置"
+        }
+    ],
+    "railExpandedCenters": [
+        {
+            "dx": -66,
+            "dy": 0,
+            "label": "社区"
+        },
+        {
+            "dx": -66,
+            "dy": 0,
+            "label": "启动器"
+        },
+        {
+            "dx": -66,
+            "dy": 0,
+            "label": "服务器"
+        },
+        {
+            "dx": -66,
+            "dy": 0,
+            "label": "我的"
+        },
+        {
+            "dx": -66,
+            "dy": 0,
+            "label": "设置"
+        }
+    ],
+    "rapidNavigationLastRequestWins": true,
+    "reducedMotionImmediate": true
+}

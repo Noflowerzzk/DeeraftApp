@@ -15,9 +15,12 @@ MD.Pane {
  property color muted: colors.onSurfaceVariant
  property color accent: colors.primary
  property int page: 1
+ property int displayedPage: 1
+ onPageChanged: if(pageMotion)pageMotion.run(function(){root.displayedPage=root.page})
+ ContentTransition { id: pageMotion; objectName: "pageMotion"; target: stack }
  property alias railExpanded: rail.expanded
  property var navigation: [{id:0,name:"社区",icon:"diversity_3"},{id:1,name:"启动器",icon:"stadia_controller"},{id:2,name:"服务器",icon:"dns"},{id:4,name:"我的",icon:"person"}]
- property string pageTitle: ["社区","启动器","服务器","社区聊天","我的"][page]
+ property string pageTitle: ["社区","启动器","服务器","社区聊天","我的"][displayedPage]
  property var allInstances: desktop.instances.concat(library.externalInstances)
  property var activity: communityClient.activity
  property string toastText: ""
@@ -131,7 +134,7 @@ MD.Pane {
        Layout.leftMargin: 24
        Layout.rightMargin: 32
        spacing: 16
-       IconButton { visible: root.page===3; symbol: "arrow_back"; hint: "返回社区"; onClicked: root.page=0 }
+       IconButton { visible: root.displayedPage===3; symbol: "arrow_back"; hint: "返回社区"; onClicked: root.page=0 }
        AppLabel { text: root.pageTitle; font.pixelSize: 32; lineHeight: 42; font.weight: 600; font.letterSpacing: -.5; color: root.ink; Layout.fillWidth: true }
        MD.BusyIndicator { visible: communityClient.busy; running: visible; Layout.preferredWidth: 28; Layout.preferredHeight: 28 }
        IconButton { symbol: "download"; hint: "下载任务"; onClicked: tasksDrawer.open()
@@ -149,19 +152,12 @@ MD.Pane {
        id: stack
        Layout.fillWidth: true
        Layout.fillHeight: true
-       currentIndex: root.page
+       currentIndex: root.displayedPage
        CommunityPage { app: root }
        LauncherPage { id: launcher; app: root }
        ServersPage { app: root }
        ChatPage { app: root }
        ProfilePage { app: root }
-       transform: Translate { id: pageOffset }
-       onCurrentIndexChanged: if(!library.reducedMotion) pageTransition.restart()
-       ParallelAnimation {
-         id: pageTransition
-         NumberAnimation { target: stack; property: "opacity"; from: 0; to: 1; duration: 150; easing.type: Easing.OutCubic }
-         NumberAnimation { target: pageOffset; property: "y"; from: 10; to: 0; duration: 300; easing.type: Easing.OutCubic }
-       }
      }
    }
  }

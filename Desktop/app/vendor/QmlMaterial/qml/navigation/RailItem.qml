@@ -137,7 +137,7 @@ MD.NavigationItemBase {
             id: m_indicator
             objectName: 'railIndicatorBounds'
             x: control._visualX((control._collapsedWidth - control._collapsedIndicatorW) / 2 + (control._indicatorMargin - (control._collapsedWidth - control._collapsedIndicatorW) / 2) * control._progress, width)
-            y: 0
+            y: control.topPadding
             width: control._collapsedIndicatorW + ((control.iconStyle === MD.Enum.IconOnly ? control._expandedIndicatorW : Math.max(0, control.width - control._indicatorMargin * 2)) - control._collapsedIndicatorW) * control._progress
             height: control._collapsedIndicatorH + (control._expandedIndicatorH - control._collapsedIndicatorH) * control._progress
             MD.Rectangle {

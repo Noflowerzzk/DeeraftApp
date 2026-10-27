@@ -23,9 +23,10 @@ Item {
  }
  function focusSearch(){search.forceActiveFocus()}
  function isRunning(){return !!selected && (selected.external ? externalLauncher.running && externalLauncher.rootId===selected.rootId && externalLauncher.versionId===selected.versionId : !!selected.running)}
- function launchSelected(){if(!selected)return;if(isRunning()){if(selected.external)externalLauncher.stop();else desktop.action("actionKillInstance",selected.id)}else app.start(selected,"")}
+ function launchSelected(){if(!selected||instanceMotion.running)return;if(isRunning()){if(selected.external)externalLauncher.stop();else desktop.action("actionKillInstance",selected.id)}else app.start(selected,"")}
  property var account: desktop.accounts.find(function(a){return a.selected}) || null
- function selectInstance(id){selectedId=id;detailTab=0;reloadFiles()}
+ function selectInstance(id){if(selectedId===id&&!instanceMotion.running)return;instanceMotion.run(function(){page.selectedId=id;page.detailTab=0;page.reloadFiles()})}
+ ContentTransition { id: instanceMotion; objectName: "instanceMotion"; target: detail }
  function reloadFiles(){if(!selected||selected.external){files=[];worlds=[];shots=[];logText="";return}files=desktop.resources(selected.id,"mods");worlds=desktop.resources(selected.id,"saves");shots=desktop.resources(selected.id,"screenshots");logText=detailTab===4?desktop.readGameLog(selected.id):""}
  onSelectedChanged:{reloadFiles();desktop.selectInstance(selected&&!selected.external?selected.id:"")}
  onDetailTabChanged:reloadFiles()

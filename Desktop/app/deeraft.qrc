@@ -6,6 +6,7 @@
   <file>qml/RoundedImage.qml</file>
   <file>qml/ActionButton.qml</file>
   <file>qml/AppDialog.qml</file>
+  <file>qml/ContentTransition.qml</file>
   <file>qml/CommunityPage.qml</file>
   <file>qml/LauncherPage.qml</file>
   <file>qml/ServersPage.qml</file>

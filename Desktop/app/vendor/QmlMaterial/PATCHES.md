@@ -7,6 +7,7 @@ Upstream component behavior, shapes, state layers, ripples and motion remain in 
 - SearchBar: render an empty-field placeholder and optional shortcut text using library labels.
 - ComboBox: implement its declared filled field variant with the library FilledTextFieldShape and caption; preserve the outlined variant. App popup backgrounds retain nonzero implicit dimensions so anchored placement can resolve before delegates are laid out.
 - NavigationRail: expose item spacing, minimum item height and vertical padding to reproduce the approved desktop rail while retaining the library morph and selection behavior.
+- RailItem: position the indicator at the content top padding so the selection pill and ripple share the icon center in both rail states.
 - SplitButton: honor the explicit available height and expose the trailing control for sizing.
 - TabBar: allow an optional primary indicator width fraction while retaining the library transition.
 

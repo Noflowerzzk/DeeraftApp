@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QString>
+#include <QStringList>
 #include <memory>
 
 #include "LaunchMode.h"
@@ -23,6 +24,8 @@ struct AuthSession {
     QString uuid;
     // 'msa' or 'offline', depending on account type
     QString user_type;
+    // Runtime-only JVM arguments (for authlib-injector), never saved in instance settings.
+    QStringList extraJvmArguments;
     // the actual launch mode for this session
     LaunchMode launchMode;
 };

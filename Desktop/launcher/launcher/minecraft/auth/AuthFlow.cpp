@@ -14,11 +14,14 @@
 #include "tasks/Task.h"
 
 #include "AuthFlow.h"
+#include "ExternalAuthStep.h"
 
 #include <Application.h>
 
 AuthFlow::AuthFlow(AccountData* data, Action action) : Task(), m_data(data)
 {
+    if (data->type == AccountType::Authlib || data->type == AccountType::YggdrasilConnect)
+        m_steps.append(makeShared<ExternalAuthStep>(m_data));
     if (data->type == AccountType::MSA) {
         if (action == Action::DeviceCode) {
             auto oauthStep = makeShared<MSADeviceCodeStep>(m_data);

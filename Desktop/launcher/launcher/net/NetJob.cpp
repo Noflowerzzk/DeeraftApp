@@ -42,12 +42,14 @@
 #if defined(LAUNCHER_APPLICATION)
 #include "Application.h"
 #include "settings/SettingsObject.h"
+#include "DesktopBridge.h"
 #include "ui/dialogs/NetworkJobFailedDialog.h"
 #endif
 
 NetJob::NetJob(QString job_name, QNetworkAccessManager* network, int max_concurrent) : ConcurrentTask(job_name), m_network(network)
 {
 #if defined(LAUNCHER_APPLICATION)
+    DesktopBridge::trackTask(this);
     if (APPLICATION_DYN && max_concurrent < 0)
         max_concurrent = APPLICATION->settings()->get("NumberOfConcurrentDownloads").toInt();
 #endif

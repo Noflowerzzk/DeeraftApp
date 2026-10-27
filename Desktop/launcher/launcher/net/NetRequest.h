@@ -113,6 +113,9 @@ class NetRequest : public Task {
 
     /// source URL
     QUrl m_url;
+    QUrl m_deeraftOriginalUrl;
+    bool m_deeraftSourceSelected = false;
+    bool retryOfficialSource();
     std::vector<std::unique_ptr<Net::HeaderProxy>> m_headerProxies;
 
     int m_retryCount = 0;

@@ -3,6 +3,18 @@ project(tests)
 ecm_add_test(FileSystem_test.cpp LINK_LIBRARIES Launcher_logic Qt${QT_VERSION_MAJOR}::Test
     TEST_NAME FileSystem)
 
+# Upstream's symbolic-link cases call ShellExecute(runas), causing UAC prompts.
+# Keep them available explicitly; unattended Windows checks must not request elevation.
+option(DEERAFT_PRIVILEGED_TESTS "Run Windows symlink tests that request UAC elevation" OFF)
+if(WIN32 AND NOT DEERAFT_PRIVILEGED_TESTS)
+    set_tests_properties(FileSystem PROPERTIES DISABLED TRUE)
+    add_test(NAME FileSystemPortable COMMAND FileSystem
+        test_pathCombine test_PathCombine1 test_PathCombine2
+        test_copy test_copy_with_blacklist test_copy_with_whitelist
+        test_copy_with_dot_hidden test_copy_single_file test_getDesktop
+        test_hard_link test_path_depth test_path_trunc)
+endif()
+
 ecm_add_test(GZip_test.cpp LINK_LIBRARIES Launcher_logic Qt${QT_VERSION_MAJOR}::Test
     TEST_NAME GZip)
 

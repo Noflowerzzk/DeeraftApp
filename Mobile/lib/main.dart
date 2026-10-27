@@ -20,7 +20,7 @@ class DeeraftApp extends ConsumerWidget {
   const DeeraftApp({super.key});
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp.router(
-    title: 'Deeraft',
+    title: 'DeeraftApp',
     debugShowCheckedModeBanner: false,
     theme: appTheme,
     darkTheme: appDarkTheme,

@@ -81,6 +81,9 @@ class MainWindow : public QMainWindow {
     void updatesAllowedChanged(bool allowed);
 
     void processURLs(QList<QUrl> urls);
+    void deeraftInstallCentral(QWidget* shell);
+    void deeraftSetAdvanced(bool advanced);
+    void deeraftAction(const QString& name, const QString& instanceId = {});
    signals:
     void isClosing();
 
@@ -232,6 +235,8 @@ class MainWindow : public QMainWindow {
 
    private:
     Ui::MainWindow* ui;
+    class QStackedWidget* m_deeraftStack = nullptr;
+    class QToolBar* m_deeraftReturnBar = nullptr;
     // these are managed by Qt's memory management model!
     InstanceView* view = nullptr;
     InstanceProxyModel* proxymodel = nullptr;

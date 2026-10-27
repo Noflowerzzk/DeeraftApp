@@ -88,7 +88,7 @@ struct MinecraftProfile {
     Validity validity = Validity::None;
 };
 
-enum class AccountType { MSA, Offline };
+enum class AccountType { MSA, Offline, Authlib, YggdrasilConnect };
 
 enum class AccountState { Unchecked, Offline, Working, Online, Disabled, Errored, Expired, Gone };
 
@@ -105,6 +105,9 @@ struct AccountData {
     QString lastError() const;
 
     AccountType type = AccountType::MSA;
+
+    // Third-party session lives in memory and is DPAPI encrypted on disk.
+    QJsonObject externalSession;
 
     QString msaClientID;
     Token msaToken;

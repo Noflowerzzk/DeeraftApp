@@ -134,6 +134,10 @@ LaunchDecision LaunchController::decideLaunchMode()
         return LaunchDecision::Continue;
     }
 
+    if (m_accountToUse->accountType() == AccountType::Offline) {
+        m_actualLaunchMode = LaunchMode::Offline;
+        return LaunchDecision::Continue;
+    }
     const auto* accounts = APPLICATION->accounts();
     MinecraftAccountPtr accountToCheck = nullptr;
 
@@ -307,6 +311,10 @@ void LaunchController::login()
     m_session = std::make_shared<AuthSession>();
     m_session->launchMode = m_actualLaunchMode;
     m_accountToUse->fillSession(m_session);
+    if ((m_accountToUse->accountType() == AccountType::Authlib || m_accountToUse->accountType() == AccountType::YggdrasilConnect) && m_session->extraJvmArguments.isEmpty()) {
+        emitFailed(tr("认证组件缺失或校验失败，请重新添加第三方账号"));
+        return;
+    }
 
     if (m_accountToUse->accountType() != AccountType::Offline) {
         if (m_actualLaunchMode == LaunchMode::Normal && !m_accountToUse->hasProfile()) {

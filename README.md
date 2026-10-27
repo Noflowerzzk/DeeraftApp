@@ -1,4 +1,4 @@
-# Deeraft
+# DeeraftApp
 
 同一 Git 仓库内分开管理手机端与电脑端。
 

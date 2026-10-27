@@ -399,8 +399,9 @@ Application::Application(int& argc, char** argv) : QApplication(argc, argv)
             foo = QDir(FS::PathCombine(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation), ".."));
         }
 
-        dataPath = foo.absolutePath();
-        adjustedBy = "Persistent data path";
+        dataPath = FS::PathCombine(m_rootPath, "data");
+        adjustedBy = "DeeraftApp portable data path";
+        m_portable = true;
 
 #ifndef Q_OS_MACOS
         if (auto portableUserData = FS::PathCombine(m_rootPath, "UserData"); QDir(portableUserData).exists()) {
@@ -1220,7 +1221,7 @@ bool Application::createSetupWizard()
     bool pasteInterventionRequired = settings()->get("PastebinURL") != "";
     bool validWidgets = m_themeManager->isValidApplicationTheme(settings()->get("ApplicationTheme").toString());
     bool validIcons = m_themeManager->isValidIconTheme(settings()->get("IconTheme").toString());
-    bool login = !m_accounts->anyAccountIsValid() && capabilities() & Application::SupportsMSA;
+    bool login = false; // Account choice belongs to the launcher; offline use needs no Microsoft account.
     bool themeInterventionRequired = !validWidgets || !validIcons;
     bool wizardRequired = javaRequired || languageRequired || pasteInterventionRequired || themeInterventionRequired || askjava || login;
     if (wizardRequired) {

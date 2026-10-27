@@ -36,6 +36,8 @@
  */
 
 #include "MinecraftAccount.h"
+#include <QCryptographicHash>
+#include <QFile>
 
 #include <QColor>
 #include <QCryptographicHash>
@@ -86,6 +88,29 @@ MinecraftAccountPtr MinecraftAccount::createOffline(const QString& username)
     account->data.minecraftProfile.id = uuidFromUsername(username).toString(QUuid::Id128);
     account->data.minecraftProfile.name = username;
     account->data.minecraftProfile.validity = Validity::Certain;
+    return account;
+}
+
+MinecraftAccountPtr MinecraftAccount::createExternal(const QJsonObject& session)
+{
+    const auto profile = session.value("selectedProfile").toObject();
+    const auto access = session.value("accessToken").toString(session.value("access_token").toString());
+    if (profile.value("id").toString().isEmpty() || profile.value("name").toString().isEmpty() || access.isEmpty()) return nullptr;
+    auto account = makeShared<MinecraftAccount>();
+    auto& data = account->data;
+    data.type = session.value("provider").toString() == "authlib" ? AccountType::Authlib : AccountType::YggdrasilConnect;
+    data.externalSession = session;
+    data.yggdrasilToken.token = access;
+    data.yggdrasilToken.issueInstant = QDateTime::currentDateTimeUtc();
+    data.yggdrasilToken.notAfter = data.yggdrasilToken.issueInstant.addSecs(session.value("expires_in").toInt(86400));
+    data.yggdrasilToken.validity = Validity::Certain;
+    data.minecraftProfile.id = profile.value("id").toString().remove('-');
+    data.minecraftProfile.name = profile.value("name").toString();
+    data.minecraftProfile.validity = Validity::Certain;
+    // This entitlement is scoped to the external provider; official MSA accounts still run Prism ownership checks.
+    data.minecraftEntitlement = {true, true, Validity::Certain};
+    data.validity_ = Validity::Certain;
+    data.accountState = AccountState::Online;
     return account;
 }
 
@@ -251,6 +276,13 @@ void MinecraftAccount::fillSession(AuthSessionPtr session)
         session->uuid = uuidFromUsername(session->player_name).toString(QUuid::Id128);
     // 'legacy' or 'mojang', depending on account type
     session->user_type = typeString();
+    if (data.type == AccountType::Authlib || data.type == AccountType::YggdrasilConnect) {
+        const auto path = data.externalSession.value("injectorPath").toString();
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly) && QString::fromLatin1(QCryptographicHash::hash(file.readAll(), QCryptographicHash::Sha256).toHex()) == data.externalSession.value("injectorSha256").toString()) {
+            session->extraJvmArguments.append("-javaagent:" + path + "=" + data.externalSession.value("server").toString());
+        }
+    }
     if (!session->access_token.isEmpty()) {
         session->session = "token:" + data.accessToken() + ":" + data.profileId();
     } else {

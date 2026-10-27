@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.25)
+
+# Usable either from the desktop build or independently for resolver tests.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    project(DeeraftCompatibility LANGUAGES CXX)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_AUTOMOC ON)
+    enable_testing()
+endif()
+
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core)
+add_library(deeraft_compat STATIC ExternalGameCatalog.cpp ExternalGameCatalog.h
+    NativeExternalLaunchController.cpp NativeExternalLaunchController.h)
+set_target_properties(deeraft_compat PROPERTIES AUTOMOC ON)
+target_include_directories(deeraft_compat PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(deeraft_compat PUBLIC Qt6::Core)
+target_compile_features(deeraft_compat PUBLIC cxx_std_20)
+
+option(DEERAFT_COMPAT_TESTS "Build external launcher layout compatibility tests" OFF)
+if(DEERAFT_COMPAT_TESTS)
+    find_package(Qt6 REQUIRED COMPONENTS Test)
+    enable_testing()
+    add_executable(deeraft_compat_tests tests/ExternalGameCatalogTest.cpp)
+    set_target_properties(deeraft_compat_tests PROPERTIES AUTOMOC ON)
+    target_link_libraries(deeraft_compat_tests PRIVATE deeraft_compat Qt6::Test)
+    add_test(NAME deeraft_compat_tests COMMAND deeraft_compat_tests)
+endif()

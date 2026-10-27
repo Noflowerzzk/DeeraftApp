@@ -34,6 +34,8 @@
  */
 
 #include "AccountData.h"
+#include "accounts/ExternalAuthService.h"
+#include <QJsonDocument>
 #include <QDebug>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -291,6 +293,14 @@ bool AccountData::resumeStateFromV3(QJsonObject data)
         type = AccountType::MSA;
     } else if (typeS == "Offline") {
         type = AccountType::Offline;
+    } else if (typeS == "Authlib" || typeS == "YggdrasilConnect") {
+        type = typeS == "Authlib" ? AccountType::Authlib : AccountType::YggdrasilConnect;
+        const auto plain = DeeraftAuth::unprotect(QByteArray::fromBase64(data.value("deeraft-protected-session").toString().toLatin1()));
+        const auto document = QJsonDocument::fromJson(plain);
+        if (!document.isObject()) return false;
+        data = document.object();
+        externalSession = data.value("deeraft-external").toObject();
+        if (externalSession.isEmpty()) return false;
     } else {
         qWarning() << "Failed to parse account data: type is not recognized.";
         return false;
@@ -335,11 +345,20 @@ QJsonObject AccountData::saveState() const
         tokenToJSONV3(output, mojangservicesToken, "xrp-mc");
     } else if (type == AccountType::Offline) {
         output["type"] = "Offline";
+    } else {
+        output["type"] = type == AccountType::Authlib ? "Authlib" : "YggdrasilConnect";
+        output["deeraft-external"] = externalSession;
     }
 
     tokenToJSONV3(output, yggdrasilToken, "ygg");
     profileToJSONV3(output, minecraftProfile, "profile");
     entitlementToJSONV3(output, minecraftEntitlement);
+    if (type == AccountType::Authlib || type == AccountType::YggdrasilConnect) {
+        const auto encrypted = DeeraftAuth::protect(QJsonDocument(output).toJson(QJsonDocument::Compact));
+        // Returning an empty object makes encryption failures visible rather than writing clear text.
+        if (encrypted.isEmpty()) return {};
+        return {{"type", output.value("type")}, {"deeraft-protected-session", QString::fromLatin1(encrypted.toBase64())}};
+    }
     return output;
 }
 

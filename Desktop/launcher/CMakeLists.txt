@@ -83,7 +83,12 @@ else()
         # -ffunction-sections and -fdata-sections help reduce binary size
         # -mguard=cf enables Control Flow Guard
         # TODO: Look into -gc-sections to further reduce binary size
-        add_compile_options("$<$<AND:$<CONFIG:Release,RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections;-fdata-sections;-mguard=cf>")
+        add_compile_options("$<$<AND:$<CONFIG:Release,RelWithDebInfo>,$<COMPILE_LANGUAGE:C,CXX>>:-ffunction-sections;-fdata-sections>")
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag("-mguard=cf" DEERAFT_HAS_CFG)
+        if(DEERAFT_HAS_CFG)
+            add_compile_options("$<$<COMPILE_LANGUAGE:C,CXX>:-mguard=cf>")
+        endif()
     endif()
 endif()
 

@@ -1,0 +1,14 @@
+<RCC>
+ <qresource prefix="/deeraft">
+  <file>qml/Main.qml</file>
+  <file>qml/ActionButton.qml</file>
+  <file>qml/AppDialog.qml</file>
+  <file>qml/CommunityPage.qml</file>
+  <file>qml/LauncherPage.qml</file>
+  <file>qml/ServersPage.qml</file>
+  <file>qml/ChatPage.qml</file>
+  <file>qml/ProfilePage.qml</file>
+  <file>qml/SettingsDialog.qml</file>
+  <file alias="fonts/NotoSansSC.ttf">../../Mobile/assets/fonts/NotoSansSC.ttf</file>
+ </qresource>
+</RCC>

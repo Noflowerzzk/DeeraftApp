@@ -15,3 +15,5 @@ __pycache__/
 *.jks
 *.keystore
 *.deeraft-tmp
+.data/
+.oil-ui/

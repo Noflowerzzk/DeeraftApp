@@ -44,6 +44,10 @@
 
 #include "MainWindow.h"
 #include "ui_MainWindow.h"
+#include "DesktopShell.h"
+#include "community/CommunityClient.h"
+#include <QStackedWidget>
+#include <QToolBar>
 
 #include <QDir>
 #include <QFileInfo>
@@ -432,6 +436,37 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent), ui(new Ui::MainWi
     view->setFocus();
 
     retranslateUi();
+    installDeeraftShell(this);
+}
+
+void MainWindow::deeraftInstallCentral(QWidget* shell)
+{
+    auto original = takeCentralWidget();
+    m_deeraftStack = new QStackedWidget(this);
+    m_deeraftStack->addWidget(shell);
+    m_deeraftStack->addWidget(original);
+    setCentralWidget(m_deeraftStack);
+    m_deeraftReturnBar = addToolBar(tr("DeeraftApp"));
+    m_deeraftReturnBar->setObjectName("deeraftReturnBar");
+    m_deeraftReturnBar->setMovable(false);
+    auto back = m_deeraftReturnBar->addAction(tr("返回 DeeraftApp"));
+    connect(back, &QAction::triggered, this, [this]{deeraftSetAdvanced(false);});
+    deeraftSetAdvanced(false);
+}
+
+void MainWindow::deeraftSetAdvanced(bool advanced)
+{
+    if (!m_deeraftStack) return;
+    m_deeraftStack->setCurrentIndex(advanced ? 1 : 0);
+    for (auto bar : findChildren<QToolBar*>(QString(), Qt::FindDirectChildrenOnly)) bar->setVisible(advanced);
+    ui->menuBar->setVisible(advanced);
+    statusBar()->setVisible(advanced);
+}
+
+void MainWindow::deeraftAction(const QString& name, const QString& instanceId)
+{
+    if (!instanceId.isEmpty()) setSelectedInstanceById(instanceId);
+    if (auto action = findChild<QAction*>(name); action && action->isEnabled()) action->trigger();
 }
 
 // macOS always has a native menu bar, so these fixes are not applicable
@@ -933,6 +968,10 @@ void MainWindow::processURLs(QList<QUrl> urls)
     for (auto& url : urls) {
         if (url.isEmpty() || url.toString().trimmed().isEmpty())
             continue;
+        if (url.scheme() == "deeraft" && url.host() == "oauth") {
+            if (auto community = findChild<CommunityClient*>("deeraftCommunity")) community->completeMicrosoftLogin(url);
+            continue;
+        }
 
         qDebug() << "Processing" << url;
 

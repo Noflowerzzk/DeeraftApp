@@ -346,6 +346,10 @@ QVariant AccountList::data(const QModelIndex& index, int role) const
                         case AccountType::Offline: {
                             return tr("Offline", "Account type");
                         }
+                        case AccountType::Authlib:
+                            return tr("第三方登录");
+                        case AccountType::YggdrasilConnect:
+                            return QStringLiteral("Yggdrasil Connect");
                     }
                     return tr("Unknown", "Account type");
                 }
@@ -548,6 +552,10 @@ bool AccountList::saveList()
     QJsonArray accounts;
     for (MinecraftAccountPtr account : m_accounts) {
         QJsonObject accountObj = account->saveToJson();
+        if (accountObj.isEmpty()) {
+            qCritical() << "Account serialization failed; preserving the existing account store.";
+            return false;
+        }
         if (m_defaultAccount == account) {
             accountObj["active"] = true;
         }

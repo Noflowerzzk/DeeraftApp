@@ -38,6 +38,10 @@
  */
 
 #include "NetRequest.h"
+#include "Download.h"
+#if defined(LAUNCHER_APPLICATION)
+#include "download/DownloadSources.h"
+#endif
 
 #include <QDateTime>
 #include <QFileInfo>
@@ -70,6 +74,13 @@ void NetRequest::addValidator(Validator* v)
 
 void NetRequest::executeTask()
 {
+#if defined(LAUNCHER_APPLICATION)
+    if (!m_deeraftSourceSelected && dynamic_cast<Download*>(this) && m_headerProxies.empty()) {
+        m_deeraftSourceSelected = true;
+        m_deeraftOriginalUrl = m_url;
+        m_url = DownloadSources::mirror(m_url);
+    }
+#endif
     setStatus(tr("Requesting %1").arg(StringUtils::truncateUrlHumanFriendly(m_url, 80)));
 
     if (getState() == Task::State::AbortedByUser) {
@@ -308,6 +319,7 @@ void NetRequest::downloadFinished()
         emit finished();
         return;
     } else if (m_state == State::Failed) {
+        if (retryOfficialSource()) return;
         qCDebug(logCat) << getUid().toString() << "Request failed in previous step:" << m_url.toString();
         m_sink->abort();
         m_failReason = m_reply->errorString();
@@ -340,6 +352,7 @@ void NetRequest::downloadFinished()
     // otherwise, finalize the whole graph
     m_state = m_sink->finalize(*m_reply.get());
     if (m_state != State::Succeeded) {
+        if (retryOfficialSource()) return;
         qCDebug(logCat) << getUid().toString() << "Request failed to finalize:" << m_url.toString();
         m_sink->abort();
         m_failReason = m_sink->failReason();
@@ -368,6 +381,26 @@ void NetRequest::downloadReadyRead()
     } else {
         qCCritical(logCat) << getUid().toString() << "Cannot write download data! illegal status" << m_status;
     }
+}
+
+bool NetRequest::retryOfficialSource()
+{
+#if defined(LAUNCHER_APPLICATION)
+    if (DownloadSources::currentMode() != 0 || m_deeraftOriginalUrl.isEmpty() || m_url == m_deeraftOriginalUrl || getState() == State::AbortedByUser) return false;
+    m_sink->abort();
+    disconnect(m_reply.get(), nullptr, this, nullptr);
+    m_reply->deleteLater();
+    m_reply.release();
+    m_url = m_deeraftOriginalUrl;
+    m_deeraftOriginalUrl = QUrl();
+    m_errorResponse.clear();
+    m_failReason.clear();
+    m_state = State::Inactive;
+    QTimer::singleShot(0, this, &NetRequest::executeTask);
+    return true;
+#else
+    return false;
+#endif
 }
 
 auto NetRequest::abort() -> bool

@@ -47,6 +47,8 @@ MD.StateMenuItem {
             font: control.font
             lineHeight: control.typescale.line_height
             wrapMode: Text.NoWrap
+            elide:Text.ElideMiddle
+            clip:true
             Lite.Layout.fillWidth: true
         }
 
@@ -68,6 +70,8 @@ MD.StateMenuItem {
     }
 
     readonly property Item background: Rectangle {
+        width:control.width
+        height:control.height
         radius: 8
         implicitWidth: 200
         implicitHeight: 48

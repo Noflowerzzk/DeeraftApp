@@ -9,6 +9,7 @@
 #include <QGuiApplication>
 #include <QInputMethod>
 #include <QTimer>
+#include <QScopeGuard>
 #include "qml_material/util/qt.hpp"
 
 namespace qml_material
@@ -518,6 +519,8 @@ void ComboBox::keySearch(const QString& text) {
     if (index >= 0) navigate(index);
 }
 void ComboBox::keyPressEvent(QKeyEvent* event) {
+    const QPointer<ComboBox> guard(this);
+    const auto reveal=qScopeGuard([guard]{if(guard&&guard->highlightedIndex()>=0)emit guard->keyboardHighlightChanged(guard->highlightedIndex());});
     if (! isEnabled() || inputMethodComposing() ||
         event->modifiers().testFlag(Qt::ControlModifier) ||
         event->modifiers().testFlag(Qt::AltModifier) ||

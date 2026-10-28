@@ -651,11 +651,14 @@ void CommunityClient::addFeed(const QString& name, const QString& path, Success 
             if (feed->name == "logs" && !tokenExpiring()) {
                 setFailure("logs", QStringLiteral("没有日志访问权限")); return;
             }
-            // Defer refresh: rebuilding feeds must not delete a socket inside its own signal handler.
-            QTimer::singleShot(0, this, [this] {
-                refreshAccess([this](bool ok) { if (!ok) { m_connectionStatus = QStringLiteral("连接中断"); emit changed(); } });
-            });
-            return;
+            // A fresh token rejected for permissions/protocol reasons must not cause an endless
+            // POST-refresh -> rebuild sockets -> policy-close loop and a permanently busy header.
+            if(tokenExpiring()){
+                QTimer::singleShot(0, this, [this] {
+                    refreshAccess([this](bool ok) { if (!ok) { m_connectionStatus = QStringLiteral("连接中断"); emit changed(); } });
+                });
+                return;
+            }
         }
         if (!feed->retry.isActive())
             feed->retry.start(std::min(30000, 1000 * (1 << std::min(feed->attempts++, 5))));

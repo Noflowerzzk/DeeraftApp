@@ -9,11 +9,23 @@
 #include <QTcpServer>
 #include <QTcpSocket>
 #include <QNetworkProxy>
+#include <QWebSocketServer>
+#include <QWebSocket>
 
 class CommunityClientTest : public QObject
 {
     Q_OBJECT
 private slots:
+    void freshSocketPolicyFailureDoesNotRefreshForever(){
+        QTemporaryDir dir;CommunityClient client(dir.path());QWebSocketServer server("fixture",QWebSocketServer::NonSecureMode);QVERIFY(server.listen(QHostAddress::LocalHost));
+        client.m_authenticated=true;client.m_refreshToken="fixture";
+        const auto payload=QJsonDocument(QJsonObject{{"exp",double(QDateTime::currentSecsSinceEpoch()+3600)}}).toJson(QJsonDocument::Compact).toBase64(QByteArray::Base64UrlEncoding|QByteArray::OmitTrailingEquals);
+        client.m_accessToken="header."+payload+".signature";bool everBusy=false;
+        connect(&client,&CommunityClient::changed,this,[&]{everBusy|=client.busy();});
+        connect(&server,&QWebSocketServer::newConnection,this,[&]{auto socket=server.nextPendingConnection();connect(socket,&QWebSocket::disconnected,socket,&QObject::deleteLater);socket->close(QWebSocketProtocol::CloseCodePolicyViolated,"permission fixture");});
+        client.addFeed("chat",QString("http://127.0.0.1:%1/socket").arg(server.serverPort()),[](const QJsonValue&){});
+        QTRY_COMPARE(client.connectionStatus(),QStringLiteral("正在重连"));QVERIFY(!everBusy);QVERIFY(!client.m_refreshing);client.stopFeeds();
+    }
     void backgroundReadsDoNotKeepGlobalSpinnerActive()
     {
         QTemporaryDir dir;CommunityClient client(dir.path());QTcpServer server;

@@ -20,6 +20,7 @@ target_sources(Launcher_logic PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/minecraft/auth/ExternalAuthStep.h"
     "${DEERAFT_APP_DIR}/deeraft.qrc")
 target_sources(Launcher_logic PRIVATE "${DEERAFT_APP_DIR}/download/DownloadSources.cpp" "${DEERAFT_APP_DIR}/download/DownloadSources.h")
+target_sources(Launcher_logic PRIVATE "${DEERAFT_APP_DIR}/download/ResourceReuseTask.cpp" "${DEERAFT_APP_DIR}/download/ResourceReuseTask.h")
 target_sources(Launcher_logic PRIVATE "${DEERAFT_APP_DIR}/webview/LivePlayer.cpp" "${DEERAFT_APP_DIR}/webview/LivePlayer.h")
 target_include_directories(Launcher_logic PRIVATE "${DEERAFT_APP_DIR}/webview/vendor")
 target_include_directories(Launcher_logic PUBLIC "${DEERAFT_APP_DIR}")

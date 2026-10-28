@@ -16,6 +16,7 @@ Item {
     property alias indication: motion.indication
     property real pressOpacity: MD.Token.state.pressed.state_layer_opacity
     property bool animationsEnabled: true
+    HoverHandler {id:desktopHover}
     property alias corners: m_back.corners
     property alias radius: m_back.radius
 
@@ -118,6 +119,6 @@ Item {
         id: m_back
         anchors.fill: parent
         color: root.debugEnabled ? root.color : motion.ink
-        opacity: root.debugEnabled ? (root.debugBackOpacity >= 0 ? root.debugBackOpacity : root.stateOpacity) : motion.opacity
+        opacity: root.debugEnabled ? (root.debugBackOpacity >= 0 ? root.debugBackOpacity : root.stateOpacity) : root.indication.kind===MD.Interaction.Hover&&!desktopHover.hovered?0:motion.opacity
     }
 }

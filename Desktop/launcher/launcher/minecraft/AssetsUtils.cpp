@@ -278,10 +278,10 @@ bool reconstructAssets(QString assetsId, QString resourcesFolder)
 
 }  // namespace AssetsUtils
 
-Net::NetRequest::Ptr AssetObject::getDownloadAction()
+Net::NetRequest::Ptr AssetObject::getDownloadAction(bool force)
 {
     QFileInfo objectFile(getLocalPath());
-    if ((!objectFile.isFile()) || (objectFile.size() != size)) {
+    if (force || (!objectFile.isFile()) || (objectFile.size() != size)) {
         auto objectDL = Net::ApiDownload::makeFile(getUrl(), objectFile.filePath());
         if (hash.size()) {
             objectDL->addValidator(new Net::ChecksumValidator(QCryptographicHash::Sha1, hash));
@@ -308,11 +308,11 @@ QString AssetObject::getRelPath()
     return hash.left(2) + "/" + hash;
 }
 
-NetJob::Ptr AssetsIndex::getDownloadJob()
+NetJob::Ptr AssetsIndex::getDownloadJob(const QStringList& damaged)
 {
     auto job = makeShared<NetJob>(QObject::tr("Assets for %1").arg(id), APPLICATION->network());
     for (auto& object : objects.values()) {
-        auto dl = object.getDownloadAction();
+        auto dl = object.getDownloadAction(damaged.contains(QFileInfo(object.getLocalPath()).absoluteFilePath()));
         if (dl) {
             job->addNetAction(dl);
         }

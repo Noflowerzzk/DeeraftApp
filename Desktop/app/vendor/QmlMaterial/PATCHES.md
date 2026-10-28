@@ -22,5 +22,7 @@ Components, shapes and motion physics come from QmlMaterial. Desktop-specific re
 - Outlined text fields and radio indicators use the geometry renderer, consistent with the existing filled-field rendering workaround.
 - ComboBox exposes an optional display font size so its internal typescale binding respects the app's 14px compact desktop selector text.
 - CarouselImageDelegate retains its rounded image mask and caches screenshots; masking was previously disabled by a delegate override.
+- ComboBox separates keyboard reveal from pointer highlight, so hovering while scrolling does not reposition the list. Dropdown delegates bind to the popup width after its initial measurement; all state layers fill the same width, with clipped middle-elided paths and full-path tooltips.
+- MenuItem state layers explicitly follow the control geometry. Desktop hover layers clear when the pointer leaves instead of retaining the previous control's animated fill; selected and pressed shape feedback remain.
 
 The app supplies Roboto Flex / Noto Sans SC as an explicit font chain with Qt typographic line metrics. Windows 11 style and Segoe UI are applied separately to QWidget secondary windows.

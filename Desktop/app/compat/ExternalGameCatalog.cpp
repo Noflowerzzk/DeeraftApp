@@ -292,6 +292,8 @@ QVariantMap ExternalVersionResolver::resolve(const QString &path, const QString 
         auto game=QDir(instanceDirectory).filePath(".minecraft");
         if(!QDir(game).exists())game=QDir(instanceDirectory).filePath("minecraft");
         result["format"]="prism";result["instanceDirectory"]=instanceDirectory;result["versionDirectory"]=instanceDirectory;
+        const auto shared=QFileInfo(root).dir().absolutePath();
+        result["librariesDirectory"]=QDir(shared).filePath("libraries");result["assetsDirectory"]=QDir(shared).filePath("assets");
         result["gameDirectory"]=game;result["name"]=settings.value("name",versionId);result["icon"]=settings.value("iconKey","default");
         result["version"]=version;result["loader"]=loader;result["valid"]=!version.isEmpty();
         if(version.isEmpty())result["error"]=QStringLiteral("实例配置缺少 Minecraft 版本信息：%1/mmc-pack.json").arg(instanceDirectory);

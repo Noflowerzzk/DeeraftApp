@@ -139,6 +139,7 @@ public:
     Q_SIGNAL void currentTextChanged();
     Q_SIGNAL void displayTextChanged();
     Q_SIGNAL void selectionChangeRequested(int index, const QVariant& value);
+    Q_SIGNAL void keyboardHighlightChanged(int index);
 
 protected:
     bool event(QEvent*) override;

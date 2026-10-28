@@ -56,10 +56,12 @@ public:
     Q_INVOKABLE void launchExternal(const QString& rootId,const QString& versionId,const QString& address = {},const QString& javaOverride = {});
     void setExternalLauncher(Deeraft::NativeExternalLaunchController* launcher);
     static void trackTask(Task* task);
+    static bool taskCenterAvailable(){return !s_instance.isNull();}
 signals:
     void changed();
     void themeChanged();
     void tasksChanged();
+    void taskCenterRequested();
     void gameStarted(const QString& name,const QString& version);
     void resourcesLoaded(const QString& id,const QVariantMap& resources);
 private:

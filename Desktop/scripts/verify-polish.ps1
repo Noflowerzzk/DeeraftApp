@@ -23,10 +23,14 @@ try {
     if($process.ExitCode){throw "Probe exited $($process.ExitCode)"}
     $report=Get-Content "$env:DEERAFT_SMOKE_DIR/polish-checks.json" -Raw | ConvertFrom-Json
     $report | ConvertTo-Json -Depth 8
-    foreach($check in @('modDelegatePreserved','modSwitchChanged','modScrollPreserved','modDidNotReload','modSearchFilters','tabDidNotReload','coverPreserved','externalInventoryRefresh','headerScrollsAway','carouselVisible','carouselNavigates','communityScrollable','communityWheelMoved','communityNoOverscroll','downloadCancelled','cancelButtonFound','cancelButtonPreserved')){
+    foreach($check in @('menuNoHiddenLeadingRows','menuFullWidthBackground','taskCenterTitle','runningInstanceInCenter','modDelegatePreserved','modSwitchChanged','modScrollPreserved','modDidNotReload','modSearchFilters','tabDidNotReload','coverPreserved','externalInventoryRefresh','headerScrollsAway','carouselVisible','carouselNavigates','communityScrollable','communityWheelMoved','communityNoOverscroll','downloadCancelled','cancelButtonFound','cancelButtonPreserved')){
         if(!$report.$check){throw "Failed polish check: $check ($env:DEERAFT_SMOKE_DIR)"}
     }
     if($report.drawerIntermediatePosition -le 0 -or $report.drawerIntermediatePosition -ge 1){throw 'Side sheet did not move through an intermediate position'}
+    foreach($check in @('instanceMenuVisible','dropdownRowsFillPopup','menuHoverPreservesScroll','menuKeyboardRevealsHighlight','rapidHoverClearsRows','runningIndicatorIndeterminate','requestIndicatorIndeterminate')){
+        if(!$report.$check){throw "Failed task-center check: $check ($env:DEERAFT_SMOKE_DIR)"}
+    }
+    if($report.runningIndicatorState -ne 0 -or $report.runningIndicatorProgress -le 0 -or $report.runningIndicatorProgress -ge 1){throw 'Running indicator did not advance'}
     $errors=Select-String -Path "$testData/logs/DeeraftApp-0.log" -Pattern 'ReferenceError|TypeError|Binding loop|Cannot assign|Unable to assign|is not a type'
     if($errors){throw ($errors | Out-String)}
     Write-Output "Evidence: $env:DEERAFT_SMOKE_DIR"

@@ -81,10 +81,9 @@ void NetRequest::executeTask()
         m_deeraftSourceSelected = true;
         m_deeraftOriginalUrl = m_url;
         m_url = DownloadSources::mirror(m_url);
-        if(m_url!=m_deeraftOriginalUrl)qCDebug(logCat)<<"Using domestic source"<<m_url;
     }
 #endif
-    setStatus(tr("Requesting %1").arg(StringUtils::truncateUrlHumanFriendly(m_url, 80)));
+    setStatus(tr("检查本地缓存"));
 
     if (getState() == Task::State::AbortedByUser) {
         qCWarning(logCat) << getUid().toString() << "Attempt to start an aborted Request:" << m_url.toString();
@@ -123,6 +122,10 @@ void NetRequest::executeTask()
 #endif
 
     request.setHeader(QNetworkRequest::UserAgentHeader, user_agent.toUtf8());
+    setStatus(tr("Requesting %1").arg(StringUtils::truncateUrlHumanFriendly(m_url,80)));
+#if defined(LAUNCHER_APPLICATION)
+    if(m_url!=m_deeraftOriginalUrl&&!m_deeraftOriginalUrl.isEmpty())qCDebug(logCat)<<"Using domestic source"<<m_url;
+#endif
     for (auto& header_proxy : m_headerProxies) {
         header_proxy->writeHeaders(request);
     }

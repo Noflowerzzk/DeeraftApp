@@ -5,6 +5,8 @@ import Qcm.Material.Layouts as Lite
 
 MD.MenuItemBase {
     id: control
+    clip:true
+    MD.ToolTip.text:text.length>32?text:""
 
     property alias arrow: defaultStyle.arrow
     property bool selected: false

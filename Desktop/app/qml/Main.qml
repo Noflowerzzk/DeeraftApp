@@ -35,7 +35,15 @@ MD.Pane {
  property bool associationPersonal: false
  property string externalLog: ""
  property bool showCompletedTasks:false
- property var visibleTasks: desktop.tasks.filter(function(task){return root.showCompletedTasks||task.state==="进行中"||task.state==="失败"})
+ property var visibleTasks:{
+  var rows=desktop.tasks.filter(function(task){return root.showCompletedTasks||task.state==="进行中"||task.state==="失败"}).map(function(task){return Object.assign({canStop:false,canUploadCancel:false,instanceId:"",icon:"download"},task)});
+  allInstances.filter(function(instance){return instance.running}).forEach(function(instance){rows.unshift({id:"instance:"+instance.id,name:instance.name,status:"实例运行中",state:"进行中",icon:"stadia_controller",current:0,total:0,error:"",canCancel:false,canStop:true,canUploadCancel:false,instanceId:instance.id})});
+  if(externalGames.scanning)rows.unshift({id:"catalog:scan",name:"检查实例目录",icon:"folder_managed",status:"读取实例信息",state:"进行中",current:0,total:0,error:"",canCancel:false,canStop:false,canUploadCancel:false,instanceId:""});
+   if(communityClient.busy&&!communityClient.uploading)rows.push({id:"community:request",name:"社区请求",icon:"cloud_sync",status:"运行中",state:"进行中",current:0,total:0,error:"",canCancel:false,canStop:false,canUploadCancel:false,instanceId:""});
+  if(communityClient.uploading)rows.unshift({id:"community:upload",name:"上传服务器",icon:"upload",status:"上传中",state:"进行中",current:communityClient.uploadProgress,total:1,error:"",canCancel:false,canStop:false,canUploadCancel:true,instanceId:""});
+  return rows;
+ }
+ property int activeTaskCount:visibleTasks.filter(function(task){return task.state==="进行中"}).length
  ListModel {id:taskRows;dynamicRoles:true}
  function syncTasks(){
   var wanted=visibleTasks||[];
@@ -83,7 +91,7 @@ MD.Pane {
  Connections { target: communityClient; function onActivityReceived(player,instance){root.notify(player+" 启动了 "+instance)}
  function onOperationFailed(operation,message){root.notify(message)}
  function onOperationFinished(operation,result){var labels={start:"服务器已启动",stop:"服务器已停止",backup:"备份已创建",restore:"备份已恢复",update:"服务器已保存",delete:"服务器已删除",upload:"服务器已上传",avatar:"头像已更新",cover:"封面已更新"};if(labels[operation])root.notify(labels[operation])} }
- Connections { target: desktop; function onGameStarted(name,version){communityClient.reportGameStarted(name,version);if(!communityClient.authenticated)root.notify(name+" 已启动") } function onChanged(){if(desktop.error && desktop.error!==root.seenDesktopError)root.notify(desktop.error);root.seenDesktopError=desktop.error} }
+ Connections { target: desktop; function onTaskCenterRequested(){tasksDrawer.open()} function onGameStarted(name,version){communityClient.reportGameStarted(name,version);if(!communityClient.authenticated)root.notify(name+" 已启动") } function onChanged(){if(desktop.error && desktop.error!==root.seenDesktopError)root.notify(desktop.error);root.seenDesktopError=desktop.error} }
  Connections { target: library; function onChanged(){if(library.error && library.error!==root.seenLibraryError)root.notify(library.error);root.seenLibraryError=library.error} }
  Connections { target: externalGames; function onImportFailed(path,message){root.notify(message)} function onImportFinished(path,count){root.notify("已读取 "+count+" 个实例")} }
  Shortcut { sequence: "Ctrl+K"; onActivated: {root.page=1;launcher.focusSearch()} }
@@ -151,9 +159,8 @@ MD.Pane {
        spacing: 16
        IconButton { visible: root.displayedPage===3; symbol: "arrow_back"; hint: "返回社区"; onClicked: root.page=0 }
        AppLabel { text: root.pageTitle; font.pixelSize: 32; lineHeight: 42; font.weight: 600; font.letterSpacing: -.5; color: root.ink; Layout.fillWidth: true }
-       MD.BusyIndicator { visible: communityClient.busy||externalGames.scanning; running: visible; Layout.preferredWidth: 28; Layout.preferredHeight: 28 }
-       IconButton { symbol: "download"; hint: "下载任务"; onClicked: tasksDrawer.open()
-         MD.Badge { visible: desktop.tasks.some(function(t){return t.state==="进行中"}); anchors.right: parent.right; anchors.top: parent.top; text: desktop.tasks.filter(function(t){return t.state==="进行中"}).length }
+       IconButton { objectName:"taskCenterButton";symbol: "assignment"; hint: "任务中心"; onClicked: tasksDrawer.open()
+         MD.Badge { visible:root.activeTaskCount>0; anchors.right: parent.right; anchors.top: parent.top; text:root.activeTaskCount }
        }
        MD.IconButton {
          implicitWidth: 42; implicitHeight: 42
@@ -178,30 +185,41 @@ MD.Pane {
      }
    }
  }
- SettingsDialog {id:settings;app:root;width:Math.min(root.width-64,680);height:Math.min(root.height-48,760)}
- AppDialog { id:associationDialog; title:"关联实例";modal:true;width:520;standardButtons:Dialog.NoButton
+ SettingsDialog {id:settings;objectName:"settingsDialog";app:root;width:Math.min(root.width-64,680);height:Math.min(root.height-48,760)}
+ AppDialog { id:associationDialog; objectName:"associationDialog";title:"关联实例";modal:true;width:520;standardButtons:Dialog.NoButton
    ColumnLayout {width:parent.width;spacing:20
      AppLabel { textFormat: Text.PlainText;text:"选择启动并加入服务器的实例";color:root.muted}
      AppTextField {id:associationAddressField;visible:!root.associationPersonal;Layout.fillWidth:true;placeholderText:"服务器地址"}
-     AppSelect {id:associationChoice;Layout.fillWidth:true;model:[{id:"",name:"未选择实例"}].concat(root.instanceChoices);textRole:"name";valueRole:"id";caption:"实例"}
+     AppSelect {id:associationChoice;objectName:"associationChoice";Layout.fillWidth:true;model:[{id:"",name:"未选择实例"}].concat(root.instanceChoices);textRole:"name";valueRole:"id";caption:"实例"}
      AppLabel {textFormat:Text.PlainText;text:library.error;visible:!!text;color:root.colors.error;wrapMode:Text.Wrap;Layout.fillWidth:true}
      RowLayout {Layout.fillWidth:true;Item {Layout.fillWidth:true}ActionButton {text:"取消";flat:true;onClicked:associationDialog.close()}ActionButton {text:"保存";highlighted:true;onClicked:{if(library.associate(root.associationKey,associationChoice.currentValue||"",root.associationPersonal?"":associationAddressField.text))associationDialog.close()}}}
    }
  }
  MD.SideSheetDialog {id:tasksDrawer;objectName:"downloadTasks";edge:MD.SideSheetBase.End;sheetWidth:Math.min(root.width-60,440);animationsEnabled:!library.reducedMotion
    ColumnLayout {anchors.fill:parent;anchors.margins:24;spacing:20
-     RowLayout {Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:"下载任务";font.pixelSize:24;Layout.fillWidth:true}IconButton {symbol:"close";hint:"关闭";onClicked:tasksDrawer.close()}}
-     MD.LinearIndicator { completionBehavior: MD.LinearIndicator.Keep; indeterminate: false; strokeWidth: 4; wavy: true; animationsEnabled: !library.reducedMotion; visible:communityClient.uploading;value:communityClient.uploadProgress;Layout.fillWidth:true}
-     ActionButton {visible:communityClient.uploading;text:"取消上传";onClicked:communityClient.cancelUpload()}
+     RowLayout {Layout.fillWidth:true;AppLabel {objectName:"taskCenterTitle";color:root.ink;textFormat: Text.PlainText;text:"任务中心";font.pixelSize:24;Layout.fillWidth:true}IconButton {symbol:"close";hint:"关闭";onClicked:tasksDrawer.close()}}
      ActionButton {text:root.showCompletedTasks?"收起已结束任务":"显示已结束任务";flat:true;visible:desktop.tasks.some(function(task){return task.state!=="进行中"&&task.state!=="失败"});onClicked:root.showCompletedTasks=!root.showCompletedTasks}
-     AppLabel { textFormat: Text.PlainText;visible:root.visibleTasks.length===0&&!communityClient.uploading;text:"暂无进行中的任务";color:root.muted}
+     AppLabel { textFormat: Text.PlainText;visible:root.visibleTasks.length===0;text:"暂无进行中的任务";color:root.muted}
      ListView {Layout.fillWidth:true;Layout.fillHeight:true;model:taskRows;clip:true;spacing:20
-       delegate:ColumnLayout {required property var model;readonly property var modelData:model;width:ListView.view.width
-         AppLabel { textFormat: Text.PlainText;text:modelData.name||modelData.status||"下载";wrapMode:Text.Wrap;Layout.fillWidth:true}
-         AppLabel { textFormat: Text.PlainText;text:modelData.state+(modelData.error?" · "+modelData.error:"");wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.muted}
-         AppLabel {text:modelData.status||"";visible:modelData.state==="进行中"&&!!text;Layout.fillWidth:true;maximumLineCount:2;elide:Text.ElideRight;wrapMode:Text.Wrap;color:root.muted;font.pixelSize:13}
-         MD.LinearIndicator { completionBehavior: MD.LinearIndicator.Keep; strokeWidth: 4; wavy: true; animationsEnabled: !library.reducedMotion; from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";Layout.fillWidth:true}
-         ActionButton {objectName:"cancelDownload";text:"取消";visible:modelData.canCancel;onClicked:desktop.cancelTask(modelData.id)}
+       delegate:ColumnLayout {
+         objectName:model.canStop?"runningInstanceTask":"centerTaskRow"
+         required property var model;readonly property var modelData:model;width:ListView.view.width;spacing:10
+         RowLayout {
+          Layout.fillWidth:true;spacing:12
+          MD.Icon {name:modelData.icon||"download";size:24;color:root.accent;Layout.alignment:Qt.AlignTop;Layout.topMargin:2}
+          ColumnLayout {Layout.fillWidth:true;spacing:4
+           AppLabel {text:modelData.name||"任务";color:root.ink;font.weight:600;wrapMode:Text.Wrap;Layout.fillWidth:true}
+           AppLabel {text:modelData.canStop?"运行中":modelData.state;Layout.fillWidth:true;color:root.muted;font.pixelSize:13}
+          }
+         }
+           RowLayout {Layout.fillWidth:true
+            AppLabel {text:modelData.error||(/https?:\/\//.test(modelData.status||"")?modelData.current>0?"下载中":"正在请求资源":modelData.status||"");visible:!!text;Layout.fillWidth:true;maximumLineCount:2;elide:Text.ElideRight;wrapMode:Text.Wrap;color:root.muted;font.pixelSize:13;MD.ToolTip.text:modelData.status||""}
+            AppLabel {text:Math.min(100,Math.round(100*modelData.current/Math.max(1,modelData.total)))+"%";visible:modelData.total>0;color:root.muted;font.pixelSize:13}
+           }
+         MD.LinearIndicator {objectName:modelData.canStop?"runningTaskProgress":"taskProgress";completionBehavior:MD.LinearIndicator.Keep;strokeWidth:4;wavy:true;animationsEnabled:!library.reducedMotion;from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";visible:modelData.state==="进行中"||modelData.total>0;Layout.fillWidth:true;Accessible.name:modelData.name+" "+modelData.state}
+          ActionButton {objectName:modelData.canCancel?"cancelDownload":"";text:"取消";visible:modelData.canCancel;onClicked:desktop.cancelTask(modelData.id)}
+         ActionButton {text:"取消上传";visible:modelData.canUploadCancel;onClicked:communityClient.cancelUpload()}
+         ActionButton {text:"结束游戏";symbol:"stop";visible:modelData.canStop;mdState.backgroundColor:root.colors.errorContainer;mdState.textColor:root.colors.onErrorContainer;onClicked:desktop.action("actionKillInstance",modelData.instanceId)}
        }
      }
    }

@@ -143,6 +143,7 @@ Item {
      highlight:null
      delegate: MD.Card {
       id: rowControl
+      objectName:"instanceRow"
       required property var modelData
       readonly property bool selected: !!page.selected && page.selected.id===modelData.id
       width: list.width-10
@@ -150,11 +151,12 @@ Item {
       flat: true
       type: MD.Enum.CardFilled
       mdState.radius: Math.max(4,8+12*selectionMotion.value)
-      mdState.backgroundColor: selectionColor.color
+      mdState.backgroundColor: rowControl.selected?selectionColor.color:rowHover.hovered?app.colors.surfaceContainerHigh:"transparent"
       MD.SpringMotion { id: selectionMotion; targetValue: rowControl.mdState.interactions.pressed?2/3:rowControl.selected?1:0; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
       MD.ColorSpringMotion { id: selectionColor; targetColor: rowControl.selected?app.colors.secondaryContainer:rowControl.mdState.interactions.hovered?app.colors.surfaceContainerHigh:"transparent"; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.standard.fastEffects }
       MD.SpringMotion { id: pressMotion; targetValue: rowControl.mdState.interactions.pressed?.985:1; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
       scale: pressMotion.value
+      HoverHandler {id:rowHover}
       horizontalPadding: 12
       onClicked: page.selectInstance(modelData.id)
       TapHandler { onDoubleTapped: app.start(rowControl.modelData, "") }
@@ -244,7 +246,7 @@ Item {
         AppLabel { text: page.selected ? (page.selected.version||page.selected.description||"")+(page.selected.loader ? " · "+page.selected.loader : " · Vanilla") : "添加实例或添加实例目录"; font.pixelSize: 13; color: app.muted; Layout.fillWidth: true; elide: Text.ElideRight }
        }
        IconButton { symbol: "tune"; hint: "实例设置"; enabled: !!page.selected; onClicked: desktop.action("actionEditInstance",page.selected.id) }
-       IconButton { symbol: "more_vert"; hint: "实例操作"; enabled: !!page.selected; onClicked: instanceMenu.showAt(this) }
+       IconButton {objectName:"instanceMenuButton"; symbol: "more_vert"; hint: "实例操作"; enabled: !!page.selected; onClicked: instanceMenu.showAt(this) }
       }
       RowLayout {
        Layout.fillWidth: true
@@ -408,8 +410,7 @@ Item {
  }
  function chooseRunDirectory(){if(!selected||!selected.external)return;var directory=desktop.chooseDirectory();if(!directory)return;var options={};for(var i=0;i<externalGames.roots.length;i++)if(externalGames.roots[i].id===selected.rootId)options=externalGames.roots[i].options||{};var dirs=options.versionDirectories||{};dirs[selected.versionId]=directory;externalGames.setRootOptions(selected.rootId,{versionDirectories:dirs})}
  AppMenu {id:instanceMenu
-  MD.MenuItem {text:"设置 Java";visible:false;onTriggered:{var file=desktop.chooseFile("Java (java.exe javaw.exe)");if(String(file))library.setMetadata(page.selected.id,{javaPath:String(file)})}}
-  MD.MenuItem {text:"设置运行目录";visible:false;onTriggered:page.chooseRunDirectory()}
+  objectName:"instanceMenu"
   MD.MenuItem {text:"编辑实例";enabled:!!page.selected;onTriggered:desktop.action("actionEditInstance",page.selected.id)}
   MD.MenuItem {text:"更改分组";onTriggered:{if(page.selected.external){externalGroup.text=app.meta(page.selected).group||"";groupDialog.open()}else desktop.action("actionChangeInstGroup",page.selected.id)}}
   MD.MenuItem {text:"重命名";enabled:!!page.selected;onTriggered:desktop.action("actionRenameInstance",page.selected.id)}

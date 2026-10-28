@@ -164,8 +164,9 @@ void DesktopBridge::trackTask(Task* task){
     if(self->m_taskObjects.contains(id))return;
     self->m_taskObjects.insert(id,task);
     if(task->isRunning()||task->isFinished())self->updateTask(task);
+    if(task->property("showInTaskCenter").toBool())emit self->taskCenterRequested();
     connect(task,&Task::started,self,[self,task]{self->updateTask(task,"进行中");});
-    connect(task,&Task::progress,self,[self,task]{self->updateTask(task);});
+    connect(task,&Task::progress,self,[self,task](qint64 current,qint64 total){task->setProperty("deeraftProgressKnown",current>0&&total>0);self->updateTask(task);});
     connect(task,&Task::status,self,[self,task]{self->updateTask(task);});
     connect(task,&Task::succeeded,self,[self,task]{self->updateTask(task,"完成");});
     connect(task,&Task::aborted,self,[self,task]{self->updateTask(task,"已取消");});
@@ -178,7 +179,8 @@ void DesktopBridge::updateTask(Task* task,const QString& state){
     for(int i=0;i<m_tasks.size();++i)if(m_tasks[i].toMap().value("id")==id){index=i;break;}
     QVariantMap row=index<0?QVariantMap{}:m_tasks[index].toMap();
     row.insert("id",id);row.insert("name",task->objectName());row.insert("status",task->getStatus());
-    row.insert("current",task->getProgress());row.insert("total",task->getTotalProgress());row.insert("error",task->failReason());
+    row.insert("icon",task->property("taskIcon").toString().isEmpty()?QStringLiteral("download"):task->property("taskIcon").toString());
+    row.insert("current",task->getProgress());row.insert("total",task->property("deeraftProgressKnown").toBool()?task->getTotalProgress():0);row.insert("error",task->failReason());
     row.insert("canCancel",task->canAbort() && task->isRunning());
     if(!state.isEmpty())row.insert("state",state);
     switch(task->getState()){

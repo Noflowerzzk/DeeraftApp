@@ -46,6 +46,7 @@
 #include "FileSystem.h"
 #include "MMCTime.h"
 #include "java/JavaVersion.h"
+#include "download/ResourceReuseTask.h"
 
 #include "launch/LaunchTask.h"
 #include "launch/TaskStepWrapper.h"
@@ -1119,6 +1120,7 @@ QList<LaunchStep::Ptr> MinecraftInstance::createUpdateTask()
     return {
         // create folders
         makeShared<FoldersTask>(this),
+        makeShared<ResourceReuseTask>(this),
         // libraries download
         makeShared<LibrariesTask>(this),
         // FML libraries download and copy into the instance

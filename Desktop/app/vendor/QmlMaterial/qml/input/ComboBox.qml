@@ -44,10 +44,12 @@ MD.ComboBoxBase {
     bottomPadding: control.type===MD.Enum.TextFieldFilled ? 4 : 0
 
     delegate: MD.MenuItem {
+        id: option
+        objectName:"dropdownOption"
         required property var model
         required property int index
 
-        width: ListView.view.width
+        width: popupMenu.width - popupMenu.leftPadding - popupMenu.rightPadding
         text: model[control.textRole || "modelData"]
         selected: control.currentIndex == index
         highlighted: control.highlightedIndex == index
@@ -160,6 +162,8 @@ MD.ComboBoxBase {
         id: popupMenu
         parent: control
         anchorItem: control
+        width: Math.min(control.popupMaximumWidth > 0 ? control.popupMaximumWidth : 320,
+                        Math.max(200, control.width))
         height: control.popupMaximumHeight > 0 ? Math.min(implicitHeight, control.popupMaximumHeight) : implicitHeight
         maximumWidth: control.popupMaximumWidth
         modal: false
@@ -173,7 +177,7 @@ MD.ComboBoxBase {
         onOpened: contentItem.positionViewAtIndex(control.highlightedIndex, ListView.Contain)
         Connections {
             target: control
-            function onHighlightedIndexChanged() {
+            function onKeyboardHighlightChanged(index) {
                 if (popupMenu.visible && control.highlightedIndex >= 0)
                     popupMenu.contentItem.positionViewAtIndex(control.highlightedIndex, ListView.Contain);
             }

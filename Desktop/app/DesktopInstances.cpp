@@ -122,6 +122,9 @@ BaseInstance* DesktopBridge::resolveInstance(const QString& id) const {
     auto instance=std::make_unique<DirectoryInstance>(APPLICATION->settings(),std::move(settings),directory,game.isEmpty()?row.value("root").toString():game);
     if(!existing)instance->setName(row.value("name",fields[2]).toString());
     instance->setProperty("deeraftDirectoryInstance",true);
+    instance->setProperty("deeraftSourceLibraries",row.value("librariesDirectory"));
+    instance->setProperty("deeraftSourceAssets",row.value("assetsDirectory"));
+    instance->setProperty("deeraftSourceClient",row.value("clientJar"));
     instance->setProperty("deeraftRootId",fields[1]);instance->setProperty("deeraftVersionId",fields[2]);
     instance->setProperty("deeraftNeedsDirectory",!row.value("valid").toBool());
     auto raw=instance.get();auto self=const_cast<DesktopBridge*>(this);

@@ -105,6 +105,16 @@ void Library::getApplicableFiles(const RuntimeContext& runtimeContext,
  * @param overridePath Optional path to override the default storage path.
  * @return QList<Net::NetRequest::Ptr> List of download requests.
  */
+QString Library::expectedSha1(const RuntimeContext& context,const QString& file)const{
+    if(!m_mojangDownloads)return {};
+    if(!isNative())return m_mojangDownloads->artifact?m_mojangDownloads->artifact->sha1:QString();
+    auto classifier=getCompatibleNative(context);
+    if(classifier.contains("${arch}")){
+        auto suffix=storageSuffix(context);suffix.replace("${arch}","64");
+        classifier.replace("${arch}",QDir::fromNativeSeparators(file).endsWith(suffix)?"64":"32");
+    }
+    auto info=m_mojangDownloads->getDownloadInfo(classifier);return info?info->sha1:QString();
+}
 QList<Net::NetRequest::Ptr> Library::getDownloads(const RuntimeContext& runtimeContext,
                                                   class HttpMetaCache* cache,
                                                   QStringList& failedLocalFiles,

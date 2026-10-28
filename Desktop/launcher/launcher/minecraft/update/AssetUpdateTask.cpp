@@ -28,7 +28,6 @@ void AssetUpdateTask::executeTask()
 
     auto metacache = APPLICATION->metacache();
     auto entry = metacache->resolveEntry("asset_indexes", localPath);
-    entry->setStale(true);
     auto hexSha1 = assets->sha1.toLatin1();
     qDebug() << "Asset index SHA1:" << hexSha1;
     auto dl = Net::ApiDownload::makeCached(indexUrl, entry);
@@ -71,7 +70,7 @@ void AssetUpdateTask::assetIndexFinished()
         return;
     }
 
-    auto job = index.getDownloadJob();
+    auto job = index.getDownloadJob(m_inst->property("deeraftBadAssets").toStringList());
     if (job) {
         QString resourceURL = resourceUrl();
         QString source = tr("Mojang");
@@ -114,7 +113,7 @@ bool AssetUpdateTask::abort()
 
 QString AssetUpdateTask::resourceUrl()
 {
-    if (const QString urlOverride = APPLICATION->settings()->get("ResourceURLOverride").toString(); !urlOverride.isEmpty()) {
+    if (const QString urlOverride = APPLICATION_DYN?APPLICATION->settings()->get("ResourceURLOverride").toString():QString(); !urlOverride.isEmpty()) {
         return urlOverride;
     }
 

@@ -54,6 +54,7 @@
 #include <utility>
 
 #include "BuildConfig.h"
+#include "DesktopBridge.h"
 #include "JavaCommon.h"
 #include "launch/steps/TextPrint.h"
 #include "tasks/Task.h"
@@ -482,6 +483,11 @@ void LaunchController::onFailed(QString reason)
 
 void LaunchController::onProgressRequested(Task* task) const
 {
+    if(DesktopBridge::taskCenterAvailable()){
+        task->setObjectName(tr("%1 · 检查与准备").arg(m_instance->name()));
+        task->setProperty("taskIcon","fact_check");task->setProperty("showInTaskCenter",true);
+        DesktopBridge::trackTask(task);m_launcher->proceed();return;
+    }
     ProgressDialog progDialog(m_parentWidget);
     progDialog.setSkipButton(true, tr("Abort"));
     m_launcher->proceed();

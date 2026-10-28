@@ -22,7 +22,8 @@ MD.Pane {
  property var navigation: [{id:0,name:"社区",icon:"diversity_3"},{id:1,name:"启动器",icon:"stadia_controller"},{id:2,name:"服务器",icon:"dns"},{id:4,name:"我的",icon:"person"}]
  property string pageTitle: ["社区","启动器","服务器","社区聊天","我的"][displayedPage]
  property var visualInstances: null
- property var allInstances: visualInstances || desktop.instances.concat(library.externalInstances.map(function(row){return Object.assign({},row,desktop.externalStates[row.id]||{},library.metadata[row.id]||{})})).filter(function(row){return !row.hidden})
+ property var directoryStates: desktop.externalStates
+ property var allInstances: visualInstances || desktop.instances.concat(library.externalInstances.map(function(row){return Object.assign({},row,root.directoryStates[row.id]||{},library.metadata[row.id]||{})})).filter(function(row){return !row.hidden})
  property var gameAccount: desktop.accounts.find(function(a){return a.selected})||null
  property var instanceChoices: allInstances.map(function(row){return {id:row.id,name:row.name+" · "+(row.sourcePath||row.path)}})
  property var activity: communityClient.activity
@@ -74,6 +75,7 @@ MD.Pane {
  function onOperationFinished(operation,result){var labels={start:"服务器已启动",stop:"服务器已停止",backup:"备份已创建",restore:"备份已恢复",update:"服务器已保存",delete:"服务器已删除",upload:"服务器已上传",avatar:"头像已更新",cover:"封面已更新"};if(labels[operation])root.notify(labels[operation])} }
  Connections { target: desktop; function onGameStarted(name,version){communityClient.reportGameStarted(name,version);if(!communityClient.authenticated)root.notify(name+" 已启动") } function onChanged(){if(desktop.error && desktop.error!==root.seenDesktopError)root.notify(desktop.error);root.seenDesktopError=desktop.error} }
  Connections { target: library; function onChanged(){if(library.error && library.error!==root.seenLibraryError)root.notify(library.error);root.seenLibraryError=library.error} }
+ Connections { target: externalGames; function onImportFailed(path,message){root.notify(message)} function onImportFinished(path,count){root.notify("已读取 "+count+" 个实例")} }
  Shortcut { sequence: "Ctrl+K"; onActivated: {root.page=1;launcher.focusSearch()} }
  ListModel {
    id: destinations
@@ -139,7 +141,7 @@ MD.Pane {
        spacing: 16
        IconButton { visible: root.displayedPage===3; symbol: "arrow_back"; hint: "返回社区"; onClicked: root.page=0 }
        AppLabel { text: root.pageTitle; font.pixelSize: 32; lineHeight: 42; font.weight: 600; font.letterSpacing: -.5; color: root.ink; Layout.fillWidth: true }
-       MD.BusyIndicator { visible: communityClient.busy; running: visible; Layout.preferredWidth: 28; Layout.preferredHeight: 28 }
+       MD.BusyIndicator { visible: communityClient.busy||externalGames.scanning; running: visible; Layout.preferredWidth: 28; Layout.preferredHeight: 28 }
        IconButton { symbol: "download"; hint: "下载任务"; onClicked: tasksDrawer.open()
          MD.Badge { visible: desktop.tasks.some(function(t){return t.state==="进行中"}); anchors.right: parent.right; anchors.top: parent.top; text: desktop.tasks.filter(function(t){return t.state==="进行中"}).length }
        }

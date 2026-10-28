@@ -32,11 +32,20 @@ private:
 
 DesktopBridge::~DesktopBridge()=default;
 void DesktopBridge::loadInstanceDirectories(){
-    auto catalog=parent()->findChild<Deeraft::ExternalGameCatalog*>();if(!catalog)return;
-    for(const auto& value:catalog->roots()){
-        const auto root=value.toMap();for(const auto& row:Deeraft::ExternalVersionResolver::scan(root.value("path").toString(),root.value("options").toMap()))resolveInstance("external:"+root.value("id").toString()+":"+row.toMap().value("id").toString());
-    }
+    // Listing directories must not initialize every instance, copy its libraries or resolve dependencies.
+    // Native objects are created only for the selected instance or an explicit launch/settings action.
     emit changed();
+}
+
+BaseInstance* DesktopBridge::resolveDirectoryReference(const QString& reference)const{
+    if(reference.startsWith("external:"))return resolveInstance(reference);
+    if(auto instance=APPLICATION->instances()->getInstanceById(reference))return instance;
+    const auto catalog=parent()->findChild<Deeraft::ExternalGameCatalog*>();if(!catalog)return nullptr;
+    for(const auto& value:catalog->versions()){
+        const auto row=value.toMap();const auto id="external:"+row.value("rootId").toString()+":"+row.value("id").toString();
+        if(QString::fromLatin1(QCryptographicHash::hash(id.toUtf8(),QCryptographicHash::Sha256).toHex())==reference)return resolveInstance(id);
+    }
+    return nullptr;
 }
 
 BaseInstance* DesktopBridge::resolveInstance(const QString& id) const {
@@ -117,10 +126,12 @@ BaseInstance* DesktopBridge::resolveInstance(const QString& id) const {
     instance->setProperty("deeraftNeedsDirectory",!row.value("valid").toBool());
     auto raw=instance.get();auto self=const_cast<DesktopBridge*>(this);
     raw->settings()->set("InstanceType","OneSix");
-    QObject::connect(raw->getPackProfile(),&QAbstractItemModel::modelReset,self,&DesktopBridge::changed);
-    QObject::connect(raw->getPackProfile(),&QAbstractItemModel::dataChanged,self,&DesktopBridge::changed);
-    raw->getPackProfile()->reload(Net::Mode::Offline);
+    // Publish ownership/cache before loading any model. QML resource requests can re-enter this method.
     APPLICATION->instances()->registerDirectoryInstance(id,std::move(instance));
+    m_externalInstances.emplace(id,raw);
+    raw->getPackProfile()->loadLocalComponents();
+    QObject::connect(raw->getPackProfile(),&QAbstractItemModel::modelReset,self,&DesktopBridge::changed,Qt::QueuedConnection);
+    QObject::connect(raw->getPackProfile(),&QAbstractItemModel::dataChanged,self,&DesktopBridge::changed,Qt::QueuedConnection);
     QObject::connect(raw->settings()->getSetting("DeeraftGameDirectory").get(),&Setting::SettingChanged,self,[catalog,fields,raw,self](const Setting&,const QVariant& value){
         const auto directory=value.toString();if(directory.isEmpty())return;
         QVariantMap directories;for(const auto& value:catalog->roots()){const auto root=value.toMap();if(root.value("id").toString()==fields[1])directories=root.value("options").toMap().value("versionDirectories").toMap();}
@@ -129,7 +140,6 @@ BaseInstance* DesktopBridge::resolveInstance(const QString& id) const {
     QObject::connect(raw,&BaseInstance::propertiesChanged,self,&DesktopBridge::changed);
     QObject::connect(raw,&BaseInstance::minecraftStarted,self,[self,raw]{emit self->gameStarted(raw->name(),qobject_cast<MinecraftInstance*>(raw)->getPackProfile()->getComponentVersion("net.minecraft"));emit self->changed();});
     QObject::connect(raw,&BaseInstance::runningStatusChanged,self,[self]{emit self->changed();});
-    m_externalInstances.emplace(id,raw);
     return raw;
 }
 

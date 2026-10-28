@@ -116,6 +116,8 @@ class PackProfile : public QAbstractListModel {
 
     /// reload the list, reload all components, resolve dependencies
     Result reload(Net::Mode netmode);
+    // Load component declarations for a directory listing without resolving every dependency.
+    Result loadLocalComponents();
 
     // reload all components, resolve dependencies
     void resolve(Net::Mode netmode);

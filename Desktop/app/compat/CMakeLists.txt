@@ -9,12 +9,12 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
     enable_testing()
 endif()
 
-find_package(Qt6 6.4 REQUIRED COMPONENTS Core)
+find_package(Qt6 6.4 REQUIRED COMPONENTS Core Concurrent)
 add_library(deeraft_compat STATIC ExternalGameCatalog.cpp ExternalGameCatalog.h
     NativeExternalLaunchController.cpp NativeExternalLaunchController.h)
 set_target_properties(deeraft_compat PROPERTIES AUTOMOC ON)
 target_include_directories(deeraft_compat PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(deeraft_compat PUBLIC Qt6::Core)
+target_link_libraries(deeraft_compat PUBLIC Qt6::Core Qt6::Concurrent)
 target_compile_features(deeraft_compat PUBLIC cxx_std_20)
 
 option(DEERAFT_COMPAT_TESTS "Build external launcher layout compatibility tests" OFF)

@@ -14,6 +14,7 @@ Item {
  property var files: []
  property var worlds: []
  property var shots: []
+ property bool loadingFiles: false
  property string logText: ""
  property var groups: {var list=["全部分组"];for(var i=0;i<app.allInstances.length;i++){var row=app.allInstances[i];var group=library.metadata[row.id]?.group || row.group || "未分组";if(list.indexOf(group)<0)list.push(group)}return list}
  property var filtered: {
@@ -27,10 +28,11 @@ Item {
  property var account: desktop.accounts.find(function(a){return a.selected}) || null
  function selectInstance(id){if(selectedId===id&&!instanceMotion.running)return;instanceMotion.run(function(){page.selectedId=id;page.detailTab=0;page.reloadFiles()})}
  ContentTransition { id: instanceMotion; objectName: "instanceMotion"; target: detail }
- function reloadFiles(){if(!selected){files=[];worlds=[];shots=[];logText="";return}files=desktop.resources(selected.id,"mods");worlds=desktop.resources(selected.id,"saves");shots=desktop.resources(selected.id,"screenshots");logText=detailTab===4?desktop.readGameLog(selected.id):""}
- onSelectedChanged:{reloadFiles();desktop.selectInstance(selected?selected.id:"")}
+ function reloadFiles(){files=[];worlds=[];shots=[];if(!selected){loadingFiles=false;logText="";return}loadingFiles=true;desktop.loadResources(selected.id);logText=detailTab===4?desktop.readGameLog(selected.id):""}
+ property string resourceKey: selected?(selected.id+"|"+selected.path):""
+ onResourceKeyChanged:{reloadFiles();desktop.selectInstance(selected?selected.id:"")}
  onDetailTabChanged:reloadFiles()
- Connections {target:desktop;function onChanged(){if(page.selected && page.detailTab===4)page.logText=desktop.readGameLog(page.selected.id)}}
+ Connections {target:desktop;function onChanged(){if(page.selected && page.detailTab===4)page.logText=desktop.readGameLog(page.selected.id)} function onResourcesLoaded(id,resources){if(page.selected&&page.selected.id===id){page.files=resources.mods||[];page.worlds=resources.saves||[];page.shots=resources.screenshots||[];page.loadingFiles=false}}}
  RowLayout {
   anchors.fill: parent
   anchors.leftMargin: 8
@@ -306,7 +308,7 @@ Item {
        }
        RowLayout { Layout.fillWidth: true; AppLabel { text: "最近的世界"; font.weight: 600; color: app.ink; Layout.fillWidth: true } ActionButton { text: "查看全部"; flat: true; onClicked: page.detailTab=2 } }
        Repeater { model: page.worlds.slice(0,2); MD.ListItem { required property var modelData; Layout.fillWidth: true; text: modelData.name; supportText: modelData.updated; icon.name: "public"; onClicked: desktop.openPath(modelData.path) } }
-       AppLabel { visible: !page.worlds.length; text: "暂无本地存档"; color: app.muted; font.pixelSize: 13 }
+       AppLabel { visible: !page.worlds.length; text: page.loadingFiles?"读取中…":"暂无本地存档"; color: app.muted; font.pixelSize: 13 }
       }
       ColumnLayout {
        visible: page.detailTab===1
@@ -314,11 +316,32 @@ Item {
        Layout.topMargin: 20
        spacing: 12
        RowLayout { Layout.fillWidth: true; AppLabel { text: page.files.length+" 个模组"; Layout.fillWidth: true; color: app.ink } ActionButton { text: "添加模组"; symbol: "add"; enabled: !!page.selected; onClicked: desktop.action("instance-page:mods",page.selected.id) } }
-       Repeater { model: page.files; MD.ListItem { id: modRow; required property var modelData; Layout.fillWidth: true; text: modelData.name.replace(/\.disabled$/,""); icon.name: "extension"; trailing: MD.Switch { checked: modRow.modelData.enabled; enabled: !page.isRunning(); onCheckedChangeRequested: function(checked) {if(desktop.setModEnabled(page.selected.id,modRow.modelData.name,checked))page.reloadFiles()} } } }
-       AppLabel { visible: !page.files.length; text: "暂无模组"; color: app.muted }
+       MD.ListView {
+        objectName: "modList"; Layout.fillWidth: true; Layout.preferredHeight: Math.min(count*64,Math.max(240,detailScroll.availableHeight-520))
+        model: page.detailTab===1?page.files:[]; clip: true; reuseItems: true; cacheBuffer: 128
+        delegate: MD.ListItem { id: modRow; required property var modelData; width: ListView.view.width; height: implicitHeight; text: modelData.name.replace(/\.disabled$/,""); icon.name: "extension"; trailing: MD.Switch { checked: modRow.modelData.enabled; enabled: !page.isRunning(); onCheckedChangeRequested: function(checked) {if(desktop.setModEnabled(page.selected.id,modRow.modelData.name,checked))page.reloadFiles()} } }
+        MD.ScrollBarBase.vertical: MD.ScrollBar {}
+       }
+       AppLabel { visible: !page.files.length; text: page.loadingFiles?"读取中…":"暂无模组"; color: app.muted }
       }
-      ColumnLayout { visible: page.detailTab===2; Layout.fillWidth: true; Layout.topMargin: 20; spacing: 12; Repeater { model: page.worlds; MD.ListItem { required property var modelData; Layout.fillWidth: true; text: modelData.name; supportText: modelData.updated; icon.name: "public"; onClicked: desktop.openPath(modelData.path) } } AppLabel { visible: !page.worlds.length; text: "暂无本地存档"; color: app.muted } }
-      Flow { visible: page.detailTab===3; Layout.fillWidth: true; Layout.topMargin: 20; spacing: 12; Repeater { model: page.shots; MD.Card { required property var modelData; width: 220; height: 140; onClicked: desktop.openPath(modelData.path); contentItem: RoundedImage { source: modelData.url; radius: 16 } } } AppLabel { visible: !page.shots.length; text: "暂无截图"; color: app.muted } }
+      ColumnLayout {
+       visible: page.detailTab===2; Layout.fillWidth: true; Layout.topMargin: 20; spacing: 12
+       MD.ListView {
+        objectName: "worldList"; Layout.fillWidth: true; Layout.preferredHeight: Math.min(count*72,Math.max(240,detailScroll.availableHeight-520))
+        model: page.detailTab===2?page.worlds:[]; clip: true; reuseItems: true; cacheBuffer: 144
+        delegate: MD.ListItem { objectName: "worldRow"; required property var modelData; width: ListView.view.width; height: implicitHeight; text: modelData.name; supportText: modelData.updated; icon.name: "public"; onClicked: desktop.openPath(modelData.path) }
+        MD.ScrollBarBase.vertical: MD.ScrollBar {}
+       }
+       AppLabel { visible: !page.worlds.length; text: page.loadingFiles?"读取中…":"暂无本地存档"; color: app.muted }
+      }
+      MD.GridView {
+       visible: page.detailTab===3; Layout.fillWidth: true; Layout.topMargin: 20
+       Layout.preferredHeight: Math.min(Math.ceil(count/Math.max(1,Math.floor(width/cellWidth)))*cellHeight,Math.max(240,detailScroll.availableHeight-520))
+       model: page.detailTab===3?page.shots:[]; cellWidth: 232; cellHeight: 152; clip: true; cacheBuffer: 152
+       delegate: MD.Card { required property var modelData; width: 220; height: 140; onClicked: desktop.openPath(modelData.path); contentItem: RoundedImage { source: modelData.url; radius: 16 } }
+       MD.ScrollBarBase.vertical: MD.ScrollBar {}
+      }
+      AppLabel { visible: page.detailTab===3&&!page.shots.length; text: page.loadingFiles?"读取中…":"暂无截图"; color: app.muted }
       TextArea { visible: page.detailTab===4; Layout.fillWidth: true; Layout.topMargin: 20; implicitHeight: Math.max(260,contentHeight+24); text: page.logText||"暂无游戏日志"; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; font.family: "Consolas"; font.pixelSize: 12; color: app.ink }
       Item { Layout.fillWidth: true; Layout.minimumHeight: 24; Layout.fillHeight: true }
       RowLayout { Layout.fillWidth: true; spacing: 7; MD.Icon { name: "circle"; size: 8; color: app.accent } AppLabel { text: page.isRunning()?"运行中":"就绪"; color: app.muted; font.pixelSize: 12 } Item { Layout.fillWidth: true } AppLabel { Layout.maximumWidth: detailScroll.availableWidth*.65; elide: Text.ElideMiddle; text: page.selected?(page.selected.sourcePath||page.selected.path):""; color: app.muted; font.pixelSize: 12 } }
@@ -337,7 +360,7 @@ Item {
  AppMenu {id:libraryMenu
   objectName: "libraryMenu"
   MD.MenuItem {text:"新建实例 / 导入整合包";onTriggered:desktop.action("actionAddInstance")}
-  MD.MenuItem {text:"添加实例目录";onTriggered:{var path=desktop.chooseDirectory();if(path)externalGames.addRoot(path)}}
+  MD.MenuItem {text:"添加实例目录";enabled:!externalGames.scanning;onTriggered:{var path=desktop.chooseDirectory();if(path)externalGames.addRootAsync(path)}}
   MD.MenuItem {text:"还原已删除实例";onTriggered:desktop.action("actionUndoTrashInstance")}
   MD.MenuItem {text:"管理实例目录";onTriggered:rootsDialog.open()}
   MD.MenuItem {text:"启动器设置";onTriggered:desktop.action("actionSettings")}
@@ -367,8 +390,9 @@ Item {
  AppDialog {id:rootsDialog;title:"实例目录";width:Math.min(page.width-40,650);modal:true;standardButtons:Dialog.Close
   ColumnLayout {width:parent.width;spacing:12
    AppLabel { textFormat: Text.PlainText;text:"DeeraftApp";font.weight:Font.DemiBold}
-   Repeater {model:externalGames.roots;RowLayout {required property var modelData;Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:modelData.path;Layout.fillWidth:true;elide:Text.ElideMiddle}ActionButton {text:"刷新";flat:true;onClicked:externalGames.scanRoot(modelData.id)}ActionButton {text:"移除目录";flat:true;enabled:!app.allInstances.some(function(row){return row.rootId===modelData.id&&row.running});onClicked:externalGames.removeRoot(modelData.id)}}}
-   ActionButton {text:"添加实例目录";symbol:"add";onClicked:{var path=desktop.chooseDirectory();if(path)externalGames.addRoot(path)}}
+   Repeater {model:externalGames.roots;RowLayout {required property var modelData;Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:modelData.path;Layout.fillWidth:true;elide:Text.ElideMiddle}ActionButton {text:"刷新";flat:true;enabled:!externalGames.scanning;onClicked:externalGames.addRootAsync(modelData.path)}ActionButton {text:"移除目录";flat:true;enabled:!app.allInstances.some(function(row){return row.rootId===modelData.id&&row.running});onClicked:externalGames.removeRoot(modelData.id)}}}
+   AppLabel {text:externalGames.error;visible:!!text;Layout.fillWidth:true;wrapMode:Text.Wrap;color:app.colors.error}
+   ActionButton {text:"添加实例目录";symbol:"add";enabled:!externalGames.scanning;onClicked:{var path=desktop.chooseDirectory();if(path)externalGames.addRootAsync(path)}}
   }
  }
  AppDialog {id:groupDialog;title:"分组";width:400;modal:true;standardButtons:Dialog.Save|Dialog.Cancel;onAccepted:library.setMetadata(page.selected.id,{group:externalGroup.text.trim()});AppTextField {id:externalGroup;width:parent.width;placeholderText:"分组名称"}}

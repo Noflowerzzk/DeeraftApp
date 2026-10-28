@@ -6,6 +6,8 @@
 #include <QJsonDocument>
 #include <QTemporaryDir>
 #include <QTest>
+#include <QTimer>
+#include <QSignalSpy>
 
 using namespace Deeraft;
 
@@ -27,6 +29,43 @@ class ExternalGameCatalogTest final : public QObject
     }
 
 private slots:
+    void rejectsWrongAndBrokenDirectoriesWithoutSaving()
+    {
+        QTemporaryDir temp;ExternalGameCatalog catalog(temp.filePath("data"));
+        QVERIFY(catalog.addRoot(temp.filePath("missing")).isEmpty());QVERIFY(catalog.error().contains("不存在"));
+        QVERIFY(write(temp.filePath("a-file"),"file"));QVERIFY(catalog.addRoot(temp.filePath("a-file")).isEmpty());QVERIFY(catalog.error().contains("文件夹"));
+        const auto empty=temp.filePath("empty/.minecraft");QVERIFY(QDir().mkpath(empty+"/versions"));
+        QVERIFY(catalog.addRoot(empty).isEmpty());QVERIFY(catalog.error().contains("没有可识别"));
+        const auto single=temp.filePath("instances/one");
+        QVERIFY(write(single+"/instance.cfg","[General]\nname=One\n"));
+        QVERIFY(write(single+"/mmc-pack.json",R"({"formatVersion":1,"components":[{"uid":"net.minecraft","version":"1.20.1"}]})"));
+        QVERIFY(version(single+"/.minecraft","nested",R"({"id":"1.20.1"})"));
+        QVERIFY(catalog.addRoot(single).isEmpty());QVERIFY(catalog.error().contains("单个实例"));QVERIFY(catalog.error().contains("上一级"));
+        QVERIFY(write(single+"/mmc-pack.json","broken json"));
+        QVERIFY(catalog.addRoot(temp.filePath("instances")).isEmpty());QVERIFY(catalog.error().contains("JSON"));
+        QVERIFY(catalog.roots().isEmpty());QVERIFY(catalog.versions().isEmpty());
+        QVERIFY(!QFileInfo::exists(temp.filePath("data/external-games.json")));
+    }
+
+    void importsAsynchronouslyAndRestoresCachedRows()
+    {
+        QTemporaryDir temp;const auto root=temp.filePath("中文/instances");
+        for(int i=0;i<20;++i){const auto instance=root+"/"+QString::number(i);QVERIFY(write(instance+"/instance.cfg","[General]\nname=One\n"));QVERIFY(write(instance+"/mmc-pack.json",R"({"formatVersion":1,"components":[{"uid":"net.minecraft","version":"1.20.1"}]})"));}
+        ExternalGameCatalog catalog(temp.filePath("data"));QSignalSpy finished(&catalog,&ExternalGameCatalog::importFinished);
+        bool eventLoopAvailable=false;QTimer::singleShot(0,this,[&]{eventLoopAvailable=true;});
+        catalog.addRootAsync(root);QVERIFY(catalog.scanning());QVERIFY(catalog.roots().isEmpty());
+        QTRY_COMPARE(finished.size(),1);QVERIFY(eventLoopAvailable);QVERIFY(!catalog.scanning());
+        QCOMPARE(catalog.versions().size(),20);QCOMPARE(catalog.roots().size(),1);
+        ExternalGameCatalog restored(temp.filePath("data"));QCOMPARE(restored.roots().size(),1);QVERIFY(restored.versions().isEmpty());
+        QTRY_COMPARE(restored.versions().size(),20);
+        QSignalSpy errors(&catalog,&ExternalGameCatalog::importFailed);
+        catalog.addRootAsync(temp.filePath("missing"));QTRY_COMPARE(errors.size(),1);
+        catalog.addRootAsync(temp.filePath("missing"));QTRY_COMPARE(errors.size(),2);
+        QCOMPARE(catalog.versions().size(),20);QCOMPARE(catalog.roots().size(),1);QVERIFY(!catalog.scanning());
+        catalog.addRootAsync(root);QVERIFY(catalog.removeRoot(ExternalVersionResolver::rootId(root)));
+        QTest::qWait(50);QVERIFY(catalog.roots().isEmpty());QVERIFY(catalog.versions().isEmpty());QVERIFY(!catalog.scanning());
+    }
+
     void readsHmclComponentsAndPrismDirectories()
     {
         QTemporaryDir temp;

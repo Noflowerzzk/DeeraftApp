@@ -46,6 +46,7 @@ Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QSaveFile>
 #include <QDir>
@@ -139,7 +140,7 @@ void installDeeraftShell(MainWindow* window){
     });
     bridge->setExternalLauncher(launcher);
     bridge->loadInstanceDirectories();
-    QObject::connect(external,&Deeraft::ExternalGameCatalog::rootsChanged,bridge,&DesktopBridge::loadInstanceDirectories);
+    QObject::connect(external,&Deeraft::ExternalGameCatalog::versionsChanged,bridge,&DesktopBridge::loadInstanceDirectories);
     host->setExternalLauncher(launcher);
     auto externalAccounts=new ExternalAccountController(APPLICATION->dataRoot()+"/auth",window);
     auto sources=new DownloadSources(APPLICATION->dataRoot(),window);
@@ -204,6 +205,52 @@ void installDeeraftShell(MainWindow* window){
         auto item=[quick](const char* name){return quick->rootObject()->findChild<QQuickItem*>(QString::fromUtf8(name));};
         auto click=[quick,item](const char* name){if(auto target=item(name)){auto point=target->mapToItem(quick->rootObject(),QPointF(target->width()/2,target->height()/2));QMouseEvent press(QEvent::MouseButtonPress,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(quick,&press);QMouseEvent release(QEvent::MouseButtonRelease,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(quick,&release);}};
         auto escape=[quick]{QKeyEvent press(QEvent::KeyPress,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&press);QKeyEvent release(QEvent::KeyRelease,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&release);};
+        const auto importDirectory=qEnvironmentVariable("DEERAFT_IMPORT_DIRECTORY");
+        if(!importDirectory.isEmpty()){
+            auto elapsed=std::make_shared<QElapsedTimer>();auto pulse=std::make_shared<QElapsedTimer>();
+            auto heartbeat=new QTimer(window);heartbeat->setInterval(20);
+            QObject::connect(heartbeat,&QTimer::timeout,window,[report,pulse]{const auto gap=pulse->restart();(*report)["maximumUiGapMs"]=std::max(report->value("maximumUiGapMs").toInt(),int(gap));(*report)["heartbeatCount"]=report->value("heartbeatCount").toInt()+1;});
+            const auto invalid=std::make_shared<QStringList>();const auto index=std::make_shared<int>(0);
+            const auto empty=QDir(smoke).filePath("empty/.minecraft");QDir().mkpath(empty+"/versions");
+            const auto malformed=QDir(smoke).filePath("malformed/.minecraft");QDir().mkpath(malformed+"/versions/bad");QFile bad(malformed+"/versions/bad/bad.json");if(bad.open(QIODevice::WriteOnly))bad.write("broken json");
+            invalid->append(QDir(smoke).filePath("missing"));invalid->append(empty);invalid->append(malformed);
+            for(const auto& name:QDir(importDirectory).entryList(QDir::Dirs|QDir::NoDotAndDotDot))if(QFileInfo::exists(importDirectory+"/"+name+"/mmc-pack.json")){invalid->append(importDirectory+"/"+name);invalid->append(importDirectory+"/"+name+"/mmc-pack.json");break;}
+            auto next=std::make_shared<std::function<void()>>();
+            *next=[external,invalid,index,report,writeReport,bridge,library,take,window]{
+                if(*index<invalid->size()){external->addRootAsync(invalid->at((*index)++));return;}
+                (*report)["rootsAfterInvalidSelections"]=external->roots().size();(*report)["rowsAfterInvalidSelections"]=library->externalInstances().size();
+                (*report)["nativeDirectoryObjects"]=bridge->externalStates().size();(*report)["scanningFinished"]=!external->scanning();
+                take("import-directory");writeReport();QTimer::singleShot(0,window,[]{qApp->quit();});
+            };
+            QObject::connect(external,&Deeraft::ExternalGameCatalog::importFailed,window,[external,report,library,next,window](const QString& path,const QString& message){
+                QJsonArray failures=report->value("invalidSelections").toArray();failures.append(QJsonObject{{"path",path},{"message",message}});(*report)["invalidSelections"]=failures;
+                (*report)["invalidSelectionPreservedRows"]=report->value("invalidSelectionPreservedRows").toBool(true)&&external->roots().size()==1&&library->externalInstances().size()==report->value("importedCount").toInt();
+                QTimer::singleShot(30,window,[next]{if(*next)(*next)();});
+            });
+            QObject::connect(external,&Deeraft::ExternalGameCatalog::importFinished,window,[elapsed,report,quick,window](const QString&,int count){
+                (*report)["importedCount"]=count;(*report)["importElapsedMs"]=int(elapsed->elapsed());
+                QTimer::singleShot(300,window,[quick,report]{(*report)["worldTabRequested"]=true;if(auto page=quick->rootObject()->findChild<QObject*>("launcherPage"))page->setProperty("detailTab",2);});
+            });
+            QObject::connect(bridge,&DesktopBridge::resourcesLoaded,window,[quick,report,heartbeat,next,take,window](const QString&,const QVariantMap& rows){
+                if(!report->value("worldTabRequested").toBool()||report->value("worldCheckStarted").toBool())return;
+                (*report)["worldCheckStarted"]=true;(*report)["worldDataCount"]=rows.value("saves").toList().size();
+                QTimer::singleShot(100,window,[quick]{if(auto list=quick->rootObject()->findChild<QObject*>("worldList")){QMetaObject::invokeMethod(list,"forceLayout");QMetaObject::invokeMethod(list,"positionViewAtEnd");}});
+                QTimer::singleShot(350,window,[quick,report,heartbeat,next,take]{
+                    heartbeat->stop();take("worlds-virtualized");
+                    if(auto list=quick->rootObject()->findChild<QQuickItem*>("worldList")){
+                        int count=0;std::function<void(QQuickItem*)> visit=[&](QQuickItem* item){if(item->objectName()=="worldRow")++count;for(auto child:item->childItems())visit(child);};visit(list);
+                        (*report)["worldModelCount"]=list->property("count").toInt();(*report)["realizedWorldRows"]=count;(*report)["worldScrollY"]=list->property("contentY").toDouble();(*report)["worldContentHeight"]=list->property("contentHeight").toDouble();(*report)["worldViewportHeight"]=list->height();
+                    }
+                    if(*next)(*next)();
+                });
+            });
+            QTimer::singleShot(1200,window,[external,library,importDirectory,elapsed,pulse,heartbeat,report]{
+                (*report)["startupRowsBeforeImport"]=library->externalInstances().size();pulse->start();heartbeat->start();elapsed->start();
+                external->addRootAsync(importDirectory);(*report)["requestReturnedMs"]=int(elapsed->elapsed());
+            });
+            QTimer::singleShot(20000,window,[report,writeReport]{(*report)["timedOut"]=true;writeReport();qApp->exit(1);});
+            return;
+        }
         if(qEnvironmentVariableIsSet("DEERAFT_REPAIR_PROBE")){
             // Controlled fixtures only: no original launcher directories or account files are written.
             const auto source=QDir(smoke).filePath("source-game");
@@ -213,7 +260,7 @@ void installDeeraftShell(MainWindow* window){
             put(version+"/hmclversion.cfg",R"({"usesGlobal":false,"gameDirType":1,"unknown":"preserve"})");
             put(version+"/mods/test.jar","fixture");put(version+"/saves/测试世界/level.dat","fixture");
             const auto rootId=external->addRoot(source);const auto instanceId="external:"+rootId+":测试版本";
-            auto instance=APPLICATION->instances()->getInstanceById(instanceId);
+            auto instance=bridge->resolveDirectoryReference(instanceId);
             const auto state=bridge->externalStates().value(instanceId).toMap();
             (*report)["directoryCoreRegistered"]=instance!=nullptr;
             (*report)["directoryVersion"]=state.value("version").toString();(*report)["directoryLoader"]=state.value("loader").toString();

@@ -33,6 +33,9 @@
 #include <QStyleHints>
 #include <QStyleFactory>
 #include <QTimer>
+#include <QFutureWatcher>
+#include <QtConcurrentRun>
+#include <QElapsedTimer>
 
 QPointer<DesktopBridge> DesktopBridge::s_instance;
 DesktopBridge::DesktopBridge(MainWindow* window)
@@ -189,12 +192,26 @@ void DesktopBridge::launchInstance(const QString& id,const QString& address){
  if(!address.isEmpty()){auto url=QUrl("mc://"+address);if(url.host().isEmpty()){m_error=tr("服务器地址无效");emit changed();return;}target=std::make_shared<MinecraftTarget>(MinecraftTarget::parse(address,false));}
  APPLICATION->launch(instance,LaunchMode::Normal,target);
 }
-QVariantList DesktopBridge::resources(const QString& id,const QString& kind) const{
- auto instance=resolveInstance(id);if(!instance)return {};
- QString folder=kind=="mods"?instance->modsRoot():QDir(instance->gameRoot()).filePath(kind);
+namespace {
+QVariantList readResourceFolder(const QString& folder,const QString& kind){
  if(kind!="mods"&&kind!="saves"&&kind!="screenshots"&&kind!="resourcepacks"&&kind!="shaderpacks")return {};
  QVariantList result;auto entries=QDir(folder).entryInfoList(kind=="saves"?QDir::Dirs|QDir::NoDotAndDotDot:QDir::Files,QDir::Name|QDir::IgnoreCase);
  for(const auto& file:entries){if(kind=="mods"){QString name=file.fileName();if(name.endsWith(".disabled"))name.chop(9);if(!QStringList{"jar","zip","litemod"}.contains(QFileInfo(name).suffix().toLower()))continue;}if(kind=="screenshots"&&!QStringList{"png","jpg","jpeg","webp"}.contains(file.suffix().toLower()))continue;result.append(QVariantMap{{"name",file.fileName()},{"path",file.absoluteFilePath()},{"url",QUrl::fromLocalFile(file.absoluteFilePath())},{"enabled",!file.fileName().endsWith(".disabled")},{"size",file.size()},{"updated",file.lastModified().toString("yyyy-MM-dd HH:mm")}});}return result;
+}
+}
+QVariantList DesktopBridge::resources(const QString& id,const QString& kind) const{
+ auto instance=resolveInstance(id);if(!instance)return {};
+ return readResourceFolder(kind=="mods"?instance->modsRoot():QDir(instance->gameRoot()).filePath(kind),kind);
+}
+void DesktopBridge::loadResources(const QString& id){
+ const auto ticket=++m_resourceRequest;
+ QElapsedTimer clock;clock.start();auto instance=resolveInstance(id);
+ if(!instance){emit resourcesLoaded(id,{});return;}
+ const auto mods=instance->modsRoot(),game=instance->gameRoot();
+ if(qEnvironmentVariableIsSet("DEERAFT_IMPORT_DIRECTORY"))qInfo()<<"Directory instance prepared in"<<clock.elapsed()<<"ms";
+ auto watcher=new QFutureWatcher<QVariantMap>(this);
+ connect(watcher,&QFutureWatcher<QVariantMap>::finished,this,[this,watcher,ticket,id]{const auto rows=watcher->result();watcher->deleteLater();if(ticket==m_resourceRequest)emit resourcesLoaded(id,rows);});
+ watcher->setFuture(QtConcurrent::run([mods,game]{return QVariantMap{{"mods",readResourceFolder(mods,"mods")},{"saves",readResourceFolder(QDir(game).filePath("saves"),"saves")},{"screenshots",readResourceFolder(QDir(game).filePath("screenshots"),"screenshots")}};}));
 }
 bool DesktopBridge::setModEnabled(const QString& id,const QString& fileName,bool enabled){
  auto instance=resolveInstance(id);if(!instance||instance->isRunning()||QFileInfo(fileName).fileName()!=fileName)return false;

@@ -1,0 +1,47 @@
+{
+    "cjkGlyphFonts": [
+        "Noto Sans SC",
+        "Roboto Flex"
+    ],
+    "heartbeatCount": 27,
+    "importElapsedMs": 51,
+    "importedCount": 16,
+    "invalidSelectionPreservedRows": true,
+    "invalidSelections": [
+        {
+            "message": "所选目录不存在：F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/import-checks/20261028-133312/missing",
+            "path": "F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/import-checks/20261028-133312/missing"
+        },
+        {
+            "message": "所选文件夹没有可识别的实例。请选择包含 versions 的 .minecraft 文件夹，或包含 instance.cfg 和 mmc-pack.json 实例的 instances 文件夹：F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/import-checks/20261028-133312/empty/.minecraft",
+            "path": "F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/import-checks/20261028-133312/empty/.minecraft"
+        },
+        {
+            "message": "目录中的实例配置无法识别：JSON 格式错误：F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/import-checks/20261028-133312/malformed/.minecraft/versions/bad/bad.json（illegal number）",
+            "path": "F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/import-checks/20261028-133312/malformed/.minecraft"
+        },
+        {
+            "message": "这是单个实例文件夹，请选择上一级实例目录：F:/Users/张桢锴/Documents/软件/MultiMC/instances",
+            "path": "F:\\Users\\张桢锴\\Documents\\软件\\MultiMC\\instances/1.16"
+        },
+        {
+            "message": "请选择文件夹，不能选择文件：F:\\Users\\张桢锴\\Documents\\软件\\MultiMC\\instances/1.16/mmc-pack.json",
+            "path": "F:\\Users\\张桢锴\\Documents\\软件\\MultiMC\\instances/1.16/mmc-pack.json"
+        }
+    ],
+    "maximumUiGapMs": 178,
+    "nativeDirectoryObjects": 1,
+    "realizedWorldRows": 6,
+    "requestReturnedMs": 1,
+    "rootsAfterInvalidSelections": 1,
+    "rowsAfterInvalidSelections": 16,
+    "scanningFinished": true,
+    "startupRowsBeforeImport": 0,
+    "worldCheckStarted": true,
+    "worldContentHeight": 273456,
+    "worldDataCount": 3798,
+    "worldModelCount": 3798,
+    "worldScrollY": 273128,
+    "worldTabRequested": true,
+    "worldViewportHeight": 328
+}

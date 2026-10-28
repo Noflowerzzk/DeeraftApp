@@ -12,6 +12,9 @@
 #include <QSet>
 #include <QUrl>
 #include <QRegularExpression>
+#include <QFutureWatcher>
+#include <QtConcurrentRun>
+#include <QTimer>
 
 namespace Deeraft {
 namespace {
@@ -281,7 +284,7 @@ QVariantMap ExternalVersionResolver::resolve(const QString &path, const QString 
         const auto settings=readIni(QDir(instanceDirectory).filePath("instance.cfg"));
         QString version,loader;
         for(const auto& value:pack["components"].toArray()) {
-            const auto c=value.toObject();const auto uid=c["uid"].toString();const auto v=c["version"].toString();
+            const auto c=value.toObject();const auto uid=c["uid"].toString();const auto v=c["version"].toString(c["cachedVersion"].toString());
             if(uid=="net.minecraft")version=v;
             const QMap<QString,QString> names{{"net.fabricmc.fabric-loader","Fabric"},{"net.minecraftforge","Forge"},{"net.neoforged","NeoForge"},{"org.quiltmc.quilt-loader","Quilt"},{"optifine.OptiFine","OptiFine"}};
             if(names.contains(uid))loader=names[uid]+" "+v;
@@ -291,6 +294,7 @@ QVariantMap ExternalVersionResolver::resolve(const QString &path, const QString 
         result["format"]="prism";result["instanceDirectory"]=instanceDirectory;result["versionDirectory"]=instanceDirectory;
         result["gameDirectory"]=game;result["name"]=settings.value("name",versionId);result["icon"]=settings.value("iconKey","default");
         result["version"]=version;result["loader"]=loader;result["valid"]=!version.isEmpty();
+        if(version.isEmpty())result["error"]=QStringLiteral("实例配置缺少 Minecraft 版本信息：%1/mmc-pack.json").arg(instanceDirectory);
         return result;
     }
     if (!QDir(root).exists("versions") || !safeVersionId(versionId)) {
@@ -380,6 +384,31 @@ QVariantList ExternalVersionResolver::scan(const QString &path, const QVariantMa
     return result;
 }
 
+QString ExternalVersionResolver::validateRoot(const QString &path,const QVariantList &rows)
+{
+    if(path.trimmed().isEmpty())return QStringLiteral("请选择实例目录");
+    const QUrl url(path);
+    if(!url.scheme().isEmpty()&&url.scheme().size()>1&&!url.isLocalFile())return QStringLiteral("请选择本机文件夹，不能使用网页地址");
+    const QFileInfo selected(url.isLocalFile()?url.toLocalFile():path);
+    if(!selected.exists())return QStringLiteral("所选目录不存在：%1").arg(path);
+    if(!selected.isDir())return QStringLiteral("请选择文件夹，不能选择文件：%1").arg(path);
+    if(!selected.isReadable())return QStringLiteral("所选目录无法读取：%1").arg(path);
+    const QDir original(selected.absoluteFilePath());
+    if(original.exists("instance.cfg")&&original.exists("mmc-pack.json"))
+        return QStringLiteral("这是单个实例文件夹，请选择上一级实例目录：%1").arg(selected.absolutePath());
+    const auto root=normalizeRoot(path);const QDir folder(root);
+    if(folder.exists("instance.cfg")&&folder.exists("mmc-pack.json"))
+        return QStringLiteral("这是单个实例文件夹，请选择上一级实例目录：%1").arg(QFileInfo(root).absolutePath());
+    if(rows.isEmpty()){
+        if(QFileInfo(root).fileName().compare("mods",Qt::CaseInsensitive)==0)
+            return QStringLiteral("这是模组文件夹，请选择包含 versions 的 .minecraft 文件夹，或包含多个实例的 instances 文件夹");
+        return QStringLiteral("所选文件夹没有可识别的实例。请选择包含 versions 的 .minecraft 文件夹，或包含 instance.cfg 和 mmc-pack.json 实例的 instances 文件夹：%1").arg(root);
+    }
+    for(const auto& value:rows)if(!value.toMap().value("version").toString().isEmpty())return {};
+    const auto reason=rows.first().toMap().value("error").toString();
+    return QStringLiteral("目录中的实例配置无法识别：%1").arg(reason.isEmpty()?root:reason);
+}
+
 ExternalGameCatalog::ExternalGameCatalog(const QString &dataDirectory, QObject *parent)
     : QObject(parent), m_dataDirectory(canonical(dataDirectory)), m_catalogFile(QDir(m_dataDirectory).filePath("external-games.json"))
 {
@@ -393,6 +422,7 @@ ExternalGameCatalog::ExternalGameCatalog(const QString &dataDirectory, QObject *
         else
             m_roots = catalog.value("roots").toArray().toVariantList();
     }
+    QTimer::singleShot(0,this,[this]{for(const auto& value:m_roots){const auto root=value.toMap();if(!m_rows.contains(root.value("id").toString()))scanAsync(root.value("path").toString(),root.value("options").toMap(),false);}});
 }
 
 ExternalGameCatalog::~ExternalGameCatalog() = default;
@@ -439,23 +469,57 @@ QVariantMap ExternalGameCatalog::findRoot(const QString &id) const
 
 QString ExternalGameCatalog::addRoot(const QString &path)
 {
+    const auto rows=ExternalVersionResolver::scan(path);
+    const auto error=ExternalVersionResolver::validateRoot(path,rows);
+    if(!error.isEmpty()){setError(error);return {};}
+    return acceptRoot(path,rows);
+}
+
+QString ExternalGameCatalog::acceptRoot(const QString &path,const QVariantList &rows)
+{
     const auto root = ExternalVersionResolver::normalizeRoot(path);
-    if (!QDir(root).exists("versions") && ExternalVersionResolver::scan(root).isEmpty()) {
-        setError(QStringLiteral("所选文件夹中没有可识别的实例，请选择 .minecraft 或 instances 文件夹"));
-        return {};
-    }
     const auto id = ExternalVersionResolver::rootId(root);
     if (!findRoot(id).isEmpty()) {
-        setError({});
-        scanRoot(id);
+        m_rows[id]=rows;setError({});publishVersions();
         return id;
     }
     auto roots = m_roots;
     roots.append(QVariantMap{{"id", id}, {"path", root}, {"name", QFileInfo(root).fileName()}, {"options", QVariantMap()}});
     if (!save(roots))
         return {};
-    scanRoot(id);
+    m_rows[id]=rows;publishVersions();
     return id;
+}
+
+void ExternalGameCatalog::publishVersions()
+{
+    m_versions.clear();
+    for(const auto& value:m_roots)m_versions.append(m_rows.value(value.toMap().value("id").toString()));
+    emit versionsChanged();
+}
+
+void ExternalGameCatalog::addRootAsync(const QString &path)
+{
+    const auto id=ExternalVersionResolver::rootId(path);
+    scanAsync(path,findRoot(id).value("options").toMap(),true);
+}
+
+void ExternalGameCatalog::scanAsync(const QString &path,const QVariantMap &options,bool importing)
+{
+    const auto id=ExternalVersionResolver::rootId(path);
+    const auto ticket=++m_scanGeneration[id];
+    m_pendingScans.insert(id);emit scanningChanged();
+    auto watcher=new QFutureWatcher<QVariantList>(this);
+    connect(watcher,&QFutureWatcher<QVariantList>::finished,this,[this,watcher,path,id,ticket,importing]{
+        const auto rows=watcher->result();watcher->deleteLater();
+        if(m_scanGeneration.value(id)!=ticket)return;
+        m_pendingScans.remove(id);emit scanningChanged();
+        const auto error=ExternalVersionResolver::validateRoot(path,rows);
+        if(!error.isEmpty()){setError(error);if(importing)emit importFailed(path,error);return;}
+        if(importing){if(acceptRoot(path,rows).isEmpty())emit importFailed(path,m_error);else emit importFinished(path,rows.size());}
+        else if(!findRoot(id).isEmpty()){m_rows[id]=rows;publishVersions();}
+    });
+    watcher->setFuture(QtConcurrent::run([path,options]{return ExternalVersionResolver::scan(path,options);}));
 }
 
 bool ExternalGameCatalog::removeRoot(const QString &id)
@@ -474,8 +538,8 @@ bool ExternalGameCatalog::removeRoot(const QString &id)
     }
     if (!save(roots))
         return false;
-    m_versions.clear();
-    emit versionsChanged();
+    ++m_scanGeneration[id];m_pendingScans.remove(id);emit scanningChanged();
+    m_rows.remove(id);publishVersions();
     return true;
 }
 
@@ -493,7 +557,7 @@ bool ExternalGameCatalog::setRootOptions(const QString &id, const QVariantMap &o
         entry = root;
         if (!save(roots))
             return false;
-        scanRoot(id);
+        scanAsync(root.value("path").toString(),merged,false);
         return true;
     }
     setError(QStringLiteral("目录关联不存在"));
@@ -507,10 +571,11 @@ QVariantList ExternalGameCatalog::scanRoot(const QString &id)
         setError(QStringLiteral("目录关联不存在"));
         return {};
     }
-    m_versions = ExternalVersionResolver::scan(root.value("path").toString(), root.value("options").toMap());
+    const auto rows = ExternalVersionResolver::scan(root.value("path").toString(), root.value("options").toMap());
+    m_rows[id]=rows;
     setError({});
-    emit versionsChanged();
-    return m_versions;
+    publishVersions();
+    return rows;
 }
 
 QVariantMap ExternalGameCatalog::resolveVersion(const QString &id, const QString &versionId)

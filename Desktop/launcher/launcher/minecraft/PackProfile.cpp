@@ -322,6 +322,11 @@ PackProfile::Result PackProfile::load()
     return Result::Success();
 }
 
+PackProfile::Result PackProfile::loadLocalComponents()
+{
+    return load();
+}
+
 PackProfile::Result PackProfile::reload(Net::Mode netmode)
 {
     // Do not reload when the update/resolve task is running. It is in control.

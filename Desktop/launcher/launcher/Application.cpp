@@ -104,6 +104,7 @@
 
 #include "InstanceList.h"
 #include "compat/ExternalGameCatalog.h"
+#include "DesktopBridge.h"
 #include "MTPixmapCache.h"
 
 #include <minecraft/auth/AccountList.h>
@@ -1342,11 +1343,17 @@ void Application::setupWizardFinished(int status)
 void Application::performMainStartupAction()
 {
     m_status = Application::Initialized;
+    const auto findDirectoryInstance=[this](const QString& id){
+        if(auto instance=instances()->getInstanceById(id))return instance;
+        if(!m_mainWindow)showMainWindow(true);
+        // Explicit CLI launches can arrive before the asynchronous startup scan completes.
+        if(auto catalog=m_mainWindow->findChild<Deeraft::ExternalGameCatalog*>())
+            for(const auto& entry:catalog->roots())catalog->scanRoot(entry.toMap().value("id").toString());
+        if(auto bridge=m_mainWindow->findChild<DesktopBridge*>())return bridge->resolveDirectoryReference(id);
+        return instances()->getInstanceById(id);
+    };
     if (!m_instanceIdToLaunch.isEmpty()) {
-        // Directory instances are registered by the desktop shell before shortcut lookup.
-        if (!instances()->getInstanceById(m_instanceIdToLaunch) && !m_mainWindow)
-            showMainWindow(true);
-        auto inst = instances()->getInstanceById(m_instanceIdToLaunch);
+        auto inst = findDirectoryInstance(m_instanceIdToLaunch);
         if (inst) {
             MinecraftTarget::Ptr targetToJoin = nullptr;
             MinecraftAccountPtr accountToUse = nullptr;
@@ -1377,7 +1384,7 @@ void Application::performMainStartupAction()
         }
     }
     if (!m_instanceIdToShowWindowOf.isEmpty()) {
-        auto inst = instances()->getInstanceById(m_instanceIdToShowWindowOf);
+        auto inst = findDirectoryInstance(m_instanceIdToShowWindowOf);
         if (inst) {
             qDebug() << "<> Showing window of instance " << m_instanceIdToShowWindowOf;
             showInstanceWindow(inst);

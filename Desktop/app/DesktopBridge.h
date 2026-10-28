@@ -27,6 +27,7 @@ public:
     ~DesktopBridge() override;
     QVariantMap externalStates() const;
     void loadInstanceDirectories();
+    BaseInstance* resolveDirectoryReference(const QString& reference) const;
     Q_INVOKABLE void setAccountLabel(const QString& uuid,const QString& label);
     QVariantList instances() const;
     QVariantList accounts() const;
@@ -41,6 +42,7 @@ public:
     Q_INVOKABLE void selectInstance(const QString& id);
     Q_INVOKABLE void launchInstance(const QString& id, const QString& address = {});
     Q_INVOKABLE QVariantList resources(const QString& id,const QString& kind) const;
+    Q_INVOKABLE void loadResources(const QString& id);
     Q_INVOKABLE bool setModEnabled(const QString& id,const QString& fileName,bool enabled);
     Q_INVOKABLE QString readGameLog(const QString& id) const;
     Q_INVOKABLE QString chooseDirectory();
@@ -59,9 +61,11 @@ signals:
     void themeChanged();
     void tasksChanged();
     void gameStarted(const QString& name,const QString& version);
+    void resourcesLoaded(const QString& id,const QVariantMap& resources);
 private:
     BaseInstance* resolveInstance(const QString& id) const;
     mutable std::map<QString,QPointer<BaseInstance>> m_externalInstances;
+    quint64 m_resourceRequest=0;
     void applyPalette();
     void observeInstances();
     QSet<QObject*> m_observed;

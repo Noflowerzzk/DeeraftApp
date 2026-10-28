@@ -211,12 +211,12 @@ MD.Pane {
            AppLabel {text:modelData.name||"任务";color:root.ink;font.weight:600;wrapMode:Text.Wrap;Layout.fillWidth:true}
            AppLabel {text:modelData.canStop?"运行中":modelData.state;Layout.fillWidth:true;color:root.muted;font.pixelSize:13}
           }
+          ColumnLayout {Layout.alignment:Qt.AlignVCenter;spacing:4
+           MD.CircularIndicator {objectName:modelData.canStop?"runningTaskProgress":"taskProgress";completionBehavior:MD.CircularIndicator.Keep;strokeWidth:3;wavy:true;color:root.accent;inactiveColor:root.colors.outlineVariant;animationsEnabled:!library.reducedMotion;from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";visible:modelData.state==="进行中"||modelData.total>0;Layout.preferredWidth:48;Layout.preferredHeight:48;Accessible.name:modelData.name+" "+modelData.state}
+           AppLabel {text:Math.min(100,Math.round(100*modelData.current/Math.max(1,modelData.total)))+"%";visible:modelData.total>0;color:root.muted;font.pixelSize:13;Layout.alignment:Qt.AlignHCenter}
+          }
          }
-           RowLayout {Layout.fillWidth:true
-            AppLabel {text:modelData.error||(/https?:\/\//.test(modelData.status||"")?modelData.current>0?"下载中":"正在请求资源":modelData.status||"");visible:!!text;Layout.fillWidth:true;maximumLineCount:2;elide:Text.ElideRight;wrapMode:Text.Wrap;color:root.muted;font.pixelSize:13;MD.ToolTip.text:modelData.status||""}
-            AppLabel {text:Math.min(100,Math.round(100*modelData.current/Math.max(1,modelData.total)))+"%";visible:modelData.total>0;color:root.muted;font.pixelSize:13}
-           }
-         MD.LinearIndicator {objectName:modelData.canStop?"runningTaskProgress":"taskProgress";completionBehavior:MD.LinearIndicator.Keep;strokeWidth:4;wavy:true;animationsEnabled:!library.reducedMotion;from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";visible:modelData.state==="进行中"||modelData.total>0;Layout.fillWidth:true;Accessible.name:modelData.name+" "+modelData.state}
+         AppLabel {text:modelData.error||(/https?:\/\//.test(modelData.status||"")?modelData.current>0?"下载中":"正在请求资源":modelData.status||"");visible:!!text;Layout.fillWidth:true;maximumLineCount:2;elide:Text.ElideRight;wrapMode:Text.Wrap;color:root.muted;font.pixelSize:13;MD.ToolTip.text:modelData.status||""}
           ActionButton {objectName:modelData.canCancel?"cancelDownload":"";text:"取消";visible:modelData.canCancel;onClicked:desktop.cancelTask(modelData.id)}
          ActionButton {text:"取消上传";visible:modelData.canUploadCancel;onClicked:communityClient.cancelUpload()}
          ActionButton {text:"结束游戏";symbol:"stop";visible:modelData.canStop;mdState.backgroundColor:root.colors.errorContainer;mdState.textColor:root.colors.onErrorContainer;onClicked:desktop.action("actionKillInstance",modelData.instanceId)}

@@ -1,8 +1,10 @@
 import QtQuick
+import QtQuick.Shapes
 import Qcm.Material as MD
 
 MD.Shape {
     id: root
+    preferredRendererType: Shape.GeometryRenderer
     property bool animationsEnabled: true
     property bool __completed: false
     Component.onCompleted: __completed = true

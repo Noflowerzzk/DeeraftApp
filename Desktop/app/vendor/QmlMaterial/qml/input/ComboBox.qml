@@ -11,6 +11,7 @@ MD.ComboBoxBase {
     property real popupMaximumHeight: 0
     property real popupMaximumWidth: 280
     property string label
+    property int displayFontSize: 0
     readonly property real implicitIndicatorWidth: indicator ? indicator.implicitWidth : 0
     readonly property real implicitIndicatorHeight: indicator ? indicator.implicitHeight : 0
     Component.onCompleted: __labelAnimationsEnabled = true
@@ -24,7 +25,7 @@ MD.ComboBoxBase {
     font.capitalization: Font.MixedCase
     Binding {
         when: control.mdState.typescale
-        control.font.pixelSize: control.mdState.typescale.size
+        control.font.pixelSize: control.displayFontSize>0?control.displayFontSize:control.mdState.typescale.size
         control.font.weight: control.mdState.typescale.weight
         control.font.letterSpacing: control.mdState.typescale.tracking
         restoreMode: Binding.RestoreNone

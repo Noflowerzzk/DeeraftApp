@@ -1,0 +1,58 @@
+Test project F:/Codes/MC/Tools/DeeraftApp/Desktop/build/Release
+      Start  1: FileSystem
+ 1/25 Test  #1: FileSystem .......................***Not Run (Disabled)   0.00 sec
+      Start  2: FileSystemPortable
+ 2/25 Test  #2: FileSystemPortable ...............   Passed    0.19 sec
+      Start  3: GZip
+ 3/25 Test  #3: GZip .............................   Passed    0.52 sec
+      Start  4: GradleSpecifier
+ 4/25 Test  #4: GradleSpecifier ..................   Passed    0.10 sec
+      Start  5: MojangVersionFormat
+ 5/25 Test  #5: MojangVersionFormat ..............   Passed    0.13 sec
+      Start  6: Library
+ 6/25 Test  #6: Library ..........................   Passed    0.16 sec
+      Start  7: ResourceFolderModel
+ 7/25 Test  #7: ResourceFolderModel ..............   Passed    0.14 sec
+      Start  8: ResourcePackParse
+ 8/25 Test  #8: ResourcePackParse ................   Passed    0.12 sec
+      Start  9: TexturePackParse
+ 9/25 Test  #9: TexturePackParse .................   Passed    0.12 sec
+      Start 10: DataPackParse
+10/25 Test #10: DataPackParse ....................   Passed    0.12 sec
+      Start 11: ShaderPackParse
+11/25 Test #11: ShaderPackParse ..................   Passed    0.12 sec
+      Start 12: WorldSaveParse
+12/25 Test #12: WorldSaveParse ...................   Passed    0.09 sec
+      Start 13: ParseUtils
+13/25 Test #13: ParseUtils .......................   Passed    0.09 sec
+      Start 14: Task
+14/25 Test #14: Task .............................   Passed    0.33 sec
+      Start 15: INIFile
+15/25 Test #15: INIFile ..........................   Passed    0.38 sec
+      Start 16: JavaVersion
+16/25 Test #16: JavaVersion ......................   Passed    0.06 sec
+      Start 17: Packwiz
+17/25 Test #17: Packwiz ..........................   Passed    0.11 sec
+      Start 18: Index
+18/25 Test #18: Index ............................   Passed    0.07 sec
+      Start 19: Version
+19/25 Test #19: Version ..........................   Passed    0.09 sec
+      Start 20: MetaComponentParse
+20/25 Test #20: MetaComponentParse ...............   Passed    0.11 sec
+      Start 21: CatPack
+21/25 Test #21: CatPack ..........................   Passed    0.12 sec
+      Start 22: XmlLogs
+22/25 Test #22: XmlLogs ..........................   Passed    1.42 sec
+      Start 23: deeraft_library_tests
+23/25 Test #23: deeraft_library_tests ............   Passed    4.38 sec
+      Start 24: deeraft_task_tests
+24/25 Test #24: deeraft_task_tests ...............   Passed    1.54 sec
+      Start 25: deeraft_compat_tests
+25/25 Test #25: deeraft_compat_tests .............   Passed    0.64 sec
+
+100% tests passed out of 24
+
+Total Test time (real) =  11.21 sec
+
+The following tests did not run:
+	  1 - FileSystem (Disabled)

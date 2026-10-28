@@ -2,6 +2,7 @@
  <qresource prefix="/deeraft">
   <file>translations/mmc_zh.qm</file>
   <file>qml/Main.qml</file>
+  <file>qml/InstanceBadge.qml</file>
   <file>qml/AppLabel.qml</file>
   <file>qml/AppTextField.qml</file>
   <file>qml/RoundedImage.qml</file>

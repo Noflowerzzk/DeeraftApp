@@ -5,6 +5,7 @@ import Qcm.Material as MD
 
 MD.SideSheetBase {
     id: control
+    objectName:"materialSideSheet"
     property bool animationsEnabled: true
     property color color: MD.Token.color.surface
     property int elevation: MD.Token.elevation.level0
@@ -19,33 +20,28 @@ MD.SideSheetBase {
     }
 
     onTransitionRequested: (revision, target, animate) => {
-        m_animation.stop();
         __revision = revision;
-        if (animate && animationsEnabled && position !== target) {
-            m_animation.from = position;
-            m_animation.to = target;
-            m_animation.start();
-        } else {
+        if (!animate || !animationsEnabled) {
+            sheetMotion.snapTo(target);
             position = target;
             completeTransition(revision);
+        } else {
+            if (!sheetMotion.running) sheetMotion.snapTo(position);
+            sheetMotion.targetValue = target;
+            if (!sheetMotion.running) completeTransition(revision);
         }
     }
-    onStateChanged: {
-        if (dragging)
-            m_animation.stop();
+    onStateChanged: if (dragging) sheetMotion.stop()
+    onAnimationsEnabledChanged: if (!animationsEnabled && sheetMotion.running) {
+        sheetMotion.complete();
+        completeTransition(__revision);
     }
-    onAnimationsEnabledChanged: {
-        if (!animationsEnabled && m_animation.running) {
-            m_animation.stop();
-            completeTransition(__revision);
-        }
-    }
-    NumberAnimation {
-        id: m_animation
-        target: control
-        property: "position"
-        duration: MD.Token.duration.medium2
-        easing: MD.Token.easing.standard
+    MD.SpringMotion {
+        id: sheetMotion
+        objectName:"sideSheetMotion"
+        spec: MD.Token.motion.spring.expressive.defaultSpatial
+        visibilityThreshold: .0005
+        onValueChanged: if (!control.dragging) control.position = Math.max(0, Math.min(1, value))
         onFinished: control.completeTransition(control.__revision)
     }
 }

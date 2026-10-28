@@ -1,6 +1,6 @@
 # Local compatibility and integration changes
 
-Upstream component behavior, shapes, state layers, ripples and motion remain in QmlMaterial.
+Components, shapes and motion physics come from QmlMaterial. Desktop-specific rendering and interaction adaptations are listed below.
 
 - Application font updates: observe `QEvent::ApplicationFontChange` with a lifetime-bound observer in Control, Label, TextField and Popup, compatible with the launcher Qt deprecation policy.
 - Popup and drawer ancestor geometry subscriptions: spell out typed signal connections for MinGW, avoiding runtime signal lookup failures with member-pointer loops.
@@ -15,6 +15,12 @@ Upstream component behavior, shapes, state layers, ripples and motion remain in 
 - Filled ComboBox keeps its container visible when its popup closes; menu placement/height is constrained by the app window.
 - FilledTextFieldShape uses Qt's geometry renderer; the curve renderer could leave the fill/underline blank after switching hidden pages in the embedded Qt 6.12 view.
 - SnakeBar uses the Material medium shape token. App dialogs use the full-window overlay and library motion.
-- ProgressIndicator uses Qt's unified animation clock (as the library's spring/ripple animations do), so determinate interpolation and waves advance in embedded QQuickView without relying on scene-graph polish scheduling. Visibility and reduced-motion gates stop the clock.
+- SpringMotion and ProgressIndicator sample elapsed wall time with precise Qt timers. Their movement no longer depends on an exposed embedded QQuickView or scene-graph polish; physical coefficients and interpolation remain unchanged. Timers stop on settlement, inactive visibility and reduced motion.
+- TabBar keeps its optional indicator fraction and uses Expressive spatial springs for indicator position and width, including current-index updates.
+- SideSheet uses the Expressive default spatial spring for interruptible entry from beyond the window bounds and reverse closing; reduced motion completes immediately.
+- RippleSkia keeps bounded hover/press state layers and disables the expanding sparkle shader for desktop controls. App buttons supply press/shape feedback.
+- Outlined text fields and radio indicators use the geometry renderer, consistent with the existing filled-field rendering workaround.
+- ComboBox exposes an optional display font size so its internal typescale binding respects the app's 14px compact desktop selector text.
+- CarouselImageDelegate retains its rounded image mask and caches screenshots; masking was previously disabled by a delegate override.
 
 The app supplies Roboto Flex / Noto Sans SC as an explicit font chain with Qt typographic line metrics. Windows 11 style and Segoe UI are applied separately to QWidget secondary windows.

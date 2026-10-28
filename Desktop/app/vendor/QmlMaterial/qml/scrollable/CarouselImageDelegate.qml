@@ -92,8 +92,8 @@ MD.CarouselItem {
             radius: root.effectiveCornerRadius
             elevation: MD.Token.elevation.level0
             asynchronous: true
-            cache: false
-            inner.layer.enabled: false
+            cache: true
+            inner.layer.enabled: true
         }
 
         MD.Text {

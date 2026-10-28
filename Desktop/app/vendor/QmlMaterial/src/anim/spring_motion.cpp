@@ -1,6 +1,8 @@
 #include "qml_material/anim/spring_motion.hpp"
 #include "qml_material/math/color.hpp"
 #include <QPointer>
+#include <QElapsedTimer>
+#include <QTimer>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -79,15 +81,22 @@ int springDuration(token::SpringSpec spec, qreal from, qreal to, qreal velocity,
 }
 } // namespace anim
 
-class SpringClock : public QAbstractAnimation {
+class SpringClock : public QObject {
 public:
-    explicit SpringClock(SpringMotionBase* owner): QAbstractAnimation(owner), m_owner(owner) {}
-    int duration() const override { return length; }
+    explicit SpringClock(SpringMotionBase* owner): QObject(owner), m_owner(owner) {
+        m_timer.setTimerType(Qt::PreciseTimer);
+        m_timer.setInterval(16);
+        connect(&m_timer,&QTimer::timeout,this,[this]{m_owner->tick(currentTime());});
+    }
+    void start(){m_elapsed.start();m_timer.start();m_owner->tick(0);}
+    void stop(){m_timer.stop();}
+    int currentTime()const{return m_elapsed.isValid()?int(std::min<qint64>(length,m_elapsed.elapsed())):0;}
     int length = 0;
 
 private:
-    void              updateCurrentTime(int time) override { m_owner->tick(time); }
     SpringMotionBase* m_owner;
+    QTimer m_timer;
+    QElapsedTimer m_elapsed;
 };
 
 SpringMotionBase::SpringMotionBase(int dimensions, QObject* parent)

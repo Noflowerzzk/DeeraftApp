@@ -8,6 +8,7 @@ MD.ComboBox {
     type: MD.Enum.TextFieldFilled
     implicitHeight: 60
     font.pixelSize: 14
+    displayFontSize:14
     popupMaximumWidth: 320
     popupMaximumHeight: 320
     // Unified Expressive menu motion: gentle scale and coordinated opacity.

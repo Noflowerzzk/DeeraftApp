@@ -54,6 +54,7 @@ Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
 #include <QCoreApplication>
 #include <QPainter>
 #include <functional>
+#include "DesktopPolishProbe.h"
 
 class InstanceIcons final : public QQuickImageProvider {
 public:
@@ -206,6 +207,7 @@ void installDeeraftShell(MainWindow* window){
         auto click=[quick,item](const char* name){if(auto target=item(name)){auto point=target->mapToItem(quick->rootObject(),QPointF(target->width()/2,target->height()/2));QMouseEvent press(QEvent::MouseButtonPress,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(quick,&press);QMouseEvent release(QEvent::MouseButtonRelease,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(quick,&release);}};
         auto escape=[quick]{QKeyEvent press(QEvent::KeyPress,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&press);QKeyEvent release(QEvent::KeyRelease,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&release);};
         const auto importDirectory=qEnvironmentVariable("DEERAFT_IMPORT_DIRECTORY");
+        if(startPolishProbe(quick,host,bridge,external,window,smoke))return;
         if(!importDirectory.isEmpty()){
             auto elapsed=std::make_shared<QElapsedTimer>();auto pulse=std::make_shared<QElapsedTimer>();
             auto heartbeat=new QTimer(window);heartbeat->setInterval(20);
@@ -229,7 +231,7 @@ void installDeeraftShell(MainWindow* window){
             });
             QObject::connect(external,&Deeraft::ExternalGameCatalog::importFinished,window,[elapsed,report,quick,window](const QString&,int count){
                 (*report)["importedCount"]=count;(*report)["importElapsedMs"]=int(elapsed->elapsed());
-                QTimer::singleShot(300,window,[quick,report]{(*report)["worldTabRequested"]=true;if(auto page=quick->rootObject()->findChild<QObject*>("launcherPage"))page->setProperty("detailTab",2);});
+                QTimer::singleShot(300,window,[quick,report]{(*report)["worldTabRequested"]=true;if(auto page=quick->rootObject()->findChild<QObject*>("launcherPage")){page->setProperty("detailTab",2);QMetaObject::invokeMethod(page,"reloadFiles");(*report)["explicitResourceRefresh"]=true;}});
             });
             QObject::connect(bridge,&DesktopBridge::resourcesLoaded,window,[quick,report,heartbeat,next,take,window](const QString&,const QVariantMap& rows){
                 if(!report->value("worldTabRequested").toBool()||report->value("worldCheckStarted").toBool())return;

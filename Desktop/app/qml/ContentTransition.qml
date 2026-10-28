@@ -1,54 +1,47 @@
 import QtQuick
 import Qcm.Material as MD
 
-// Coordinate replacement without animating layout-owned positions.
+// Top-level fade-through or shared-axis replacement; retarget without restarting velocity.
 QtObject {
     id: motion
     required property Item target
     property bool reducedMotion: library.reducedMotion
-    readonly property bool running: (exitAnimation && exitAnimation.running) || (enterAnimation && enterAnimation.running)
+    property bool horizontal: true
+    property bool translateContent: true
+    property int direction: 1
+    property int phase: 0
+    readonly property bool running: phase !== 0
     property var pendingUpdate: null
-
-    function applyPending() {
-        var update = pendingUpdate;
-        pendingUpdate = null;
-        if (update) update();
+    property Translate offset: Translate { x:motion.horizontal?motion.spatial.value:0;y:motion.horizontal?0:motion.spatial.value }
+    property Binding opacityBinding: Binding {target:motion.target;property:"opacity";value:Math.max(0,Math.min(1,motion.fade.value))}
+    property MD.SpringMotion fade: MD.SpringMotion {
+        targetValue:motion.phase===1?0:1
+        spec:MD.Token.motion.spring.expressive.fastEffects
+        enabled:!motion.reducedMotion
+        visibilityThreshold:.005
+        onFinished:motion.settled()
     }
-    function finishImmediately() {
-        exitAnimation.stop();
-        enterAnimation.stop();
-        applyPending();
-        if (target) { target.opacity = 1; target.scale = 1; }
+    property MD.SpringMotion spatial: MD.SpringMotion {
+        targetValue:motion.translateContent&&motion.phase===1?-motion.direction*16:0
+        spec:MD.Token.motion.spring.expressive.fastSpatial
+        enabled:!motion.reducedMotion
+        onFinished:motion.settled()
     }
-    function run(update) {
-        pendingUpdate = update;
-        if (!target || !target.visible || reducedMotion) { finishImmediately(); return; }
-        enterAnimation.stop();
-        // A second request updates the destination without restarting the exit.
-        if (!exitAnimation.running) exitAnimation.start();
+    Component.onCompleted:if(target)target.transform=[offset]
+    function applyPending(){var update=pendingUpdate;pendingUpdate=null;if(update)update()}
+    function finishImmediately(){phase=0;applyPending();fade.complete();spatial.complete()}
+    function settled(){
+        if(phase===1&&!fade.running){
+            applyPending();
+            if(translateContent)spatial.snapTo(direction*(horizontal?28:20));
+            phase=2;
+        }else if(phase===2&&!fade.running&&!spatial.running)phase=0;
     }
-    onReducedMotionChanged: if (reducedMotion && exitAnimation && enterAnimation) finishImmediately()
-
-    property NumberAnimation exitAnimation: NumberAnimation {
-        target: motion.target
-        property: "opacity"
-        to: 0
-        duration: MD.Token.duration.short2
-        easing: MD.Token.easing.emphasized_accelerate
-        onFinished: {
-            motion.applyPending();
-            motion.target.scale = .985;
-            motion.enterAnimation.start();
-        }
+    function run(update){
+        pendingUpdate=update;
+        if(!target||!target.visible||reducedMotion){finishImmediately();return}
+        phase=1;
+        if(!fade.running)settled();
     }
-    property ParallelAnimation enterAnimation: ParallelAnimation {
-        NumberAnimation {
-            target: motion.target; property: "opacity"; to: 1
-            duration: MD.Token.duration.short4; easing: MD.Token.easing.emphasized_decelerate
-        }
-        NumberAnimation {
-            target: motion.target; property: "scale"; to: 1
-            duration: MD.Token.duration.medium2; easing: MD.Token.easing.emphasized_decelerate
-        }
-    }
+    onReducedMotionChanged:if(reducedMotion&&fade&&spatial)finishImmediately()
 }

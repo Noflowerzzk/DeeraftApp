@@ -69,31 +69,14 @@ void ConcurrentTask::executeTask()
 
 bool ConcurrentTask::abort()
 {
+    if(isFinished())return getState()==Task::State::AbortedByUser;
+    const auto active=m_doing.values();
+    for(const auto& task:active)if(task->isRunning()&&!task->canAbort())return false;
     m_queue.clear();
-
-    if (m_doing.isEmpty()) {
-        // Don't call emitAborted() here, we want to bypass the 'is the task running' check
-        emit aborted();
-        emit finished();
-
-        return true;
-    }
-
-    bool suceedeed = true;
-
-    QMutableHashIterator<Task*, Task::Ptr> doing_iter(m_doing);
-    while (doing_iter.hasNext()) {
-        auto task = doing_iter.next();
-        disconnect(task->get(), &Task::aborted, this, 0);
-        suceedeed &= (task.value())->abort();
-    }
-
-    if (suceedeed)
-        emitAborted();
-    else
-        emitFailed(tr("Failed to abort all running tasks."));
-
-    return suceedeed;
+    for(const auto& task:active)disconnect(task.get(),nullptr,this,nullptr);
+    if(isRunning())emitAborted();
+    bool stopped=true;for(const auto& task:active)if(task->isRunning())stopped=task->abort()&&stopped;
+    return stopped;
 }
 
 void ConcurrentTask::clear()
@@ -168,7 +151,7 @@ void ConcurrentTask::startSubTask(Task::Ptr next)
 
     updateState();
 
-    QMetaObject::invokeMethod(next.get(), &Task::start, Qt::QueuedConnection);
+    QMetaObject::invokeMethod(this,[this,next]{if(isRunning()&&m_doing.contains(next.get()))next->start();},Qt::QueuedConnection);
 }
 
 void ConcurrentTask::subTaskFinished(Task::Ptr task, TaskStepState state)

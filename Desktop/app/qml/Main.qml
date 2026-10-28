@@ -16,8 +16,8 @@ MD.Pane {
  property color accent: colors.primary
  property int page: 1
  property int displayedPage: 1
- onPageChanged: if(pageMotion)pageMotion.run(function(){root.displayedPage=root.page})
- ContentTransition { id: pageMotion; objectName: "pageMotion"; target: stack }
+ onPageChanged: if(pageMotion){pageMotion.direction=page>displayedPage?1:-1;pageMotion.run(function(){root.displayedPage=root.page})}
+ ContentTransition { id: pageMotion; objectName: "pageMotion"; target: stack; translateContent:false }
  property alias railExpanded: rail.expanded
  property var navigation: [{id:0,name:"社区",icon:"diversity_3"},{id:1,name:"启动器",icon:"stadia_controller"},{id:2,name:"服务器",icon:"dns"},{id:4,name:"我的",icon:"person"}]
  property string pageTitle: ["社区","启动器","服务器","社区聊天","我的"][displayedPage]
@@ -34,6 +34,16 @@ MD.Pane {
  property string associationAddress: ""
  property bool associationPersonal: false
  property string externalLog: ""
+ property bool showCompletedTasks:false
+ property var visibleTasks: desktop.tasks.filter(function(task){return root.showCompletedTasks||task.state==="进行中"||task.state==="失败"})
+ ListModel {id:taskRows;dynamicRoles:true}
+ function syncTasks(){
+  var wanted=visibleTasks||[];
+  for(var old=taskRows.count-1;old>=0;old--)if(!wanted.some(function(row){return row.id===taskRows.get(old).taskId}))taskRows.remove(old);
+  for(var i=0;i<wanted.length;i++){var data=Object.assign({},wanted[i],{taskId:wanted[i].id});var found=-1;for(var j=i;j<taskRows.count;j++)if(taskRows.get(j).taskId===data.taskId){found=j;break}if(found<0)taskRows.insert(i,data);else{if(found!==i)taskRows.move(found,i,1);taskRows.set(i,data)}}
+ }
+ onVisibleTasksChanged:if(taskRows)syncTasks()
+ Component.onCompleted:syncTasks()
  property var sourceChoices: [{id:"all",name:"全部目录"},{id:"native",name:"DeeraftApp"}].concat(externalGames.roots.map(function(r){return {id:r.id,name:r.path}}))
  MD.MProp.color: MD.MdColorMgr {
    accentColor: "#216c5e"
@@ -157,8 +167,10 @@ MD.Pane {
        id: stack
        Layout.fillWidth: true
        Layout.fillHeight: true
+       Layout.minimumHeight:0
+       Layout.minimumWidth:0
        currentIndex: root.displayedPage
-       CommunityPage { app: root }
+       Item {CommunityPage {anchors.fill:parent;app:root}}
        LauncherPage { id: launcher; app: root }
        ServersPage { app: root }
        ChatPage { app: root }
@@ -181,13 +193,15 @@ MD.Pane {
      RowLayout {Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:"下载任务";font.pixelSize:24;Layout.fillWidth:true}IconButton {symbol:"close";hint:"关闭";onClicked:tasksDrawer.close()}}
      MD.LinearIndicator { completionBehavior: MD.LinearIndicator.Keep; indeterminate: false; strokeWidth: 4; wavy: true; animationsEnabled: !library.reducedMotion; visible:communityClient.uploading;value:communityClient.uploadProgress;Layout.fillWidth:true}
      ActionButton {visible:communityClient.uploading;text:"取消上传";onClicked:communityClient.cancelUpload()}
-     AppLabel { textFormat: Text.PlainText;visible:desktop.tasks.length===0&&!communityClient.uploading;text:"暂无任务";color:root.muted}
-     ListView {Layout.fillWidth:true;Layout.fillHeight:true;model:desktop.tasks;clip:true;spacing:20
-       delegate:ColumnLayout {required property var modelData;width:ListView.view.width
+     ActionButton {text:root.showCompletedTasks?"收起已结束任务":"显示已结束任务";flat:true;visible:desktop.tasks.some(function(task){return task.state!=="进行中"&&task.state!=="失败"});onClicked:root.showCompletedTasks=!root.showCompletedTasks}
+     AppLabel { textFormat: Text.PlainText;visible:root.visibleTasks.length===0&&!communityClient.uploading;text:"暂无进行中的任务";color:root.muted}
+     ListView {Layout.fillWidth:true;Layout.fillHeight:true;model:taskRows;clip:true;spacing:20
+       delegate:ColumnLayout {required property var model;readonly property var modelData:model;width:ListView.view.width
          AppLabel { textFormat: Text.PlainText;text:modelData.name||modelData.status||"下载";wrapMode:Text.Wrap;Layout.fillWidth:true}
          AppLabel { textFormat: Text.PlainText;text:modelData.state+(modelData.error?" · "+modelData.error:"");wrapMode:Text.Wrap;Layout.fillWidth:true;color:root.muted}
+         AppLabel {text:modelData.status||"";visible:modelData.state==="进行中"&&!!text;Layout.fillWidth:true;maximumLineCount:2;elide:Text.ElideRight;wrapMode:Text.Wrap;color:root.muted;font.pixelSize:13}
          MD.LinearIndicator { completionBehavior: MD.LinearIndicator.Keep; strokeWidth: 4; wavy: true; animationsEnabled: !library.reducedMotion; from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";Layout.fillWidth:true}
-         ActionButton {text:"取消";visible:modelData.canCancel;onClicked:desktop.cancelTask(modelData.id)}
+         ActionButton {objectName:"cancelDownload";text:"取消";visible:modelData.canCancel;onClicked:desktop.cancelTask(modelData.id)}
        }
      }
    }

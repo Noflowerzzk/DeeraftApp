@@ -1,0 +1,21 @@
+{
+  "importedCount": 16,
+  "importElapsedMs": 53,
+  "requestReturnedMs": 1,
+  "maximumUiGapMs": 75,
+  "nativeDirectoryObjects": 1,
+  "startupRowsBeforeImport": 0,
+  "worldModelCount": 3798,
+  "realizedWorldRows": 6
+}
+{
+  "importedCount": 16,
+  "importElapsedMs": 21,
+  "requestReturnedMs": 2,
+  "maximumUiGapMs": 48,
+  "nativeDirectoryObjects": 1,
+  "startupRowsBeforeImport": 16,
+  "worldModelCount": 3798,
+  "realizedWorldRows": 6
+}
+Original metadata unchanged: 32 files. Reports: F:\Codes\MC\Tools\DeeraftApp\Desktop/.cache/import-checks/20261028-162502

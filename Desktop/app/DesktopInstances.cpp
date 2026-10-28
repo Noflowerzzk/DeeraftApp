@@ -151,7 +151,7 @@ QVariantMap DesktopBridge::externalStates() const {
         const auto versionOf=[profile](const QString& uid){auto value=profile->getComponentVersion(uid);if(value.isEmpty())if(auto component=profile->getComponent(uid))value=component->m_version;return value;};
         const QMap<QString,QString> names{{"net.fabricmc.fabric-loader","Fabric"},{"net.minecraftforge","Forge"},{"net.neoforged","NeoForge"},{"org.quiltmc.quilt-loader","Quilt"},{"optifine.OptiFine","OptiFine"}};
         for(auto it=names.begin();it!=names.end();++it){const auto value=versionOf(it.key());if(!value.isEmpty())loader=it.value()+" "+value;}
-        result[id]=QVariantMap{{"name",instance->name()},{"icon",instance->iconKey()},{"version",versionOf("net.minecraft")},{"loader",loader},{"running",instance->isRunning()},{"seconds",instance->totalTimePlayed()},{"maxMemory",instance->settings()->get("MaxMemAlloc")}};
+        result[id]=QVariantMap{{"name",instance->name()},{"icon",instance->iconKey()},{"version",versionOf("net.minecraft")},{"loader",loader},{"running",instance->isRunning()},{"seconds",instance->totalTimePlayed()},{"maxMemory",instance->settings()->get("MaxMemAlloc")},{"javaVersion",instance->settings()->get("JavaVersion")}};
     }
     return result;
 }

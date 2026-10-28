@@ -13,4 +13,6 @@ MD.IconButton {
     animationsEnabled: !library.reducedMotion
     implicitWidth: 40
     implicitHeight: 40
+    MD.SpringMotion { id: pressFeedback; targetValue: control.mdState.interactions.pressed?.94:1; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
+    scale: pressFeedback.value
 }

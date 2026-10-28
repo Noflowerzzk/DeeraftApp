@@ -4,6 +4,7 @@ import QtQuick.Layouts
 import Qcm.Material as MD
 ScrollView {
  id: page
+ objectName:"communityPage"
  required property var app
  property var mc: communityClient.community.mc||({})
  property var kook: communityClient.community.kook||({})
@@ -14,8 +15,15 @@ ScrollView {
  property var players: humans ? (mc.human_players||[]) : (mc.players||[])
  property int voiceCount: (kook.channels||[]).reduce(function(sum,ch){return sum+(ch.users||[]).length},0)
  clip: true
+ implicitHeight:0
+ Layout.minimumHeight:0
+ Layout.fillHeight:true
+ Layout.fillWidth:true
  contentWidth: availableWidth
+ contentHeight: communityColumns.implicitHeight+32
+ Component.onCompleted:{contentItem.boundsBehavior=Flickable.StopAtBounds;contentItem.boundsMovement=Flickable.StopAtBounds}
  RowLayout {
+  id: communityColumns
   width: page.availableWidth-(app.width>=1600?64:56)
   x: 8
   spacing: app.width<=1250?16:24

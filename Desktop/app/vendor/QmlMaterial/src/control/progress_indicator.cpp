@@ -6,7 +6,7 @@
 #include <QtCore/QElapsedTimer>
 #include <QtCore/QPointer>
 #include <QtCore/QSignalBlocker>
-#include <QtCore/QAbstractAnimation>
+#include <QtCore/QTimer>
 #include <functional>
 #include <QtQuick/QQuickWindow>
 #include <algorithm>
@@ -40,13 +40,16 @@ struct Transition {
     }
 };
 bool valid(qreal value) { return std::isfinite(value) && value >= 0; }
-class IndicatorClock final : public QAbstractAnimation {
+class IndicatorClock final : public QObject {
 public:
+    IndicatorClock(){timer.setTimerType(Qt::PreciseTimer);timer.setInterval(16);connect(&timer,&QTimer::timeout,this,[this]{const auto ms=elapsed.restart();if(ms>0&&tick)tick(ms);});}
     std::function<void(qreal)> tick;
-    int previous=0;
-    int duration()const override{return -1;}
-protected:
-    void updateCurrentTime(int time)override{const auto elapsed=std::max(0,time-previous);previous=time;if(elapsed>0&&tick)tick(elapsed);}
+    bool isRunning()const{return timer.isActive();}
+    void start(){elapsed.start();timer.start();}
+    void stop(){timer.stop();}
+private:
+    QTimer timer;
+    QElapsedTimer elapsed;
 };
 } // namespace
 
@@ -280,7 +283,7 @@ void ProgressIndicator::schedule() {
         d->window->update();
     }
     d->active = active;
-    if(active&&d->animationClock->state()==QAbstractAnimation::Stopped){d->animationClock->previous=0;d->animationClock->start();}
+    if(active&&!d->animationClock->isRunning()){d->animationClock->start();}
     else if(!active)d->animationClock->stop();
 }
 void ProgressIndicator::publish() {
@@ -315,7 +318,7 @@ void ProgressIndicator::notifyParameters() {
     if (guard) publish();
 }
 void ProgressIndicator::updatePolish() {
-    if(d->animationClock->state()==QAbstractAnimation::Running)return;
+    if(d->animationClock->isRunning())return;
     if (! eligible() || ! needsAnimation()) {
         if (d->active) publish();
         return;

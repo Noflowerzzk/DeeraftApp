@@ -73,7 +73,7 @@ QVariantList DesktopBridge::instances() const {
           {"description",instance->getStatusbarDescription()},{"icon",instance->iconKey()},
           {"version",version},{"loader",loader},{"external",false},{"source","native"},{"sourceName","DeeraftApp"},
           {"group",list->getInstanceGroup(instance->id())},{"seconds",instance->totalTimePlayed()},
-          {"maxMemory",instance->settings()->get("MaxMemAlloc")},{"java",instance->settings()->get("JavaPath")},
+          {"maxMemory",instance->settings()->get("MaxMemAlloc")},{"java",instance->settings()->get("JavaPath")},{"javaVersion",instance->settings()->get("JavaVersion")},
           {"lastPlayed",instance->lastLaunch()>0?QDateTime::fromMSecsSinceEpoch(instance->lastLaunch()).toString("M月d日 HH:mm"):QString()},{"running",instance->isRunning()},{"path",instance->gameRoot()},{"valid",true}});
     }
     return result;
@@ -163,24 +163,33 @@ void DesktopBridge::trackTask(Task* task){
     const QString id=task->getUid().toString();
     if(self->m_taskObjects.contains(id))return;
     self->m_taskObjects.insert(id,task);
-    self->updateTask(task,"等待");
+    if(task->isRunning()||task->isFinished())self->updateTask(task);
     connect(task,&Task::started,self,[self,task]{self->updateTask(task,"进行中");});
     connect(task,&Task::progress,self,[self,task]{self->updateTask(task);});
     connect(task,&Task::status,self,[self,task]{self->updateTask(task);});
     connect(task,&Task::succeeded,self,[self,task]{self->updateTask(task,"完成");});
     connect(task,&Task::aborted,self,[self,task]{self->updateTask(task,"已取消");});
     connect(task,&Task::failed,self,[self,task]{self->updateTask(task,"失败");});
+    connect(task,&QObject::destroyed,self,[self,id]{self->m_taskObjects.remove(id);for(auto& value:self->m_tasks){auto row=value.toMap();if(row.value("id")==id){row["canCancel"]=false;if(row.value("state")=="进行中"||row.value("state")=="等待")row["state"]="已结束";value=row;}}emit self->tasksChanged();});
 }
 void DesktopBridge::updateTask(Task* task,const QString& state){
+    if(task->getState()==Task::State::Inactive)return;
     QString id=task->getUid().toString();int index=-1;
     for(int i=0;i<m_tasks.size();++i)if(m_tasks[i].toMap().value("id")==id){index=i;break;}
     QVariantMap row=index<0?QVariantMap{}:m_tasks[index].toMap();
     row.insert("id",id);row.insert("name",task->objectName());row.insert("status",task->getStatus());
     row.insert("current",task->getProgress());row.insert("total",task->getTotalProgress());row.insert("error",task->failReason());
-    row.insert("canCancel",task->canAbort() && !task->isFinished());
+    row.insert("canCancel",task->canAbort() && task->isRunning());
     if(!state.isEmpty())row.insert("state",state);
+    switch(task->getState()){
+      case Task::State::Running:row["state"]="进行中";break;
+      case Task::State::Succeeded:row["state"]="完成";break;
+      case Task::State::Failed:row["state"]="失败";break;
+      case Task::State::AbortedByUser:row["state"]="已取消";break;
+      default:break;
+    }
     if(index<0)m_tasks.prepend(row);else m_tasks[index]=row;
-    while(m_tasks.size()>100)m_tasks.removeLast();
+    while(m_tasks.size()>100){int expired=-1;for(int i=m_tasks.size()-1;i>=0;--i)if(m_tasks[i].toMap().value("state")!="进行中"){expired=i;break;}if(expired<0)break;m_tasks.removeAt(expired);}
     emit tasksChanged();
 }
 void DesktopBridge::cancelTask(const QString& id){if(auto task=m_taskObjects.value(id);task && task->canAbort())task->abort();}
@@ -217,7 +226,7 @@ bool DesktopBridge::setModEnabled(const QString& id,const QString& fileName,bool
  auto instance=resolveInstance(id);if(!instance||instance->isRunning()||QFileInfo(fileName).fileName()!=fileName)return false;
  auto folder=QDir(instance->modsRoot());auto path=folder.filePath(fileName);if(!QFileInfo(path).isFile()||QFileInfo(path).isSymLink())return false;
  QString target=fileName;if(enabled&&target.endsWith(".disabled"))target.chop(9);else if(!enabled&&!target.endsWith(".disabled"))target+=".disabled";if(target==fileName)return true;
- if(!QFile::rename(path,folder.filePath(target))){m_error=tr("无法修改模组状态");emit changed();return false;}emit changed();return true;
+ if(!QFile::rename(path,folder.filePath(target))){m_error=tr("无法修改模组状态");emit changed();return false;}return true;
 }
 QString DesktopBridge::readGameLog(const QString& id)const{auto instance=resolveInstance(id);if(!instance)return {};QFile file(QDir(instance->gameRoot()).filePath("logs/latest.log"));if(!file.open(QIODevice::ReadOnly))return {};if(file.size()>262144)file.seek(file.size()-262144);return QString::fromUtf8(file.readAll());}
 

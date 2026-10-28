@@ -14,4 +14,6 @@ MD.Button {
     font.pixelSize: 14
     font.weight: Font.Medium
     animationsEnabled: !library.reducedMotion
+    MD.SpringMotion { id: pressFeedback; targetValue: control.mdState.interactions.pressed?.98:1; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
+    scale: pressFeedback.value
 }

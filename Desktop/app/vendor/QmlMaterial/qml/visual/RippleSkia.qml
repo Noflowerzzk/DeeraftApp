@@ -46,7 +46,8 @@ Item {
     readonly property real _phase: motion.phase
     readonly property real _runtimeOpacity: motion.rippleOpacity
 
-    readonly property real _shaderOpacity: debugEnabled ? debugOpacity : _runtimeOpacity
+    // Desktop interaction uses a bounded state layer and component shape/press motion.
+    readonly property real _shaderOpacity: debugEnabled ? debugOpacity : 0
     readonly property real _activeProgress: debugEnabled ? debugProgress : _progress
     readonly property real _activePhase: debugEnabled ? debugPhase : _phase
     readonly property real _activeTouchX: debugEnabled ? (debugTouchX >= 0 ? debugTouchX : width / 2) : motion.origin.x
@@ -74,7 +75,7 @@ Item {
         stateOpacity: root.stateOpacity
         pressOpacity: root.pressOpacity
         color: root.color
-        enabled: root.animationsEnabled && !root.debugEnabled
+        enabled: false
     }
 
     ShaderEffect {

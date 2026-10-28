@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Window
 import Qcm.Material as MD
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -12,27 +13,36 @@ Item {
  property bool reverseOrder: false
  property var selected: app.findInstance(selectedId) || (app.allInstances.length ? app.allInstances[0] : null)
  property var files: []
+ ListModel {id:modRows;dynamicRoles:true}
+ property string modQuery:""
+ function rebuildMods(){modRows.clear();for(var i=0;i<files.length;i++)if(!modQuery||files[i].name.toLowerCase().indexOf(modQuery.toLowerCase())>=0)modRows.append(Object.assign({},files[i],{sourceIndex:i}))}
+ onFilesChanged:rebuildMods()
+ onModQueryChanged:rebuildMods()
  property var worlds: []
  property var shots: []
  property bool loadingFiles: false
  property string logText: ""
  property var groups: {var list=["全部分组"];for(var i=0;i<app.allInstances.length;i++){var row=app.allInstances[i];var group=library.metadata[row.id]?.group || row.group || "未分组";if(list.indexOf(group)<0)list.push(group)}return list}
  property var filtered: {
-   var query=search.searchText.toLowerCase();var source=sources.currentValue||"all";var group=groupPicker.currentText||"全部分组";
+   var header=list.headerItem;var query=header?header.searchControl.searchText.toLowerCase():"";var source=header?header.sourceControl.currentValue||"all":"all";var group=header?header.groupControl.currentText||"全部分组":"全部分组";
    var values=app.allInstances.filter(function(row){var meta=library.metadata[row.id]||{};return (!query||row.name.toLowerCase().indexOf(query)>=0)&&(source==="all"||row.source===source)&&(group==="全部分组"||(meta.group||row.group||"未分组")===group)&&(filterIndex!==1||meta.favorite)});
    return reverseOrder?values.slice().reverse():values;
  }
- function focusSearch(){search.forceActiveFocus()}
+ function focusSearch(){list.positionViewAtBeginning();if(list.headerItem)list.headerItem.searchControl.forceActiveFocus()}
  function isRunning(){return !!selected && !!selected.running}
- function launchSelected(){if(!selected||instanceMotion.running)return;if(isRunning()){desktop.action("actionKillInstance",selected.id)}else app.start(selected,"")}
+ function launchSelected(){if(!selected)return;if(isRunning()){desktop.action("actionKillInstance",selected.id)}else app.start(selected,"")}
  property var account: desktop.accounts.find(function(a){return a.selected}) || null
- function selectInstance(id){if(selectedId===id&&!instanceMotion.running)return;instanceMotion.run(function(){page.selectedId=id;page.detailTab=0;page.reloadFiles()})}
- ContentTransition { id: instanceMotion; objectName: "instanceMotion"; target: detail }
- function reloadFiles(){files=[];worlds=[];shots=[];if(!selected){loadingFiles=false;logText="";return}loadingFiles=true;desktop.loadResources(selected.id);logText=detailTab===4?desktop.readGameLog(selected.id):""}
+ function selectInstance(id){if(selectedId===id)return;selectedId=id;detailTab=0;titleFade.snapTo(library.reducedMotion?1:0);titleFade.targetValue=1}
+ MD.SpringMotion {id:titleFade;targetValue:1;enabled:!library.reducedMotion;spec:MD.Token.motion.spring.expressive.fastEffects}
+ function reloadFiles(){if(!selected){files=[];worlds=[];shots=[];loadingFiles=false;logText="";return}loadingFiles=true;desktop.loadResources(selected.id);logText=detailTab===4?desktop.readGameLog(selected.id):""}
+ function sameResources(previous,next){if(previous.length!==next.length)return false;for(var i=0;i<next.length;i++)for(var key of ["name","enabled","size","updated"])if(String(previous[i][key])!==String(next[i][key]))return false;return true}
+ Connections {target:page.Window.window;function onActiveChanged(){if(page.Window.window.active&&page.selected)page.reloadFiles()}}
  property string resourceKey: selected?(selected.id+"|"+selected.path):""
- onResourceKeyChanged:{reloadFiles();desktop.selectInstance(selected?selected.id:"")}
- onDetailTabChanged:reloadFiles()
- Connections {target:desktop;function onChanged(){if(page.selected && page.detailTab===4)page.logText=desktop.readGameLog(page.selected.id)} function onResourcesLoaded(id,resources){if(page.selected&&page.selected.id===id){page.files=resources.mods||[];page.worlds=resources.saves||[];page.shots=resources.screenshots||[];page.loadingFiles=false}}}
+ onResourceKeyChanged:{files=[];worlds=[];shots=[];reloadFiles();desktop.selectInstance(selected?selected.id:"")}
+ property int previousTab:0
+ onDetailTabChanged:{if(detailTab===4&&selected)logText=desktop.readGameLog(selected.id);tabPosition.snapTo(library.reducedMotion?0:(detailTab>previousTab?24:-24));previousTab=detailTab;tabPosition.targetValue=0}
+ MD.SpringMotion {id:tabPosition;spec:MD.Token.motion.spring.expressive.fastSpatial;enabled:!library.reducedMotion}
+ Connections {target:desktop;function onChanged(){if(page.selected && page.detailTab===4)page.logText=desktop.readGameLog(page.selected.id)} function onResourcesLoaded(id,resources){if(page.selected&&page.selected.id===id){var mods=resources.mods||[],images=resources.screenshots||[];if(!page.sameResources(page.files,mods))page.files=mods;page.worlds=resources.saves||[];if(!page.sameResources(page.shots,images))page.shots=images;page.loadingFiles=false}}}
  RowLayout {
   anchors.fill: parent
   anchors.leftMargin: 8
@@ -59,9 +69,22 @@ Item {
      Layout.rightMargin: 8
      spacing: 12
      AppLabel { text: "我的实例"; font.pixelSize: 20; font.weight: 600; Layout.fillWidth: true; color: app.ink }
-     AppLabel { text: app.allInstances.length; color: app.muted; font.pixelSize: 13 }
+     Item {Layout.preferredWidth:32;Layout.preferredHeight:32
+      readonly property bool searchHidden:!!list.headerItem&&list.contentY>list.originY+80
+      AppLabel {visible:!parent.searchHidden;anchors.centerIn:parent;text:app.allInstances.length;color:app.muted;font.pixelSize:13}
+      IconButton {visible:parent.searchHidden;anchors.fill:parent;symbol:"search";hint:"搜索实例 · Ctrl K";onClicked:page.focusSearch()}
+     }
      IconButton { id: libraryMenuButton; objectName: "libraryMenuButton"; implicitWidth: 32; implicitHeight: 32; symbol: "more_horiz"; hint: "实例管理"; onClicked: libraryMenu.showAt(this) }
     }
+    MD.ListView {
+     id: list
+     objectName: "instanceList"
+     headerPositioning: ListView.InlineHeader
+     header: ColumnLayout {
+      width:list.width-10;spacing:0
+      property alias searchControl:search
+      property alias sourceControl:sources
+      property alias groupControl:groupPicker
     MD.SearchBar {
      id: search
      objectName: "instanceSearch"
@@ -75,8 +98,8 @@ Item {
      Layout.fillWidth: true
      Layout.bottomMargin: 14
      spacing: 8
-     AppSelect { id: sources; objectName: "sourcePicker"; Layout.fillWidth: true; Layout.preferredWidth: 1.15; caption: "实例目录"; model: app.sourceChoices; textRole: "name"; valueRole: "id" }
-     AppSelect { id: groupPicker; objectName: "groupPicker"; Layout.fillWidth: true; Layout.preferredWidth: 1; caption: "分组"; model: page.groups }
+     AppSelect { id: sources;padding:8;spacing:4; objectName: "sourcePicker"; Layout.fillWidth: true; Layout.preferredWidth: 1; caption: "实例目录"; model: app.sourceChoices; textRole: "name"; valueRole: "id";displayText:app.width<=1050&&currentValue==="all"?"全部":currentText;MD.ToolTip.text:currentText }
+     AppSelect { id: groupPicker;padding:8;spacing:4; objectName: "groupPicker"; Layout.fillWidth: true; Layout.preferredWidth: 1; caption: "分组"; model: page.groups;displayText:app.width<=1050&&currentText==="全部分组"?"全部":currentText;MD.ToolTip.text:currentText }
     }
     MD.ButtonGroupContainer {
      Layout.fillWidth: true
@@ -109,15 +132,15 @@ Item {
      AppLabel { text: "最近游玩"; color: app.muted; font.pixelSize: 13; Layout.fillWidth: true }
      IconButton { symbol: "swap_vert"; hint: "切换排序方向"; implicitWidth: 32; implicitHeight: 36; onClicked: page.reverseOrder=!page.reverseOrder }
     }
-    ListView {
-     id: list
-     objectName: "instanceList"
+     }
      Layout.fillWidth: true
      Layout.fillHeight: true
      model: page.filtered
      spacing: 3
      clip: true
-     ScrollBar.vertical: ScrollBar {}
+     MD.ScrollBarBase.vertical: MD.ScrollBar {}
+     currentIndex:page.filtered.findIndex(function(row){return page.selected&&row.id===page.selected.id})
+     highlight:null
      delegate: MD.Card {
       id: rowControl
       required property var modelData
@@ -128,7 +151,7 @@ Item {
       type: MD.Enum.CardFilled
       mdState.radius: Math.max(4,8+12*selectionMotion.value)
       mdState.backgroundColor: selectionColor.color
-      MD.SpringMotion { id: selectionMotion; targetValue: rowControl.selected?1:0; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
+      MD.SpringMotion { id: selectionMotion; targetValue: rowControl.mdState.interactions.pressed?2/3:rowControl.selected?1:0; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
       MD.ColorSpringMotion { id: selectionColor; targetColor: rowControl.selected?app.colors.secondaryContainer:rowControl.mdState.interactions.hovered?app.colors.surfaceContainerHigh:"transparent"; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.standard.fastEffects }
       MD.SpringMotion { id: pressMotion; targetValue: rowControl.mdState.interactions.pressed?.985:1; enabled: !library.reducedMotion; spec: MD.Token.motion.spring.expressive.fastSpatial }
       scale: pressMotion.value
@@ -137,13 +160,10 @@ Item {
       TapHandler { onDoubleTapped: app.start(rowControl.modelData, "") }
       contentItem: RowLayout {
        spacing: 12
-       MD.Pane {
-        Layout.preferredWidth: 48
-        Layout.preferredHeight: 48
-        radius: rowControl.selected ? 24 : 16
-        backgroundColor: app.colors.secondaryContainer
-        Image { anchors.fill: parent; anchors.margins: 8; source: "image://instances/"+(rowControl.modelData.icon||"default"); fillMode: Image.PreserveAspectFit; smooth: false }
-        MD.Icon { visible: false; anchors.centerIn: parent; name: "folder"; size: 28; color: app.colors.onSecondaryContainer }
+       InstanceBadge {
+        Layout.preferredWidth: app.width<=1050?40:48
+        Layout.preferredHeight: app.width<=1050?40:48
+        name:rowControl.modelData.name;version:rowControl.modelData.version||"";dark:desktop.dark
        }
        ColumnLayout {
         Layout.fillWidth: true
@@ -164,7 +184,7 @@ Item {
      Layout.rightMargin: 8
      spacing: 10
      MD.Icon { name: "folder_open"; size: 20; color: app.muted }
-     AppLabel { text: sources.currentText||"全部实例目录"; color: app.muted; font.pixelSize: 13; Layout.fillWidth: true; elide: Text.ElideMiddle }
+     AppLabel { text: list.headerItem?list.headerItem.sourceControl.currentText||"全部实例目录":"全部实例目录"; color: app.muted; font.pixelSize: 13; Layout.fillWidth: true; elide: Text.ElideMiddle }
      IconButton { symbol: "open_in_new"; hint: "管理实例目录"; implicitWidth: 32; implicitHeight: 32; onClicked: rootsDialog.open() }
     }
    }
@@ -178,6 +198,7 @@ Item {
    backgroundColor: app.panel
    ScrollView {
     id: detailScroll
+    objectName:"instanceDetailScroll"
     anchors.fill: parent
     contentWidth: availableWidth
     clip: true
@@ -219,7 +240,7 @@ Item {
        ColumnLayout {
         Layout.fillWidth: true
         spacing: 7
-        AppLabel { objectName: "instanceTitle"; text: page.selected ? page.selected.name : "开始游戏"; font.pixelSize: 45; font.weight: 650; lineHeight: 54; font.letterSpacing: -1; color: app.ink; Layout.fillWidth: true; elide: Text.ElideRight }
+        AppLabel { objectName: "instanceTitle";opacity:titleFade.value; text: page.selected ? page.selected.name : "开始游戏"; font.pixelSize: 45; font.weight: 650; lineHeight: 54; font.letterSpacing: -1; color: app.ink; Layout.fillWidth: true; elide: Text.ElideRight }
         AppLabel { text: page.selected ? (page.selected.version||page.selected.description||"")+(page.selected.loader ? " · "+page.selected.loader : " · Vanilla") : "添加实例或添加实例目录"; font.pixelSize: 13; color: app.muted; Layout.fillWidth: true; elide: Text.ElideRight }
        }
        IconButton { symbol: "tune"; hint: "实例设置"; enabled: !!page.selected; onClicked: desktop.action("actionEditInstance",page.selected.id) }
@@ -273,6 +294,7 @@ Item {
        objectName: "detailTabs"
        MD.MProp.backgroundColor: app.panel
        primaryIndicatorFraction: .44
+       animationsEnabled: !library.reducedMotion
        mode: MD.TabBar.Fixed
        Layout.fillWidth: true
        Layout.preferredHeight: 48
@@ -280,14 +302,17 @@ Item {
        onCurrentIndexChangeRequested: function(index) {page.detailTab=index}
        Repeater { model: ["概览","模组","世界","截图","日志"]; MD.TabButton { required property string modelData; text: modelData; font.pixelSize: 14 } }
       }
+      ColumnLayout {id:tabContent;objectName:"tabContent";Layout.fillWidth:true;spacing:0;transform:Translate {id:tabOffset;x:tabPosition.value}
       ColumnLayout {
        visible: page.detailTab===0
        Layout.fillWidth: true
        spacing: 20
-       Layout.topMargin: 2
+       Layout.topMargin: 14
        RowLayout {
         Layout.fillWidth: true
         spacing: 16
+        MD.Icon { name: "coffee"; size: 18; color: app.muted }
+        AppLabel {text:"Java  "+(page.selected&&page.selected.javaVersion?(String(page.selected.javaVersion).startsWith("1.")?String(page.selected.javaVersion).split(".")[1]:String(page.selected.javaVersion).split(".")[0]):"自动");font.pixelSize:13;color:app.muted}
         MD.Icon { name: "memory"; size: 18; color: app.muted }
         AppLabel { text: page.selected && page.selected.maxMemory ? "内存  "+(page.selected.maxMemory/1024).toFixed(1)+" GB" : "运行设置"; font.pixelSize: 13; color: app.muted }
         MD.Icon { visible: !!page.selected; name: "schedule"; size: 18; color: app.muted }
@@ -301,7 +326,7 @@ Item {
         radius: 28
         backgroundColor: app.raised
         RowLayout {
-         anchors.fill: parent; spacing: 0
+         anchors.fill: parent; anchors.leftMargin:8; anchors.rightMargin:8; spacing: 4
          Repeater { model: [{name:"模组",tab:1,icon:"extension"},{name:"存档",tab:2,icon:"public"},{name:"截图",tab:3,icon:"photo_library"}]; ActionButton { required property var modelData; text: modelData.name; symbol: modelData.icon; flat: true; mdState.textColor: app.muted; Layout.fillWidth: true; onClicked: page.detailTab=modelData.tab } }
          ActionButton { text: "文件夹"; symbol: "folder_open"; flat: true; mdState.textColor: app.muted; Layout.fillWidth: true; enabled: !!page.selected; onClicked: desktop.openPath(page.selected.path) }
         }
@@ -315,14 +340,29 @@ Item {
        Layout.fillWidth: true
        Layout.topMargin: 20
        spacing: 12
-       RowLayout { Layout.fillWidth: true; AppLabel { text: page.files.length+" 个模组"; Layout.fillWidth: true; color: app.ink } ActionButton { text: "添加模组"; symbol: "add"; enabled: !!page.selected; onClicked: desktop.action("instance-page:mods",page.selected.id) } }
+       RowLayout { Layout.fillWidth: true; AppLabel {text:(page.modQuery?modRows.count+" / ":"")+page.files.length+" 个模组";color:app.ink}
+        MD.SearchBar {Layout.fillWidth:true;Layout.preferredWidth:180;Layout.minimumWidth:100;Layout.preferredHeight:40;placeholderText:"搜索模组";onSearchTextChanged:page.modQuery=searchText}
+        ActionButton { text: "添加模组"; symbol: "add"; enabled: !!page.selected; onClicked: desktop.action("instance-page:mods",page.selected.id) } }
        MD.ListView {
         objectName: "modList"; Layout.fillWidth: true; Layout.preferredHeight: Math.min(count*64,Math.max(240,detailScroll.availableHeight-520))
-        model: page.detailTab===1?page.files:[]; clip: true; reuseItems: true; cacheBuffer: 128
-        delegate: MD.ListItem { id: modRow; required property var modelData; width: ListView.view.width; height: implicitHeight; text: modelData.name.replace(/\.disabled$/,""); icon.name: "extension"; trailing: MD.Switch { checked: modRow.modelData.enabled; enabled: !page.isRunning(); onCheckedChangeRequested: function(checked) {if(desktop.setModEnabled(page.selected.id,modRow.modelData.name,checked))page.reloadFiles()} } }
+        model: modRows; clip: true; reuseItems: true; cacheBuffer: 128
+        delegate: MD.ListItem {
+         id:modRow;objectName:"modRow";required property var model;required property int index
+         width:ListView.view.width;height:implicitHeight;text:model.name.replace(/\.disabled$/," ").trim();icon.name:"extension"
+         trailing:MD.Switch {
+          objectName:"modToggle";checked:modRow.model.enabled;enabled:!page.isRunning()
+          onCheckedChangeRequested:function(checked){
+           var old=modRow.model.name;
+           if(!desktop.setModEnabled(page.selected.id,old,checked))return;
+           var name=checked?old.replace(/\.disabled$/,""):old+".disabled";
+           modRows.setProperty(modRow.index,"name",name);modRows.setProperty(modRow.index,"enabled",checked);
+           page.files[modRow.model.sourceIndex]=Object.assign({},page.files[modRow.model.sourceIndex],{name:name,enabled:checked});
+          }
+         }
+        }
         MD.ScrollBarBase.vertical: MD.ScrollBar {}
        }
-       AppLabel { visible: !page.files.length; text: page.loadingFiles?"读取中…":"暂无模组"; color: app.muted }
+       AppLabel { visible: !modRows.count; text: page.loadingFiles?"读取中…":page.files.length?"没有匹配的模组":"暂无模组"; color: app.muted }
       }
       ColumnLayout {
        visible: page.detailTab===2; Layout.fillWidth: true; Layout.topMargin: 20; spacing: 12
@@ -334,17 +374,18 @@ Item {
        }
        AppLabel { visible: !page.worlds.length; text: page.loadingFiles?"读取中…":"暂无本地存档"; color: app.muted }
       }
-      MD.GridView {
-       visible: page.detailTab===3; Layout.fillWidth: true; Layout.topMargin: 20
-       Layout.preferredHeight: Math.min(Math.ceil(count/Math.max(1,Math.floor(width/cellWidth)))*cellHeight,Math.max(240,detailScroll.availableHeight-520))
-       model: page.detailTab===3?page.shots:[]; cellWidth: 232; cellHeight: 152; clip: true; cacheBuffer: 152
-       delegate: MD.Card { required property var modelData; width: 220; height: 140; onClicked: desktop.openPath(modelData.path); contentItem: RoundedImage { source: modelData.url; radius: 16 } }
-       MD.ScrollBarBase.vertical: MD.ScrollBar {}
+      MD.Carousel {
+       objectName:"screenshotCarousel";visible:page.detailTab===3;Layout.fillWidth:true;Layout.topMargin:20;Layout.preferredHeight:page.shots.length?290:0
+       layout:MD.Enum.CarouselHero;itemExtent:360;minimumViewportHeight:240;contentPadding:8
+       model:page.detailTab===3?page.shots.map(function(shot){return {url:shot.url,title:shot.name}}):[]
+       showNavigationButtons:true;showPageIndicator:false;reduceMotion:library.reducedMotion
+       onClicked:function(index){if(page.shots[index])desktop.openPath(page.shots[index].path)}
       }
       AppLabel { visible: page.detailTab===3&&!page.shots.length; text: page.loadingFiles?"读取中…":"暂无截图"; color: app.muted }
       TextArea { visible: page.detailTab===4; Layout.fillWidth: true; Layout.topMargin: 20; implicitHeight: Math.max(260,contentHeight+24); text: page.logText||"暂无游戏日志"; readOnly: true; selectByMouse: true; wrapMode: TextEdit.Wrap; font.family: "Consolas"; font.pixelSize: 12; color: app.ink }
+      }
       Item { Layout.fillWidth: true; Layout.minimumHeight: 24; Layout.fillHeight: true }
-      RowLayout { Layout.fillWidth: true; spacing: 7; MD.Icon { name: "circle"; size: 8; color: app.accent } AppLabel { text: page.isRunning()?"运行中":"就绪"; color: app.muted; font.pixelSize: 12 } Item { Layout.fillWidth: true } AppLabel { Layout.maximumWidth: detailScroll.availableWidth*.65; elide: Text.ElideMiddle; text: page.selected?(page.selected.sourcePath||page.selected.path):""; color: app.muted; font.pixelSize: 12 } }
+      RowLayout { Layout.fillWidth: true; spacing: 7; MD.Icon { name: "circle"; size: 8; color: app.accent } AppLabel { text: page.isRunning()?"运行中":"就绪"; color: app.muted; font.pixelSize: 12 } Item { Layout.fillWidth: true } AppLabel {Layout.maximumWidth:detailScroll.availableWidth*.5;elide:Text.ElideMiddle;property string directory:page.selected?(page.selected.sourcePath||page.selected.path):"";text:directory.replace(/\\/g,"/").replace(/\/$/,"").split("/").pop()||"";MD.ToolTip.text:directory;color:app.muted;font.pixelSize:12} }
      }
     }
    }

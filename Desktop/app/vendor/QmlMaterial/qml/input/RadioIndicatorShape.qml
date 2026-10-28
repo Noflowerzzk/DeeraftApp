@@ -4,6 +4,7 @@ import Qcm.Material as MD
 
 MD.Shape {
     id: root
+    preferredRendererType: Shape.GeometryRenderer
     property color outlineColor
     property color color
     property real outlineWidth: 2

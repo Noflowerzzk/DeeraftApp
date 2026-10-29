@@ -19,7 +19,7 @@ class AppUpdater final:public QObject {
  Q_PROPERTY(double progress READ progress NOTIFY changed)
 public:
  explicit AppUpdater(const QString& data,QObject* parent=nullptr);
- QString version()const{return QStringLiteral("0.6.0");}
+ QString version()const{return QStringLiteral("0.6.1");}
  QString latest()const{return m_release["version"].toString();}
  QString status()const{return m_status;}
  bool busy()const{return !m_reply.isNull();}

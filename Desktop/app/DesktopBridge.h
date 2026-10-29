@@ -21,6 +21,7 @@ class DesktopBridge final : public QObject {
     Q_PROPERTY(QFont interfaceFont READ interfaceFont CONSTANT)
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(bool dark READ dark NOTIFY themeChanged)
+    Q_PROPERTY(QString colorTheme READ colorTheme WRITE setColorTheme NOTIFY colorThemeChanged)
     Q_PROPERTY(QString error READ error NOTIFY changed)
 public:
     explicit DesktopBridge(MainWindow* window);
@@ -36,6 +37,8 @@ public:
     QString theme() const;
     void setTheme(const QString& value);
     bool dark() const;
+    QString colorTheme() const;
+    void setColorTheme(const QString& value);
     QString error() const { return m_error; }
     Q_INVOKABLE void action(const QString& name, const QString& instanceId = {});
     Q_INVOKABLE void advanced();
@@ -62,6 +65,7 @@ signals:
     void notice(const QString& message);
     void changed();
     void themeChanged();
+    void colorThemeChanged();
     void tasksChanged();
     void taskCenterRequested();
     void gameStarted(const QString& name,const QString& version);

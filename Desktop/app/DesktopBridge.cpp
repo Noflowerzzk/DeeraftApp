@@ -97,6 +97,11 @@ QFont DesktopBridge::interfaceFont() const {
     return font;
 }
 QString DesktopBridge::theme() const { return m_settings.value("theme","system").toString(); }
+QString DesktopBridge::colorTheme() const { return m_settings.value("colorTheme","forest").toString(); }
+void DesktopBridge::setColorTheme(const QString& value) {
+    if(!QStringList{"forest","moss","lake","clay","heather"}.contains(value)||value==colorTheme())return;
+    m_settings.setValue("colorTheme",value);m_settings.sync();emit colorThemeChanged();
+}
 bool DesktopBridge::dark() const { return theme()=="dark" || (theme()=="system" && qApp->styleHints()->colorScheme()==Qt::ColorScheme::Dark); }
 void DesktopBridge::setTheme(const QString& value) {
     if(value!="system" && value!="light" && value!="dark") return;

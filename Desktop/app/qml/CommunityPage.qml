@@ -215,7 +215,7 @@ ScrollView {
     Layout.fillWidth: true
     implicitHeight: activityContent.implicitHeight+40
     radius: 24; backgroundColor: app.panel
-    ColumnLayout { id: activityContent; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 20; spacing: 16; AppLabel { text: "玩家动态"; font.weight: 600; color: app.ink } Repeater { model: app.activity.slice(0,5); AppLabel { required property var modelData; text: modelData.player+" 启动了 "+modelData.instance; color: app.muted; font.pixelSize: 13; wrapMode: Text.Wrap; Layout.fillWidth: true } } }
+    ColumnLayout { id: activityContent; objectName:"playerActivity"; anchors.left: parent.left; anchors.right: parent.right; anchors.top: parent.top; anchors.margins: 20; spacing: 16; AppLabel { text: "玩家动态"; font.weight: 600; color: app.ink } Repeater { objectName:"playerActivityRows"; model: app.activity.slice(0,2); AppLabel { required property var modelData; text: modelData.player+" 启动了 "+modelData.instance; color: app.muted; font.pixelSize: 13; wrapMode: Text.Wrap; Layout.fillWidth: true } } }
    }
   }
  }

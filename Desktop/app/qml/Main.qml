@@ -7,7 +7,9 @@ MD.Pane {
  id: root
  font: desktop.interfaceFont
  padding: 0
- property var colors: desktop.dark ? Theme.schemes.dark : Theme.schemes.light
+ property var natureThemes: [{id:"forest",name:"森林",seed:"#216c5e"},{id:"moss",name:"苔原",seed:"#617345"},{id:"lake",name:"湖泊",seed:"#4d6e87"},{id:"clay",name:"陶土",seed:"#90654e"},{id:"heather",name:"石楠",seed:"#796382"}]
+ property color themeSeed: (natureThemes.find(function(t){return t.id===desktop.colorTheme})||natureThemes[0]).seed
+ property var colors: Theme.fromManager(appPalette)
  property color surface: colors.surface
  property color raised: colors.surfaceContainerLow
  property color panel: colors.surfaceContainerLowest
@@ -55,7 +57,8 @@ MD.Pane {
  Component.onCompleted:syncTasks()
  property var sourceChoices: [{id:"all",name:"全部目录"},{id:"native",name:"DeeraftApp"}].concat(externalGames.roots.map(function(r){return {id:r.id,name:r.path}}))
  MD.MProp.color: MD.MdColorMgr {
-   accentColor: "#216c5e"
+   id: appPalette
+   accentColor: root.themeSeed
    paletteType: MD.Enum.PaletteTonalSpot
    useSysColorSM: false
    useSysAccentColor: false
@@ -66,11 +69,22 @@ MD.Pane {
  MD.MProp.size: MD.ThemeSize { width: root.width; windowClass: MD.Enum.WindowClassLarge }
  backgroundColor: surface
  Binding { target: MD.Token; property: "themeMode"; value: desktop.dark ? MD.Enum.Dark : MD.Enum.Light }
- Binding { target: MD.Token.color; property: "accentColor"; value: "#216c5e" }
+ Binding { target: MD.Token.color; property: "accentColor"; value: root.themeSeed }
  Binding { target: MD.Token.color; property: "paletteType"; value: MD.Enum.PaletteTonalSpot }
  Binding { target: MD.Token.color; property: "useSysColorSM"; value: false }
  Binding { target: MD.Token.color; property: "useSysAccentColor"; value: false }
  Binding { target: MD.Token.font; property: "default_font"; value: desktop.interfaceFont }
+ Binding {target:windowChrome;property:"activeJobs";value:root.activeTaskCount}
+ Connections {target:windowChrome;function onCloseConfirmationRequested(){closeConfirmation.open()}}
+ AppDialog {
+   id:closeConfirmation;objectName:"closeConfirmation";title:"关闭 DeeraftApp？";modal:true;width:Math.min(440,root.width-48)
+   ColumnLayout {width:parent.width;spacing:20
+     AppLabel {Layout.fillWidth:true;color:root.ink;wrapMode:Text.Wrap;text:"还有任务正在运行。确认关闭窗口？"}
+     AppLabel {Layout.fillWidth:true;color:root.muted;wrapMode:Text.Wrap;visible:!!text;text:root.visibleTasks.filter(function(t){return t.state==="进行中"}).slice(0,3).map(function(t){return t.name+" · "+t.status}).join("\n")}
+     AppLabel {Layout.fillWidth:true;color:root.muted;wrapMode:Text.Wrap;text:"运行中的游戏不会结束；其他任务在退出应用时会中断。"}
+     RowLayout {Layout.fillWidth:true;Item {Layout.fillWidth:true}ActionButton {text:"取消";onClicked:closeConfirmation.close()}ActionButton {text:"关闭窗口";onClicked:{closeConfirmation.close();windowChrome.confirmClose()}}}
+   }
+ }
  function clean(text) { return String(text || "").replace(/§[0-9a-fk-or]/gi, "").replace(/[\r\n\t]+/g," ").replace(/ +/g," ").trim() }
  function duration(minutes) { return Number(minutes||0)<60 ? Math.round(Number(minutes||0))+" 分钟" : (Number(minutes)/60).toFixed(1)+" 小时" }
  function showSettings(){ settings.open() }
@@ -104,8 +118,9 @@ MD.Pane {
    ListElement { name: "服务器"; icon: "dns"; destination: 2 }
    ListElement { name: "我的"; icon: "person"; destination: 4 }
  }
+ AppTitleBar {id:titleBar;app:root;anchors.top:parent.top;anchors.left:parent.left;anchors.right:parent.right;height:36}
  RowLayout {
-   anchors.fill: parent
+   anchors.top:titleBar.bottom;anchors.bottom:parent.bottom;anchors.left:parent.left;anchors.right:parent.right
    spacing: 0
    MD.NavigationRail {
      id: rail
@@ -231,5 +246,9 @@ MD.Pane {
    width: Math.min(440, root.width-80)
    height: Math.min(contentHeight+32, root.height/2)
    bottomToTop: true
+ }
+ Repeater {
+   model:windowChrome.maximized?[]:[{edges:3,x:0,y:0,w:7,h:7},{edges:6,x:root.width-7,y:0,w:7,h:7},{edges:9,x:0,y:root.height-7,w:7,h:7},{edges:12,x:root.width-7,y:root.height-7,w:7,h:7},{edges:1,x:0,y:7,w:5,h:root.height-14},{edges:4,x:root.width-5,y:7,w:5,h:root.height-14},{edges:2,x:7,y:0,w:root.width-14,h:5},{edges:8,x:7,y:root.height-5,w:root.width-14,h:5}]
+   MouseArea {required property var modelData;x:modelData.x;y:modelData.y;width:modelData.w;height:modelData.h;z:1000;cursorShape:modelData.edges===1||modelData.edges===4?Qt.SizeHorCursor:modelData.edges===2||modelData.edges===8?Qt.SizeVerCursor:modelData.edges===3||modelData.edges===12?Qt.SizeFDiagCursor:Qt.SizeBDiagCursor;onPressed:windowChrome.beginResize(modelData.edges)}
  }
 }

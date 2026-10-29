@@ -26,7 +26,7 @@ target_include_directories(Launcher_logic PRIVATE "${DEERAFT_APP_DIR}/webview/ve
 target_include_directories(Launcher_logic PUBLIC "${DEERAFT_APP_DIR}")
 target_link_libraries(Launcher_logic Qt6::Quick Qt6::QuickWidgets Qt6::QuickControls2 Qt6::WebSockets OpenSSL::Crypto deeraft_compat)
 if(WIN32)
-    target_link_libraries(Launcher_logic crypt32 ole32 shlwapi version)
+    target_link_libraries(Launcher_logic crypt32 ole32 shlwapi version dwmapi)
 endif()
 set_target_properties(${Launcher_Name} PROPERTIES OUTPUT_NAME "DeeraftApp")
 

@@ -27,6 +27,7 @@ inline bool startFeedbackProbe(QQuickView* quick,DesktopBridge* bridge,Deeraft::
    (*report)["failedArchived"]=!hasFailed();root->setProperty("showCompletedTasks",true);(*report)["failedInHistory"]=hasFailed();root->setProperty("showCompletedTasks",false);
    if(library)library->setProperty("reducedMotion",true);QMetaObject::invokeMethod(root->findChild<QObject*>("downloadTasks"),"open");elapsed->restart();*phase=1;
   }else if(*phase==1&&elapsed->elapsed()>250){
+   if(elapsed->elapsed()<3000&&(!find("taskPercentage")||find("taskPercentage")->property("text").toString()!="23%"))return;
    (*report)["percentage23"]=find("taskPercentage")&&find("taskPercentage")->property("text").toString()=="23%";capture("task-progress");
    bridge->cancelTask(active->getUid().toString());QMetaObject::invokeMethod(root->findChild<QObject*>("downloadTasks"),"close");elapsed->restart();*phase=2;
   }else if(*phase==2&&elapsed->elapsed()>200){
@@ -46,6 +47,25 @@ inline bool startFeedbackProbe(QQuickView* quick,DesktopBridge* bridge,Deeraft::
    chat->setProperty("searchOpen",true);DesktopBridge::showNotice("可用内存偏低，可在实例设置中调整内存。");elapsed->restart();*phase=8;
   }else if(*phase==8&&elapsed->elapsed()>250){
    (*report)["noticeVisible"]=find("appNotification")&&find("appNotification")->isVisible();capture("chat-notice");
+   (*report)["integratedTitleBar"]=find("appTitleBar")&&find("windowControl_2");
+   QMetaObject::invokeMethod(root,"closeSettings");root->setProperty("page",0);
+   QVariantList activity;for(int i=0;i<5;++i)activity.append(QVariantMap{{"player","Player"+QString::number(i)},{"instance","26.3"}});root->setProperty("activity",activity);
+   bridge->setColorTheme("lake");elapsed->restart();*phase=9;
+  }else if(*phase==9&&elapsed->elapsed()>350){
+   auto activity=root->findChild<QObject*>("playerActivityRows");(*report)["activityCappedAtTwo"]=activity&&activity->property("count").toInt()==2;
+   QSettings saved(APPLICATION->dataRoot()+"/desktop.ini",QSettings::IniFormat);(*report)["themeSaved"]=saved.value("colorTheme").toString()=="lake";
+   (*report)["themeApplied"]=root->property("themeSeed").value<QColor>()==QColor("#4d6e87");
+   bridge->setColorTheme("invalid");(*report)["invalidThemeRejected"]=bridge->colorTheme()=="lake";capture("nature-lake-dark");
+   bridge->setTheme("light");QMetaObject::invokeMethod(root,"showSettings");
+   if(auto scroll=find("settingsScroll"))if(auto flick=scroll->property("contentItem").value<QQuickItem*>())flick->setProperty("contentY",0.);
+   elapsed->restart();*phase=10;
+  }else if(*phase==10&&elapsed->elapsed()>300){
+   capture("nature-settings-light");QMetaObject::invokeMethod(root,"closeSettings");
+   auto chrome=quick->rootContext()->contextProperty("windowChrome").value<QObject*>();
+   QMetaObject::invokeMethod(chrome,"toggleMaximize");(*report)["maximizeWorks"]=chrome->property("maximized").toBool();QMetaObject::invokeMethod(chrome,"toggleMaximize");(*report)["restoreWorks"]=!chrome->property("maximized").toBool();
+   chrome->setProperty("activeJobs",1);QMetaObject::invokeMethod(chrome,"requestClose");elapsed->restart();*phase=11;
+  }else if(*phase==11&&elapsed->elapsed()>250){
+   auto dialog=root->findChild<QObject*>("closeConfirmation");(*report)["activeCloseRequiresConfirmation"]=dialog&&dialog->property("visible").toBool();capture("close-confirmation");if(dialog)QMetaObject::invokeMethod(dialog,"close");
    bool ok=true;for(auto value:std::as_const(*report))ok&=value.toBool();(*report)["success"]=ok;
    QSaveFile file(output+"/feedback-checks.json");if(file.open(QIODevice::WriteOnly)){file.write(QJsonDocument(*report).toJson());file.commit();}timer->stop();qApp->exit(ok?0:1);
   }

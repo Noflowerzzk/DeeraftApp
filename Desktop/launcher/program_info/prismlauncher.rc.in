@@ -3,7 +3,7 @@
 #endif
 #include <windows.h>
 
-IDI_ICON1               ICON    DISCARDABLE     "@Launcher_APP_BINARY_NAME@.ico"
+IDI_ICON1               ICON    DISCARDABLE     "@CMAKE_CURRENT_SOURCE_DIR@/../../app/assets/deeraft.ico"
 1 RT_MANIFEST "@Launcher_APP_BINARY_NAME@.manifest"
 
 VS_VERSION_INFO VERSIONINFO

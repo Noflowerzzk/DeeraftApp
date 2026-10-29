@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$PackageDirectory,[string]$Version='0.6.0')
+param([Parameter(Mandatory=$true)][string]$PackageDirectory,[string]$Version='0.6.1')
 $ErrorActionPreference='Stop'
 $desktop=Split-Path $PSScriptRoot
 $payload=(Resolve-Path -LiteralPath $PackageDirectory).Path
@@ -7,10 +7,14 @@ $installer="$desktop/dist/DeeraftApp-$Version-windows-x64-setup.exe"
 $script="$desktop/.cache/installer-$Version.nsi"
 $template=@'
 Unicode true
+!define MUI_ICON "@ICON@"
+!define MUI_UNICON "@ICON@"
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 !include "LogicLib.nsh"
 Name "DeeraftApp"
+Icon "@ICON@"
+UninstallIcon "@ICON@"
 VIProductVersion "@VERSION@.0"
 VIAddVersionKey "ProductName" "DeeraftApp"
 VIAddVersionKey "FileDescription" "DeeraftApp Installer"
@@ -108,7 +112,7 @@ $remove=@(Get-ChildItem -LiteralPath $payload -Recurse -File | ForEach-Object {
  ' Delete "$INSTDIR\'+$relative+'"'
 })
 $remove+=@(Get-ChildItem -LiteralPath $payload -Recurse -Directory | Sort-Object {$_.FullName.Length} -Descending | ForEach-Object {' RMDir "$INSTDIR\'+$_.FullName.Substring($payload.Length+1)+'"'})
-$template=$template.Replace('@OUTPUT@',$installer).Replace('@PAYLOAD@',$payload).Replace('@VERSION@',$Version).Replace('@REMOVE@',($remove -join "`n"))
+$template=$template.Replace('@ICON@',"$desktop/app/assets/deeraft.ico").Replace('@OUTPUT@',$installer).Replace('@PAYLOAD@',$payload).Replace('@VERSION@',$Version).Replace('@REMOVE@',($remove -join "`n"))
 [IO.File]::WriteAllText($script,$template,[Text.UTF8Encoding]::new($true))
 $env:NSISDIR="$desktop/.toolchain/msys64/ucrt64/share/nsis"
 & "$desktop/.toolchain/msys64/ucrt64/bin/makensis.exe" /V2 $script

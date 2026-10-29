@@ -1,2 +1,14 @@
 .pragma library
 var schemes = {"light": {"primary": "#056b5b", "onPrimary": "#ffffff", "primaryContainer": "#a0f2de", "onPrimaryContainer": "#005144", "secondary": "#4a635d", "onSecondary": "#ffffff", "secondaryContainer": "#cde8e0", "onSecondaryContainer": "#334b45", "tertiary": "#436278", "onTertiary": "#ffffff", "tertiaryContainer": "#c8e6ff", "onTertiaryContainer": "#2b4a5f", "surface": "#f5fbf7", "onSurface": "#171d1b", "onSurfaceVariant": "#3f4946", "surfaceContainerLowest": "#ffffff", "surfaceContainerLow": "#eff5f1", "surfaceContainer": "#e9efec", "surfaceContainerHigh": "#e3eae6", "surfaceContainerHighest": "#dee4e0", "outline": "#6f7976", "outlineVariant": "#bec9c5", "error": "#ba1a1a", "onError": "#ffffff", "errorContainer": "#ffdad6", "onErrorContainer": "#93000a", "inverseSurface": "#2b3230", "inverseOnSurface": "#ecf2ef", "inversePrimary": "#84d6c3", "scrim": "#000000"}, "dark": {"primary": "#84d6c3", "onPrimary": "#00382f", "primaryContainer": "#005144", "onPrimaryContainer": "#a0f2de", "secondary": "#b1ccc4", "onSecondary": "#1d352f", "secondaryContainer": "#334b45", "onSecondaryContainer": "#cde8e0", "tertiary": "#abcae4", "onTertiary": "#113348", "tertiaryContainer": "#2b4a5f", "onTertiaryContainer": "#c8e6ff", "surface": "#0e1513", "onSurface": "#dee4e0", "onSurfaceVariant": "#bec9c5", "surfaceContainerLowest": "#090f0e", "surfaceContainerLow": "#171d1b", "surfaceContainer": "#1b211f", "surfaceContainerHigh": "#252b29", "surfaceContainerHighest": "#303634", "outline": "#89938f", "outlineVariant": "#3f4946", "error": "#ffb4ab", "onError": "#690005", "errorContainer": "#93000a", "onErrorContainer": "#ffdad6", "inverseSurface": "#dee4e0", "inverseOnSurface": "#2b3230", "inversePrimary": "#056b5b", "scrim": "#000000"}};
+
+// All components read one generated Material scheme, including dialogs and popups.
+function fromManager(m) {
+    return {primary:m.primary,onPrimary:m.on_primary,primaryContainer:m.primary_container,onPrimaryContainer:m.on_primary_container,
+        secondary:m.secondary,onSecondary:m.on_secondary,secondaryContainer:m.secondary_container,onSecondaryContainer:m.on_secondary_container,
+        tertiary:m.tertiary,onTertiary:m.on_tertiary,tertiaryContainer:m.tertiary_container,onTertiaryContainer:m.on_tertiary_container,
+        surface:m.surface,onSurface:m.on_surface,onSurfaceVariant:m.on_surface_variant,
+        surfaceContainerLowest:m.surface_container_lowest,surfaceContainerLow:m.surface_container_low,surfaceContainer:m.surface_container,
+        surfaceContainerHigh:m.surface_container_high,surfaceContainerHighest:m.surface_container_highest,
+        outline:m.outline,outlineVariant:m.outline_variant,error:m.error,onError:m.on_error,errorContainer:m.error_container,onErrorContainer:m.on_error_container,
+        inverseSurface:m.inverse_surface,inverseOnSurface:m.inverse_on_surface,inversePrimary:m.inverse_primary,scrim:m.scrim};
+}

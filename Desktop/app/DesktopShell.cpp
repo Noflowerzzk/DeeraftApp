@@ -156,6 +156,7 @@ void installDeeraftShell(MainWindow* window){
     quick->engine()->addImageProvider("accounts",new AccountFaces);
     auto context=quick->rootContext();
     context->setContextProperty("appRoot",quick->contentItem());
+    context->setContextProperty("windowChrome",host);
     context->setContextProperty("desktop",bridge);
     context->setContextProperty("library",library);
     context->setContextProperty("communityClient",community);

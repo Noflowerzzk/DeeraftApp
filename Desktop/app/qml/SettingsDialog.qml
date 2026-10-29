@@ -8,11 +8,25 @@ AppDialog {
     ScrollView {
         id:settingsScroll;objectName:"settingsScroll"
         anchors.fill: parent; contentWidth: availableWidth; clip: true
+        ScrollBar.vertical.policy: ScrollBar.AlwaysOn
         contentHeight:settingsContent.implicitHeight+16
         ColumnLayout {
-            id:settingsContent;width: settingsScroll.availableWidth; spacing: 20
+            id:settingsContent;width: settingsScroll.availableWidth-Math.max(12,settingsScroll.effectiveScrollBarWidth+8); spacing: 20
             AppLabel { color:app.ink;textFormat: Text.PlainText; text: "外观"; font.pixelSize: 20 }
             AppSelect { model: ["跟随系统", "浅色", "深色"]; currentIndex: ["system","light","dark"].indexOf(desktop.theme); onActivated: desktop.theme = ["system","light","dark"][currentIndex]; Layout.fillWidth: true }
+            AppLabel {text:"Nature 配色";color:app.muted}
+            Flow {
+                Layout.fillWidth:true;spacing:8
+                Repeater {model:app.natureThemes;delegate:MD.Button {
+                    required property var modelData
+                    objectName:"natureTheme_"+modelData.id
+                    text:modelData.name;icon.name:desktop.colorTheme===modelData.id?"check":"circle"
+                    icon.color:desktop.colorTheme===modelData.id?app.colors.onSecondaryContainer:modelData.seed
+                    mdState.type:MD.Enum.BtFilledTonal
+                    onClicked:desktop.colorTheme=modelData.id
+                    Accessible.description:"Nature "+modelData.name+"配色"
+                }}
+            }
             RowLayout {Layout.fillWidth:true;AppLabel {text:"减少动态效果";color:app.ink;Layout.fillWidth:true}MD.Switch {checked:library.reducedMotion;onCheckedChangeRequested:function(checked){library.reducedMotion=checked}}}
             AppLabel { color:app.ink;textFormat: Text.PlainText; text: "下载源"; font.pixelSize: 20 }
             AppSelect { model: ["自动（国内优先）", "国内源", "官方源"]; currentIndex: downloadSources.mode; onActivated: downloadSources.mode = currentIndex; Layout.fillWidth: true }

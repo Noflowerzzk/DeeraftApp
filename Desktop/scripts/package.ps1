@@ -10,6 +10,7 @@ $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
 $output=Join-Path $desktop "dist/DeeraftApp-win64-$stamp"
 New-Item -ItemType Directory -Force $output,"$output/jars","$output/licenses" | Out-Null
 Copy-Item "$build/DeeraftApp.exe" $output
+Copy-Item "$desktop/app/assets/deeraft.ico" "$output/DeeraftApp.ico"
 Copy-Item "$build/jars/*.jar" "$output/jars"
 if(Test-Path "$build/prismlauncher_filelink.exe"){Copy-Item "$build/prismlauncher_filelink.exe" $output}
 & "$prefix/bin/windeployqt6.exe" --release --no-translations --compiler-runtime --qmldir "$desktop/app/qml" --qmlimport "$build/qml_modules" "$output/DeeraftApp.exe"

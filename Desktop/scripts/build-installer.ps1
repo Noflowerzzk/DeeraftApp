@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$PackageDirectory,[string]$Version='0.6.1')
+param([Parameter(Mandatory=$true)][string]$PackageDirectory,[string]$Version='0.6.2')
 $ErrorActionPreference='Stop'
 $desktop=Split-Path $PSScriptRoot
 $payload=(Resolve-Path -LiteralPath $PackageDirectory).Path
@@ -83,8 +83,9 @@ Section "DeeraftApp"
  WriteUninstaller "$INSTDIR\Uninstall.exe"
  ${If} $NoIntegration == "false"
   CreateDirectory "$SMPROGRAMS\DeeraftApp"
-  CreateShortcut "$SMPROGRAMS\DeeraftApp\DeeraftApp.lnk" "$INSTDIR\DeeraftApp.exe"
-  CreateShortcut "$DESKTOP\DeeraftApp.lnk" "$INSTDIR\DeeraftApp.exe"
+  CreateShortcut "$SMPROGRAMS\DeeraftApp\DeeraftApp.lnk" "$INSTDIR\DeeraftApp.exe" "" "$INSTDIR\DeeraftApp.ico" 0
+  CreateShortcut "$DESKTOP\DeeraftApp.lnk" "$INSTDIR\DeeraftApp.exe" "" "$INSTDIR\DeeraftApp.ico" 0
+  System::Call 'shell32::SHChangeNotify(i 0x08000000, i 0, p 0, p 0)'
   WriteRegStr HKCU "Software\DeeraftApp" "InstallDirectory" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DeeraftApp" "DisplayName" "DeeraftApp"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DeeraftApp" "DisplayVersion" "@VERSION@"

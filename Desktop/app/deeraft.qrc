@@ -2,7 +2,6 @@
  <qresource prefix="/deeraft">
   <file>assets/deeraft.ico</file>
   <file>assets/deeraft.png</file>
-  <file>qml/AppTitleBar.qml</file>
   <file>translations/mmc_zh.qm</file>
   <file>qml/Main.qml</file>
   <file>qml/InstanceBadge.qml</file>

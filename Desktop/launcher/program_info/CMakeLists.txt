@@ -51,6 +51,7 @@ set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/${Launcher_APP_BINARY_N
 configure_file(${Launcher_APP_BINARY_NAME}.qrc.in ${Launcher_APP_BINARY_NAME}.qrc @ONLY)
 configure_file(${Launcher_APP_BINARY_NAME}.manifest.in ${Launcher_APP_BINARY_NAME}.manifest @ONLY)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/../../app/assets/deeraft.ico" ${Launcher_APP_BINARY_NAME}.ico COPYONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/../../app/assets/deeraft.ico" "${CMAKE_BINARY_DIR}/DeeraftApp.ico" COPYONLY)
 configure_file(${Launcher_SVGFileName} ${Launcher_SVGFileName} COPYONLY)
 configure_file(${Launcher_AppID}.mime.xml ${Launcher_AppID}.xml COPYONLY)
 

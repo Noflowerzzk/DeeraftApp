@@ -1,15 +1,15 @@
 # Windows 安装包与更新发布
 
-应用版本 0.6.1，Prism 基线 11.1.1。工具链与 NSIS 均安装在 `Desktop/.toolchain/`，不修改系统 PATH。
+应用版本 0.6.2，Prism 基线 11.1.1。工具链与 NSIS 均安装在 `Desktop/.toolchain/`，不修改系统 PATH。
 
 发布顺序（从仓库根目录运行）：
 
 ```powershell
 ./Desktop/scripts/package.ps1
 ./Desktop/scripts/build-installer.ps1 -PackageDirectory 'Desktop/dist/本次便携目录'
-./Desktop/scripts/verify-installer.ps1 -Installer 'Desktop/dist/DeeraftApp-0.6.1-windows-x64-setup.exe' -PackageDirectory 'Desktop/dist/本次便携目录'
-python Desktop/scripts/sign-release.py Desktop/dist/DeeraftApp-0.6.1-windows-x64-setup.exe
-python Desktop/scripts/deploy-release.py Desktop/dist/DeeraftApp-0.6.1-windows-x64-setup.exe
+./Desktop/scripts/verify-installer.ps1 -Installer 'Desktop/dist/DeeraftApp-0.6.2-windows-x64-setup.exe' -PackageDirectory 'Desktop/dist/本次便携目录'
+python Desktop/scripts/sign-release.py Desktop/dist/DeeraftApp-0.6.2-windows-x64-setup.exe
+python Desktop/scripts/deploy-release.py Desktop/dist/DeeraftApp-0.6.2-windows-x64-setup.exe
 ./Desktop/scripts/verify-updates.ps1 -Executable 'Desktop/dist/本次便携目录/DeeraftApp.exe' -Packaged
 ```
 

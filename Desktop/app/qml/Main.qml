@@ -7,7 +7,7 @@ MD.Pane {
  id: root
  font: desktop.interfaceFont
  padding: 0
- property var natureThemes: [{id:"forest",name:"森林",seed:"#216c5e"},{id:"moss",name:"苔原",seed:"#617345"},{id:"lake",name:"湖泊",seed:"#4d6e87"},{id:"clay",name:"陶土",seed:"#90654e"},{id:"heather",name:"石楠",seed:"#796382"}]
+ property var natureThemes: [{id:"forest",seed:"#216c5e"},{id:"moss",seed:"#617345"},{id:"lake",seed:"#4d6e87"},{id:"clay",seed:"#90654e"},{id:"heather",seed:"#796382"}]
  property color themeSeed: (natureThemes.find(function(t){return t.id===desktop.colorTheme})||natureThemes[0]).seed
  property var colors: Theme.fromManager(appPalette)
  property color surface: colors.surface
@@ -118,9 +118,8 @@ MD.Pane {
    ListElement { name: "服务器"; icon: "dns"; destination: 2 }
    ListElement { name: "我的"; icon: "person"; destination: 4 }
  }
- AppTitleBar {id:titleBar;app:root;anchors.top:parent.top;anchors.left:parent.left;anchors.right:parent.right;height:36}
  RowLayout {
-   anchors.top:titleBar.bottom;anchors.bottom:parent.bottom;anchors.left:parent.left;anchors.right:parent.right
+   anchors.fill:parent
    spacing: 0
    MD.NavigationRail {
      id: rail
@@ -246,9 +245,5 @@ MD.Pane {
    width: Math.min(440, root.width-80)
    height: Math.min(contentHeight+32, root.height/2)
    bottomToTop: true
- }
- Repeater {
-   model:windowChrome.maximized?[]:[{edges:3,x:0,y:0,w:7,h:7},{edges:6,x:root.width-7,y:0,w:7,h:7},{edges:9,x:0,y:root.height-7,w:7,h:7},{edges:12,x:root.width-7,y:root.height-7,w:7,h:7},{edges:1,x:0,y:7,w:5,h:root.height-14},{edges:4,x:root.width-5,y:7,w:5,h:root.height-14},{edges:2,x:7,y:0,w:root.width-14,h:5},{edges:8,x:7,y:root.height-5,w:root.width-14,h:5}]
-   MouseArea {required property var modelData;x:modelData.x;y:modelData.y;width:modelData.w;height:modelData.h;z:1000;cursorShape:modelData.edges===1||modelData.edges===4?Qt.SizeHorCursor:modelData.edges===2||modelData.edges===8?Qt.SizeVerCursor:modelData.edges===3||modelData.edges===12?Qt.SizeFDiagCursor:Qt.SizeBDiagCursor;onPressed:windowChrome.beginResize(modelData.edges)}
  }
 }

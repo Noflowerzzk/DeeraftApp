@@ -1,0 +1,2 @@
+Verified embedded D icon: Desktop/dist/DeeraftApp-win64-20261029-192458/DeeraftApp.exe
+Verified embedded D icon: Desktop/dist/DeeraftApp-0.6.2-windows-x64-setup.exe

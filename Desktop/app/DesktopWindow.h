@@ -16,9 +16,6 @@ public:
     void setContent(QQuickView* content);
     void setExternalLauncher(Deeraft::NativeExternalLaunchController* launcher);
     void activate(bool minimized = false);
-    Q_INVOKABLE void beginMove();
-    Q_INVOKABLE void beginResize(int edges);
-    Q_INVOKABLE void minimize(){showMinimized();}
     Q_INVOKABLE void toggleMaximize(){isMaximized()?showNormal():showMaximized();}
     Q_INVOKABLE void requestClose(){close();}
     Q_INVOKABLE void confirmClose();
@@ -28,7 +25,6 @@ signals:
 protected:
     void closeEvent(QCloseEvent* event) override;
     void changeEvent(QEvent* event) override;
-    bool nativeEvent(const QByteArray& type,void* message,qintptr* result) override;
 private:
     int m_activeJobs=0;
     bool m_confirmedClose=false;

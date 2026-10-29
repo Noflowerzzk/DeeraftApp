@@ -1,4 +1,10 @@
 #pragma once
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <shobjidl.h>
+#include <propkey.h>
+#undef OPTIONAL
+#endif
 // Focused, isolated UI acceptance. Geometry uses reduced motion; actual springs are unit tested.
 class FeedbackTask final:public Task {
 public:
@@ -47,7 +53,19 @@ inline bool startFeedbackProbe(QQuickView* quick,DesktopBridge* bridge,Deeraft::
    chat->setProperty("searchOpen",true);DesktopBridge::showNotice("可用内存偏低，可在实例设置中调整内存。");elapsed->restart();*phase=8;
   }else if(*phase==8&&elapsed->elapsed()>250){
    (*report)["noticeVisible"]=find("appNotification")&&find("appNotification")->isVisible();capture("chat-notice");
-   (*report)["integratedTitleBar"]=find("appTitleBar")&&find("windowControl_2");
+   auto host=qobject_cast<QWidget*>(quick->rootContext()->contextProperty("windowChrome").value<QObject*>());
+   (*report)["nativeWindowFrame"]=host&&!host->windowFlags().testFlag(Qt::FramelessWindowHint)&&!find("appTitleBar");
+#ifdef Q_OS_WIN
+   PWSTR processId=nullptr;const auto idResult=GetCurrentProcessExplicitAppUserModelID(&processId);
+   (*report)["taskbarProcessIdentity"]=SUCCEEDED(idResult)&&QString::fromWCharArray(processId)=="cn.ainfinity.DeeraftApp";CoTaskMemFree(processId);
+   IPropertyStore* store=nullptr;bool windowIdentity=false,taskbarIcon=false;
+   if(host&&SUCCEEDED(SHGetPropertyStoreForWindow(reinterpret_cast<HWND>(host->winId()),IID_PPV_ARGS(&store)))){
+    PROPVARIANT value;PropVariantInit(&value);
+    if(SUCCEEDED(store->GetValue(PKEY_AppUserModel_ID,&value))&&value.vt==VT_LPWSTR)windowIdentity=QString::fromWCharArray(value.pwszVal)=="cn.ainfinity.DeeraftApp";PropVariantClear(&value);
+    if(SUCCEEDED(store->GetValue(PKEY_AppUserModel_RelaunchIconResource,&value))&&value.vt==VT_LPWSTR)taskbarIcon=QString::fromWCharArray(value.pwszVal).endsWith("DeeraftApp.ico,0");PropVariantClear(&value);store->Release();
+   }
+   (*report)["taskbarWindowIdentity"]=windowIdentity;(*report)["taskbarIconResource"]=taskbarIcon;
+#endif
    QMetaObject::invokeMethod(root,"closeSettings");root->setProperty("page",0);
    QVariantList activity;for(int i=0;i<5;++i)activity.append(QVariantMap{{"player","Player"+QString::number(i)},{"instance","26.3"}});root->setProperty("activity",activity);
    bridge->setColorTheme("lake");elapsed->restart();*phase=9;
@@ -60,6 +78,9 @@ inline bool startFeedbackProbe(QQuickView* quick,DesktopBridge* bridge,Deeraft::
    if(auto scroll=find("settingsScroll"))if(auto flick=scroll->property("contentItem").value<QQuickItem*>())flick->setProperty("contentY",0.);
    elapsed->restart();*phase=10;
   }else if(*phase==10&&elapsed->elapsed()>300){
+   bool swatches=true;QSet<QRgb> fills;
+   for(const auto& id:{"forest","moss","lake","clay","heather"}){auto button=find((QString("natureTheme_")+id).toUtf8().constData());swatches&=button&&button->property("text").toString().isEmpty();if(button)if(auto state=button->property("mdState").value<QObject*>())fills.insert(state->property("backgroundColor").value<QColor>().rgb());}
+   (*report)["connectedColorSwatches"]=find("colorThemeGroup")&&swatches&&fills.size()==5;
    capture("nature-settings-light");QMetaObject::invokeMethod(root,"closeSettings");
    auto chrome=quick->rootContext()->contextProperty("windowChrome").value<QObject*>();
    QMetaObject::invokeMethod(chrome,"toggleMaximize");(*report)["maximizeWorks"]=chrome->property("maximized").toBool();QMetaObject::invokeMethod(chrome,"toggleMaximize");(*report)["restoreWorks"]=!chrome->property("maximized").toBool();

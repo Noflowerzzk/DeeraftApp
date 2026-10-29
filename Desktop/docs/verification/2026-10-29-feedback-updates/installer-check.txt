@@ -1,0 +1,14 @@
+{
+  "activeShapeVisible": true,
+  "closingSearchClearsQuery": true,
+  "darkDirectoryText": true,
+  "failedArchived": true,
+  "failedInHistory": true,
+  "idleShapeHidden": true,
+  "noticeVisible": true,
+  "percentage23": true,
+  "searchFilters": true,
+  "success": true
+}
+Feedback verified: F:\Codes\MC\Tools\DeeraftApp\Desktop/.cache/feedback-checks/20261029-153351-542
+Install, overwrite update, packaged UI and uninstall passed; user data preserved: F:\Codes\MC\Tools\DeeraftApp\Desktop\.cache\installer-checks\20261029-153335-370\应用安装测试

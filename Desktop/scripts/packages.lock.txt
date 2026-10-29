@@ -127,6 +127,7 @@ mingw-w64-ucrt-x86_64-nghttp2 1.70.0-1
 mingw-w64-ucrt-x86_64-nghttp3 1.18.0-1
 mingw-w64-ucrt-x86_64-ngtcp2 1.25.0-1
 mingw-w64-ucrt-x86_64-ninja 1.13.2-1
+mingw-w64-ucrt-x86_64-nsis 3.13-2
 mingw-w64-ucrt-x86_64-openssl 3.6.5-1
 mingw-w64-ucrt-x86_64-p11-kit 0.26.5-1
 mingw-w64-ucrt-x86_64-pcre2 10.49-1

@@ -14,6 +14,7 @@
  */
 
 #include "BaseEntity.h"
+#include <QCryptographicHash>
 
 #include "Exception.h"
 #include "FileSystem.h"
@@ -113,7 +114,9 @@ BaseEntityLoadTask::BaseEntityLoadTask(BaseEntity* parent, Net::Mode mode, bool 
 
 void BaseEntityLoadTask::executeTask()
 {
-    const QString fname = QDir("meta").absoluteFilePath(m_entity->localFilename());
+    const auto object=dynamic_cast<QObject*>(m_entity);
+    const auto originalRoot=object?object->property("deeraftMetadataRoot").toString():QString();
+    const QString fname = QDir(originalRoot.isEmpty()?QStringLiteral("meta"):originalRoot).absoluteFilePath(m_entity->localFilename());
     auto hashMatches = false;
     // the file exists on disk try to load it
     if (QFile::exists(fname)) {
@@ -145,7 +148,8 @@ void BaseEntityLoadTask::executeTask()
         } catch (const Exception& e) {
             qCritical() << QString("Unable to parse file %1: %2").arg(fname, e.cause());
             // just make sure it's gone and we never consider it again.
-            FS::deletePath(fname);
+            if(originalRoot.isEmpty())FS::deletePath(fname);
+            else {emitFailed(e.cause());return;}
             m_entity->m_load_status = BaseEntity::LoadStatus::NotLoaded;
         }
     }
@@ -159,7 +163,9 @@ void BaseEntityLoadTask::executeTask()
     }
     m_task.reset(new NetJob(QObject::tr("Download of meta file %1").arg(m_entity->localFilename()), APPLICATION->network()));
     auto url = m_entity->url();
-    auto entry = APPLICATION->metacache()->resolveEntry("meta", m_entity->localFilename());
+    QString cacheBase="meta";
+    if(!originalRoot.isEmpty()){cacheBase="directory-meta-"+QString::fromLatin1(QCryptographicHash::hash(originalRoot.toUtf8(),QCryptographicHash::Sha256).toHex());APPLICATION->metacache()->addBase(cacheBase,originalRoot);}
+    auto entry = APPLICATION->metacache()->resolveEntry(cacheBase, m_entity->localFilename());
     if (m_force_reload) {
         // clear validators so manual refreshes fetch a fresh body
         entry->setETag({});

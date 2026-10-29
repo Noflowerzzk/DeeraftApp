@@ -1,0 +1,28 @@
+{
+  "sample": "26.2_bac",
+  "components": [
+    {
+      "uid": "net.minecraft",
+      "version": "26.2"
+    },
+    {
+      "uid": "net.fabricmc.intermediary",
+      "version": "26.2"
+    },
+    {
+      "uid": "net.fabricmc.fabric-loader",
+      "version": "0.19.3"
+    }
+  ],
+  "libraries": 97,
+  "missing": [],
+  "layoutAliases": [],
+  "badSha1": [],
+  "assets": {
+    "index": "32",
+    "indexSha1Matches": true,
+    "objects": 5057,
+    "missing": 0,
+    "badSize": 0
+  }
+}

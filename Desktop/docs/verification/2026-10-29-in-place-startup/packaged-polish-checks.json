@@ -1,0 +1,112 @@
+{
+    "cancelButtonFound": true,
+    "cancelButtonPreserved": true,
+    "carouselNavigates": true,
+    "carouselVisible": true,
+    "communityContentHeight": 828,
+    "communityContentType": "QQuickFlickable",
+    "communityHeight": 596,
+    "communityNoOverscroll": true,
+    "communityParentHeight": 596,
+    "communityScrollable": true,
+    "communityType": "CommunityPage_QMLTYPE_12",
+    "communityViewportHeight": 596,
+    "communityWheelMoved": true,
+    "coverPreserved": true,
+    "downloadCancelled": true,
+    "drawerIntermediatePosition": 0.13896521263869033,
+    "dropdownAvailableWidth": 320,
+    "dropdownGeometry": [
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "未选择实例",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-00 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-01 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-02 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-03 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-04 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-05 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-06 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        },
+        {
+            "backgroundWidth": 320,
+            "contentWidth": 288,
+            "height": 48,
+            "text": "1.16-07 · F:/Codes/MC/Tools/DeeraftApp/Desktop/.cache/polish-shots/20261029-125239-156/fixtures/.minecraft",
+            "width": 320
+        }
+    ],
+    "dropdownListWidth": 320,
+    "dropdownRowsFillPopup": true,
+    "externalInventoryRefresh": true,
+    "flickContentHeight": 828,
+    "headerScrollsAway": true,
+    "hostVisible": true,
+    "instanceMenuVisible": true,
+    "libraryCount": 24,
+    "libraryViewport": 440,
+    "menuFullWidthBackground": true,
+    "menuHoverPreservesScroll": true,
+    "menuKeyboardRevealsHighlight": true,
+    "menuNoHiddenLeadingRows": true,
+    "modDelegatePreserved": true,
+    "modDidNotReload": true,
+    "modScrollPreserved": true,
+    "modSearchFilters": true,
+    "modSwitchChanged": true,
+    "nativeExposed": false,
+    "nativeVisible": true,
+    "rapidHoverClearsRows": true,
+    "requestIndicatorIndeterminate": true,
+    "runningIndicatorIndeterminate": true,
+    "runningIndicatorProgress": 0.06283333333333334,
+    "runningIndicatorState": 0,
+    "runningInstanceInCenter": true,
+    "tabDidNotReload": true,
+    "taskCenterTitle": true
+}

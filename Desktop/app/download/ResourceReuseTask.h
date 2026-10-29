@@ -16,7 +16,7 @@ public:
     static QVariantMap reuse(const QVariantList& files,const QString& assetSource,const QString& assetTarget,
                              const QString& indexId,const QString& indexSha,
                              const std::shared_ptr<std::atomic_bool>& cancelled,
-                             const std::shared_ptr<std::atomic_int>& progress);
+                             const std::shared_ptr<std::atomic_int>& progress,const QString& ledgerPath={},bool quickAssets=false);
 private:
     MinecraftInstance* m_instance;
     std::shared_ptr<std::atomic_bool> m_cancelled=std::make_shared<std::atomic_bool>(false);

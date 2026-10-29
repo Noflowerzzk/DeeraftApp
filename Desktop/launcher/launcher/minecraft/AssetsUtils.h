@@ -27,6 +27,7 @@ struct AssetObject {
     Net::NetRequest::Ptr getDownloadAction(bool force=false);
 
     QString hash;
+    QString root;
     qint64 size;
 };
 
@@ -43,8 +44,8 @@ struct AssetsIndex {
 namespace AssetsUtils {
 bool loadAssetsIndexJson(const QString& id, const QString& file, AssetsIndex& index);
 
-QDir getAssetsDir(const QString& assetsId, const QString& resourcesFolder);
+QDir getAssetsDir(const QString& assetsId, const QString& resourcesFolder,const QString& root="assets");
 
 /// Reconstruct a virtual assets folder for the given assets ID and return the folder
-bool reconstructAssets(QString assetsId, QString resourcesFolder);
+bool reconstructAssets(QString assetsId, QString resourcesFolder,const QString& root="assets");
 }  // namespace AssetsUtils

@@ -18,6 +18,7 @@
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QSaveFile>
+#include <QSettings>
 
 namespace {
 class DirectoryInstance final : public MinecraftInstance {
@@ -61,27 +62,9 @@ BaseInstance* DesktopBridge::resolveInstance(const QString& id) const {
     const bool prism=row.value("format").toString()=="prism";
     const bool existing=QFileInfo::exists(directory+"/instance.cfg");
     const auto source=row.value("instanceDirectory").toString();
-    // Only metadata is mirrored. Existing mods, worlds and configs stay in their original directory.
+    // Keep application preferences separately; the original Prism profile and all game files are used in place.
     if(prism && !QFileInfo::exists(directory+"/instance.cfg"))QFile::copy(source+"/instance.cfg",directory+"/instance.cfg");
-    if(prism && !QFileInfo::exists(directory+"/mmc-pack.json")) {
-        QFile::copy(source+"/mmc-pack.json",directory+"/mmc-pack.json");
-        QDirIterator patches(source+"/patches",QStringList{"*.json"},QDir::Files,QDirIterator::Subdirectories);
-        while(patches.hasNext()){
-            const auto from=patches.next();const auto to=directory+"/patches/"+QDir(source+"/patches").relativeFilePath(from);
-            QDir().mkpath(QFileInfo(to).absolutePath());QFile::copy(from,to);
-        }
-        for(const auto& folder:{QStringLiteral("libraries"),QStringLiteral("jarmods")}){
-            const auto base=QFileInfo(source+"/"+folder).canonicalFilePath();if(base.isEmpty())continue;
-            QDirIterator files(base,QDir::Files,QDirIterator::Subdirectories);
-            while(files.hasNext()){
-                const auto from=files.next();const auto canonical=QFileInfo(from).canonicalFilePath();
-                if(canonical.isEmpty()||QDir(base).relativeFilePath(canonical).startsWith("../"))continue;
-                const auto to=directory+"/"+folder+"/"+QDir(base).relativeFilePath(from);
-                QDir().mkpath(QFileInfo(to).absolutePath());if(!QFile::copy(from,to))return nullptr;
-            }
-        }
-    }
-    if(!QFileInfo::exists(directory+"/mmc-pack.json")) {
+    if(!prism && !QFileInfo::exists(directory+"/mmc-pack.json")) {
         QJsonArray components{QJsonObject{{"uid","net.minecraft"},{"version",row.value("version").toString()},{"important",true}}};
         const auto loader=row.value("loader").toString();const auto split=loader.indexOf(' ');
         const QMap<QString,QString> uids{{"Fabric","net.fabricmc.fabric-loader"},{"Forge","net.minecraftforge"},{"NeoForge","net.neoforged"},{"Quilt","org.quiltmc.quilt-loader"},{"OptiFine","optifine.OptiFine"}};
@@ -104,9 +87,8 @@ BaseInstance* DesktopBridge::resolveInstance(const QString& id) const {
                     const auto from=QFileInfo(QDir(libraryRoot).filePath(relative)).canonicalFilePath();
                     if(libraryRoot.isEmpty() || from.isEmpty() || !relative.endsWith(".jar",Qt::CaseInsensitive)
                        || QDir(libraryRoot).relativeFilePath(from).startsWith("../") || QDir::isAbsolutePath(relative))continue;
-                    QDir().mkpath(directory+"/libraries");const auto to=directory+"/libraries/"+QFileInfo(relative).fileName();
-                    if(!QFileInfo::exists(to) && !QFile::copy(from,to))return nullptr;
-                    patch->libraries[i]->setHint("local");
+                    // Normal artifact resolution uses the original shared libraries directory.
+                    patch->libraries[i]->setHint("");
                 }
                 QDir().mkpath(directory+"/patches");QSaveFile file(directory+"/patches/optifine.OptiFine.json");
                 if(!file.open(QIODevice::WriteOnly))return nullptr;
@@ -117,21 +99,42 @@ BaseInstance* DesktopBridge::resolveInstance(const QString& id) const {
         QSaveFile pack(directory+"/mmc-pack.json");if(!pack.open(QIODevice::WriteOnly))return nullptr;
         pack.write(QJsonDocument(QJsonObject{{"formatVersion",1},{"components",components}}).toJson());if(!pack.commit())return nullptr;
     }
+    bool localMetadataReady=prism;
+    if(prism){
+        QFile manifest(source+"/mmc-pack.json");manifest.open(QIODevice::ReadOnly);
+        for(const auto& value:QJsonDocument::fromJson(manifest.readAll()).object()["components"].toArray()){
+            const auto c=value.toObject();const auto uid=c["uid"].toString(),version=c["version"].toString(c["cachedVersion"].toString());
+            if(uid.isEmpty()||uid.contains("/")||uid.contains("\\")||uid==".."||version.contains("/")||version.contains("\\")||version==".."){localMetadataReady=false;continue;}
+            if(!QFileInfo::exists(source+"/patches/"+uid+".json")&&!QFileInfo::exists(QDir(row.value("metadataDirectory").toString()).filePath(uid+"/"+version+".json")))localMetadataReady=false;
+        }
+    }
     auto settings=std::make_unique<INISettingsObject>(directory+"/instance.cfg");
     const auto game=row.value("gameDirectory").toString();
-    auto instance=std::make_unique<DirectoryInstance>(APPLICATION->settings(),std::move(settings),directory,game.isEmpty()?row.value("root").toString():game);
+    auto instance=std::make_unique<DirectoryInstance>(APPLICATION->settings(),std::move(settings),prism?source:directory,game.isEmpty()?row.value("root").toString():game);
     if(!existing)instance->setName(row.value("name",fields[2]).toString());
     instance->setProperty("deeraftDirectoryInstance",true);
     instance->setProperty("deeraftSourceLibraries",row.value("librariesDirectory"));
     instance->setProperty("deeraftSourceAssets",row.value("assetsDirectory"));
     instance->setProperty("deeraftSourceClient",row.value("clientJar"));
+    instance->setProperty("deeraftLocalMetadataReady",localMetadataReady);
     instance->setProperty("deeraftRootId",fields[1]);instance->setProperty("deeraftVersionId",fields[2]);
     instance->setProperty("deeraftNeedsDirectory",!row.value("valid").toBool());
     auto raw=instance.get();auto self=const_cast<DesktopBridge*>(this);
+    if(prism&&!raw->settings()->get("OverrideJavaLocation").toBool()){
+        const auto home=QFileInfo(row.value("root").toString()).dir();
+        for(const auto& name:{QStringLiteral("prismlauncher.cfg"),QStringLiteral("MultiMC.cfg")}){
+            QSettings original(home.filePath(name),QSettings::IniFormat);auto java=original.value("JavaPath").toString();if(java.isEmpty())continue;if(QDir::isRelativePath(java))java=home.filePath(java);
+            if(QFileInfo::exists(java)){raw->settings()->set("OverrideJavaLocation",true);raw->settings()->set("JavaPath",java);break;}
+        }
+    }
     raw->settings()->set("InstanceType","OneSix");
     // Publish ownership/cache before loading any model. QML resource requests can re-enter this method.
     APPLICATION->instances()->registerDirectoryInstance(id,std::move(instance));
     m_externalInstances.emplace(id,raw);
+    raw->getPackProfile()->setProperty("deeraftMetadataRoot",row.value("metadataDirectory"));
+    raw->getPackProfile()->setProperty("deeraftExternalProfile",prism);
+    raw->getPackProfile()->setProperty("deeraftReadOnlyAudit",!qEnvironmentVariable("DEERAFT_AUDIT_ROOT").isEmpty());
+    raw->updateRuntimeContext();
     raw->getPackProfile()->loadLocalComponents();
     QObject::connect(raw->getPackProfile(),&QAbstractItemModel::modelReset,self,&DesktopBridge::changed,Qt::QueuedConnection);
     QObject::connect(raw->getPackProfile(),&QAbstractItemModel::dataChanged,self,&DesktopBridge::changed,Qt::QueuedConnection);

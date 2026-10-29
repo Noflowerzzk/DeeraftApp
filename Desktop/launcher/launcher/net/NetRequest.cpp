@@ -131,7 +131,10 @@ void NetRequest::executeTask()
     }
 
 #if defined(LAUNCHER_APPLICATION)
-    request.setTransferTimeout(APPLICATION->settings()->get("RequestTimeout").toInt() * 1000);
+    auto timeout=APPLICATION->settings()->get("RequestTimeout").toInt()*1000;
+    // In automatic mode an idle mirror should hand off promptly to the official URL.
+    if(DownloadSources::currentMode()==0&&m_url!=m_deeraftOriginalUrl&&timeout>10000)timeout=10000;
+    request.setTransferTimeout(timeout);
 #else
     request.setTransferTimeout();
 #endif

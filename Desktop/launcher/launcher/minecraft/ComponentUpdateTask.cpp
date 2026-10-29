@@ -17,6 +17,9 @@
 
 #include "Application.h"
 #include "tasks/Task.h"
+#include <QCryptographicHash>
+#include <QFile>
+#include <QDir>
 
 #include "minecraft/Logging.h"
 
@@ -124,6 +127,16 @@ static LoadResult loadComponent(ComponentPtr component, Task::Ptr& loadTask, Net
         component->m_file = file;
         component->m_loaded = true;
         result = LoadResult::LoadedLocal;
+    } else if(!component->m_parent->property("deeraftMetadataRoot").toString().isEmpty()){
+        const auto root=component->m_parent->property("deeraftMetadataRoot").toString();
+        for(const auto& id:{component->m_uid,component->m_version})if(id.isEmpty()||id=="."||id==".."||id.contains('/')||id.contains('\\'))return LoadResult::Failed;
+        auto version=std::make_shared<Meta::Version>(component->m_uid,component->m_version);
+        version->setProperty("deeraftMetadataRoot",root);
+        QFile original(QDir(root).filePath(version->localFilename()));
+        if(original.open(QIODevice::ReadOnly))version->setSha256(QString::fromLatin1(QCryptographicHash::hash(original.readAll(),QCryptographicHash::Sha256).toHex()));
+        auto task=version->loadTask(QFileInfo::exists(original.fileName())?Net::Mode::Offline:netmode);task->start();component->m_metaVersion=version;
+        APPLICATION->metadataIndex()->get(component->m_uid);
+        if(version->isLoaded()){component->m_loaded=true;result=LoadResult::LoadedLocal;}else if(task->isFinished()){result=LoadResult::Failed;}else{loadTask=task;result=LoadResult::RequiresRemote;}
     } else {
         auto metaVersion = APPLICATION->metadataIndex()->get(component->m_uid, component->m_version);
         component->m_metaVersion = metaVersion;

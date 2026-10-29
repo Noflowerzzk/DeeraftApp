@@ -142,6 +142,11 @@ bool loadAssetsIndexJson(const QString& assetsId, const QString& path, AssetsInd
     }
 
     QJsonValue objects = root.value("objects");
+    if(!objects.isObject())return false;
+    for(const auto& value:objects.toObject()){
+        const auto object=value.toObject();const auto hash=object.value("hash").toString();
+        if(hash.size()!=40||QByteArray::fromHex(hash.toLatin1()).toHex()!=hash.toLatin1().toLower()||!object.value("size").isDouble()||object.value("size").toDouble()<0)return false;
+    }
     QVariantMap map = objects.toVariant().toMap();
 
     for (QVariantMap::const_iterator iter = map.begin(); iter != map.end(); ++iter) {
@@ -151,6 +156,7 @@ bool loadAssetsIndexJson(const QString& assetsId, const QString& path, AssetsInd
         QVariantMap nested_objects = variant.toMap();
 
         AssetObject object;
+        auto assetsRoot=QFileInfo(path).dir();assetsRoot.cdUp();object.root=assetsRoot.absolutePath();
 
         for (QVariantMap::const_iterator nested_iter = nested_objects.begin(); nested_iter != nested_objects.end(); ++nested_iter) {
             // qDebug() << nested_iter.key() << nested_iter.value().toString();
@@ -171,9 +177,9 @@ bool loadAssetsIndexJson(const QString& assetsId, const QString& path, AssetsInd
 }
 
 // FIXME: ugly code duplication
-QDir getAssetsDir(const QString& assetsId, const QString& resourcesFolder)
+QDir getAssetsDir(const QString& assetsId, const QString& resourcesFolder,const QString& root)
 {
-    QDir assetsDir = QDir("assets/");
+    QDir assetsDir(root);
     QDir indexDir = QDir(FS::PathCombine(assetsDir.path(), "indexes"));
     QDir objectDir = QDir(FS::PathCombine(assetsDir.path(), "objects"));
     QDir virtualDir = QDir(FS::PathCombine(assetsDir.path(), "virtual"));
@@ -203,9 +209,9 @@ QDir getAssetsDir(const QString& assetsId, const QString& resourcesFolder)
 }
 
 // FIXME: ugly code duplication
-bool reconstructAssets(QString assetsId, QString resourcesFolder)
+bool reconstructAssets(QString assetsId, QString resourcesFolder,const QString& root)
 {
-    QDir assetsDir = QDir("assets/");
+    QDir assetsDir(root);
     QDir indexDir = QDir(FS::PathCombine(assetsDir.path(), "indexes"));
     QDir objectDir = QDir(FS::PathCombine(assetsDir.path(), "objects"));
     QDir virtualDir = QDir(FS::PathCombine(assetsDir.path(), "virtual"));
@@ -294,7 +300,7 @@ Net::NetRequest::Ptr AssetObject::getDownloadAction(bool force)
 
 QString AssetObject::getLocalPath()
 {
-    return "assets/objects/" + getRelPath();
+    return QDir(root.isEmpty()?QStringLiteral("assets"):root).filePath("objects/"+getRelPath());
 }
 
 QUrl AssetObject::getUrl()

@@ -26,6 +26,8 @@
 struct RuntimeContext {
     QString javaArchitecture;
     QString javaRealArchitecture;
+    QString librariesRoot;
+    QString librariesCacheBase;
     QString system = SysInfo::currentSystem();
 
     QString mappedJavaRealArchitecture() const

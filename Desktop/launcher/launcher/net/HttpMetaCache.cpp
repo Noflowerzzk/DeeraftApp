@@ -182,7 +182,9 @@ auto HttpMetaCache::evictAll() -> bool
         }
         map.entry_list.clear();
         // AND all return codes together so the result is true iff all runs of deletePath() are true
-        ret &= FS::deleteContents(map.base_path);
+        // External game directories are references, not disposable application caches.
+        if (!base.startsWith("directory-"))
+            ret &= FS::deleteContents(map.base_path);
     }
     return ret;
 }

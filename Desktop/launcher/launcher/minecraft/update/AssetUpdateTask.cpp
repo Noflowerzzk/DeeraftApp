@@ -22,12 +22,30 @@ void AssetUpdateTask::executeTask()
     auto components = m_inst->getPackProfile();
     auto profile = components->getProfile();
     auto assets = profile->getMinecraftAssets();
+    const auto readOnlyRoot=m_inst->property("deeraftAssetsRoot").toString();
+    if(!readOnlyRoot.isEmpty()&&m_inst->property("deeraftAssetsComplete").toBool()){
+        AssetsIndex installed;
+        if(AssetsUtils::loadAssetsIndexJson(assets->id,QDir(readOnlyRoot).filePath("indexes/"+assets->id+".json"),installed)){
+            setStatus(tr("使用原目录中的完整资源"));emitSucceeded();return;
+        }
+        emitFailed(tr("原目录的资源索引已变更，请重试启动以重新检查。"));return;
+    }
+    // A usable installed index is a local snapshot. Language updates are not a prerequisite for launching.
+    AssetsIndex localIndex;
+    const auto assetsRoot=readOnlyRoot.isEmpty()?QStringLiteral("assets"):readOnlyRoot;
+    const auto installedIndex=QDir(assetsRoot).filePath("indexes/"+assets->id+".json");
+    if (QFileInfo::exists(installedIndex)&&AssetsUtils::loadAssetsIndexJson(assets->id, installedIndex, localIndex)) {
+        setStatus(tr("使用本地资源索引"));
+        assetIndexFinished();
+        return;
+    }
     QUrl indexUrl = assets->url;
     QString localPath = assets->id + ".json";
     auto job = makeShared<NetJob>(tr("Asset index for %1").arg(m_inst->name()), APPLICATION->network());
 
     auto metacache = APPLICATION->metacache();
-    auto entry = metacache->resolveEntry("asset_indexes", localPath);
+    QString cacheBase="asset_indexes";if(!readOnlyRoot.isEmpty()){cacheBase="directory-indexes-"+QString::fromLatin1(QCryptographicHash::hash(readOnlyRoot.toUtf8(),QCryptographicHash::Sha256).toHex());metacache->addBase(cacheBase,QDir(readOnlyRoot).filePath("indexes"));}
+    auto entry = metacache->resolveEntry(cacheBase, localPath);
     auto hexSha1 = assets->sha1.toLatin1();
     qDebug() << "Asset index SHA1:" << hexSha1;
     auto dl = Net::ApiDownload::makeCached(indexUrl, entry);
@@ -60,11 +78,13 @@ void AssetUpdateTask::assetIndexFinished()
     auto profile = components->getProfile();
     auto assets = profile->getMinecraftAssets();
 
-    QString asset_fname = "assets/indexes/" + assets->id + ".json";
+    const auto originalRoot=m_inst->property("deeraftAssetsRoot").toString();
+    QString asset_fname = QDir(originalRoot.isEmpty()?QStringLiteral("assets"):originalRoot).filePath("indexes/"+assets->id+".json");
     // FIXME: this looks like a job for a generic validator based on json schema?
     if (!AssetsUtils::loadAssetsIndexJson(assets->id, asset_fname, index)) {
         auto metacache = APPLICATION->metacache();
-        auto entry = metacache->resolveEntry("asset_indexes", assets->id + ".json");
+        const auto base=originalRoot.isEmpty()?QStringLiteral("asset_indexes"):"directory-indexes-"+QString::fromLatin1(QCryptographicHash::hash(originalRoot.toUtf8(),QCryptographicHash::Sha256).toHex());
+        auto entry = metacache->resolveEntry(base, assets->id + ".json");
         metacache->evictEntry(entry);
         emitFailed(tr("Failed to read the assets index!"));
         return;

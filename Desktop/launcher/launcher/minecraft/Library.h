@@ -151,6 +151,7 @@ class Library {
 
     QString getCompatibleNative(const RuntimeContext& runtimeContext) const;
     QString expectedSha1(const RuntimeContext& context,const QString& file) const;
+    QStringList sourcePaths(const RuntimeContext& context,const QString& file) const;
 
    private: /* methods */
     /// the default storage prefix used by Prism Launcher

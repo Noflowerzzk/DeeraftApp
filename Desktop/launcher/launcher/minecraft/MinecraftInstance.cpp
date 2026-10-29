@@ -47,6 +47,7 @@
 #include "MMCTime.h"
 #include "java/JavaVersion.h"
 #include "download/ResourceReuseTask.h"
+#include "meta/Version.h"
 
 #include "launch/LaunchTask.h"
 #include "launch/TaskStepWrapper.h"
@@ -281,6 +282,11 @@ void MinecraftInstance::loadSpecificSettings()
 void MinecraftInstance::updateRuntimeContext()
 {
     m_runtimeContext.updateFromInstanceSettings(m_settings.get());
+    m_runtimeContext.librariesRoot=property("deeraftSourceLibraries").toString();
+    if(!m_runtimeContext.librariesRoot.isEmpty()){
+        m_runtimeContext.librariesCacheBase="directory-libraries-"+QString::fromLatin1(QCryptographicHash::hash(m_runtimeContext.librariesRoot.toUtf8(),QCryptographicHash::Sha256).toHex());
+        APPLICATION->metacache()->addBase(m_runtimeContext.librariesCacheBase,m_runtimeContext.librariesRoot);
+    }
     m_components->invalidateLaunchProfile();
 }
 
@@ -462,6 +468,7 @@ QString MinecraftInstance::resourcesDir() const
 
 QDir MinecraftInstance::librariesPath() const
 {
+    if(!m_runtimeContext.librariesRoot.isEmpty())return QDir(m_runtimeContext.librariesRoot);
     return QDir::current().absoluteFilePath("libraries");
 }
 
@@ -1061,8 +1068,10 @@ QMap<QString, QString> MinecraftInstance::makeProfileVarMapping(std::shared_ptr<
     QString absRootDir = QDir(gameRoot()).absolutePath();
     result["game_directory"] = absRootDir;
     QString absAssetsDir = QDir("assets/").absolutePath();
+    const auto originalAssets=property("deeraftAssetsRoot").toString();
+    if(!originalAssets.isEmpty())absAssetsDir=originalAssets;
     auto assets = profile->getMinecraftAssets();
-    result["game_assets"] = AssetsUtils::getAssetsDir(assets->id, resourcesDir()).absolutePath();
+    result["game_assets"] = AssetsUtils::getAssetsDir(assets->id, resourcesDir(),absAssetsDir).absolutePath();
 
     // 1.7.3+ assets tokens
     result["assets_root"] = absAssetsDir;
@@ -1171,6 +1180,7 @@ LaunchTask* MinecraftInstance::createLaunchTask(AuthSessionPtr session, Minecraf
     // load meta
     {
         auto mode = (session->launchMode != LaunchMode::Offline || session->allowNetworkDownloads) ? Net::Mode::Online : Net::Mode::Offline;
+        if(property("deeraftLocalMetadataReady").toBool())mode=Net::Mode::Offline;
         process->appendStep(makeShared<TaskStepWrapper>(pptr, makeShared<MinecraftLoadAndCheck>(this, mode)));
     }
 
@@ -1179,7 +1189,7 @@ LaunchTask* MinecraftInstance::createLaunchTask(AuthSessionPtr session, Minecraf
         process->appendStep(makeShared<AutoInstallJava>(pptr));
         process->appendStep(makeShared<CheckJava>(pptr));
         // verify that minimum Java requirements are met
-        process->appendStep(makeShared<VerifyJavaInstall>(pptr));
+        // DeeraftApp intentionally leaves Java version compatibility to the user.
     }
 
     // run pre-launch command if that's needed

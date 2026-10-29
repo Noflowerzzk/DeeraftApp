@@ -180,10 +180,7 @@ void JavaChecker::error(QProcess::ProcessError err)
 {
     if (err == QProcess::FailedToStart) {
         qDebug() << "Java checker has failed to start:" << process->errorString();
-        qDebug() << "Process environment:";
-        qDebug() << process->environment();
-        qDebug() << "Native environment:";
-        qDebug() << QProcessEnvironment::systemEnvironment().toStringList();
+        // Environment values may contain credentials; executable errors are sufficient for diagnostics.
         killTimer.stop();
 
         Result result = {

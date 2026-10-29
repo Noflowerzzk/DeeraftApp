@@ -63,6 +63,8 @@
 
 #include "ComponentUpdateTask.h"
 #include "PackProfile.h"
+#include <QCryptographicHash>
+#include <QDateTime>
 #include "PackProfile_p.h"
 #include "modplatform/ModIndex.h"
 
@@ -148,11 +150,18 @@ static ComponentPtr componentFromJsonV1(PackProfile* parent, const QString& comp
 // Save the given component container data to a file
 static bool savePackProfile(const QString& filename, const ComponentContainer& container)
 {
-    QJsonObject obj;
+    QFile previous(filename); QJsonObject obj;
+    if(previous.open(QIODevice::ReadOnly))obj=QJsonDocument::fromJson(previous.readAll()).object();
+    previous.close();
+    QMap<QString,QJsonObject> original;
+    for(const auto& item:obj["components"].toArray()){auto entry=item.toObject();original[entry["uid"].toString()]=entry;}
     obj.insert("formatVersion", currentComponentsFileVersion);
     QJsonArray orderArray;
     for (auto component : container) {
-        orderArray.append(componentToJsonV1(component));
+        auto entry=original.value(component->m_uid);
+        for(const auto& key:QStringList{"uid","version","dependencyOnly","important","disabled","cachedVersion","cachedName","cachedRequires","cachedConflicts","cachedVolatile","volatile"})entry.remove(key);
+        const auto updated=componentToJsonV1(component);for(auto it=updated.begin();it!=updated.end();++it)entry[it.key()]=it.value();
+        orderArray.append(entry);
     }
     obj.insert("components", orderArray);
     QSaveFile outFile(filename);
@@ -281,6 +290,22 @@ QString PackProfile::patchFilePathForUid(const QString& uid) const
 
 bool PackProfile::save_internal()
 {
+    if(property("deeraftReadOnlyAudit").toBool()){d->dirty=false;return true;}
+    if(property("deeraftExternalProfile").toBool()&&QFileInfo::exists(componentsFilePath())){
+        QFile original(componentsFilePath());
+        if(!original.open(QIODevice::ReadOnly))return false;
+        const auto installed=QJsonDocument::fromJson(original.readAll()).object()["components"].toArray();original.close();
+        // Refreshing display metadata must not rewrite another launcher's profile.
+        bool changed=installed.size()!=d->components.size();
+        for(int i=0;!changed&&i<installed.size();++i){
+            const auto before=installed[i].toObject(),after=componentToJsonV1(d->components[i]);
+            for(const auto& key:QStringList{"uid","version"})if(before[key].toString()!=after[key].toString())changed=true;
+            for(const auto& key:QStringList{"dependencyOnly","important","disabled"})if(before[key].toBool()!=after[key].toBool())changed=true;
+        }
+        if(!changed){d->dirty=false;return true;}
+        const auto directory=QDir(APPLICATION->dataRoot()).filePath("backups/directory-metadata/"+QString::fromLatin1(QCryptographicHash::hash(componentsFilePath().toUtf8(),QCryptographicHash::Sha256).toHex()));
+        if(!QDir().mkpath(directory)||!QFile::copy(componentsFilePath(),directory+"/"+QDateTime::currentDateTimeUtc().toString("yyyyMMdd-HHmmss-zzz")+".json"))return false;
+    }
     qDebug() << d->m_instance->name() << "|" << "Component list save performed now";
     auto filename = componentsFilePath();
     if (savePackProfile(filename, d->components)) {

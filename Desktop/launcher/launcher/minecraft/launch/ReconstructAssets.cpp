@@ -26,7 +26,7 @@ void ReconstructAssets::executeTask()
     auto profile = components->getProfile();
     auto assets = profile->getMinecraftAssets();
 
-    if (!AssetsUtils::reconstructAssets(assets->id, instance->resourcesDir())) {
+    if (!AssetsUtils::reconstructAssets(assets->id, instance->resourcesDir(), instance->property("deeraftAssetsRoot").toString().isEmpty()?QStringLiteral("assets"):instance->property("deeraftAssetsRoot").toString())) {
         emit logLine("Failed to reconstruct Minecraft assets.", MessageLevel::Error);
     }
 

@@ -1,4 +1,6 @@
 #include "LegacyFMLLibrariesTask.h"
+#include <QCryptographicHash>
+#include <QCryptographicHash>
 
 #include "FileSystem.h"
 #include "minecraft/MinecraftInstance.h"
@@ -63,7 +65,12 @@ void LegacyFMLLibrariesTask::executeTask()
     Net::Download::Options options = Net::Download::Option::MakeEternal;
     const QString base = baseUrl();
     for (auto& lib : fmlLibsToProcess) {
-        auto entry = metacache->resolveEntry("fmllibs", lib.filename);
+        QString cacheBase="fmllibs";
+        if(m_inst->property("deeraftDirectoryInstance").toBool()){
+            cacheBase="directory-fmllibs-"+QString::fromLatin1(QCryptographicHash::hash(m_inst->libDir().toUtf8(),QCryptographicHash::Sha256).toHex());
+            metacache->addBase(cacheBase,m_inst->libDir());
+        }
+        auto entry = metacache->resolveEntry(cacheBase, lib.filename);
         QString urlString = base + lib.filename;
         dljob->addNetAction(Net::ApiDownload::makeCached(QUrl(urlString), entry, options));
     }
@@ -92,13 +99,18 @@ void LegacyFMLLibrariesTask::fmllibsFinished()
         int index = 0;
         for (auto& lib : fmlLibsToProcess) {
             progress(index, fmlLibsToProcess.size());
-            auto entry = metacache->resolveEntry("fmllibs", lib.filename);
+            QString cacheBase="fmllibs";
+        if(m_inst->property("deeraftDirectoryInstance").toBool()){
+            cacheBase="directory-fmllibs-"+QString::fromLatin1(QCryptographicHash::hash(m_inst->libDir().toUtf8(),QCryptographicHash::Sha256).toHex());
+            metacache->addBase(cacheBase,m_inst->libDir());
+        }
+        auto entry = metacache->resolveEntry(cacheBase, lib.filename);
             auto path = FS::PathCombine(inst->libDir(), lib.filename);
             if (!FS::ensureFilePathExists(path)) {
                 emitFailed(tr("Failed creating FML library folder inside the instance."));
                 return;
             }
-            if (!QFile::copy(entry->getFullPath(), FS::PathCombine(inst->libDir(), lib.filename))) {
+            if (QFileInfo(entry->getFullPath()).absoluteFilePath()!=QFileInfo(path).absoluteFilePath() && !QFile::copy(entry->getFullPath(), path)) {
                 emitFailed(tr("Failed copying Forge/FML library: %1.").arg(lib.filename));
                 return;
             }

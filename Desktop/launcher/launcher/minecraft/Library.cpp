@@ -65,9 +65,11 @@ void Library::getApplicableFiles(const RuntimeContext& runtimeContext,
 {
     bool local = isLocal();
     // Lambda function to get the absolute file path
-    auto actualPath = [this, local, overridePath](QString relPath) {
+    auto actualPath = [this, local, overridePath, &runtimeContext](QString relPath) {
         relPath = FS::RemoveInvalidPathChars(relPath);
-        QFileInfo out(FS::PathCombine(storagePrefix(), relPath));
+        const auto root=runtimeContext.librariesRoot.isEmpty()?storagePrefix():runtimeContext.librariesRoot;
+        QFileInfo out(FS::PathCombine(root, relPath));
+        if(!local&&!runtimeContext.librariesRoot.isEmpty()&&!out.exists())for(const auto& candidate:sourcePaths(runtimeContext,relPath)){auto relative=QDir::cleanPath(candidate);if(QDir::isAbsolutePath(relative)||relative==".."||relative.startsWith("../"))continue;QFileInfo original(QDir(root).filePath(relative));if(original.isFile()){out=original;break;}}
         if (local && !overridePath.isEmpty()) {
             QString fileName = out.fileName();
             return QFileInfo(FS::PathCombine(overridePath, fileName)).absoluteFilePath();
@@ -115,6 +117,17 @@ QString Library::expectedSha1(const RuntimeContext& context,const QString& file)
     }
     auto info=m_mojangDownloads->getDownloadInfo(classifier);return info?info->sha1:QString();
 }
+QStringList Library::sourcePaths(const RuntimeContext& context,const QString& file) const
+{
+    if(!m_mojangDownloads)return {};
+    auto classifier=isNative()?getCompatibleNative(context):QString();
+    if(classifier.contains("${arch}")){auto suffix=storageSuffix(context);suffix.replace("${arch}","64");classifier.replace("${arch}",QDir::fromNativeSeparators(file).endsWith(suffix)?"64":"32");}
+    const auto info=isNative()?m_mojangDownloads->getDownloadInfo(classifier):m_mojangDownloads->artifact.get();
+    if(!info)return {};
+    QStringList paths;if(!info->path.isEmpty())paths.append(info->path);
+    const auto urlPath=QUrl(info->url).path().mid(1);if(!urlPath.isEmpty())paths.append(urlPath);
+    return paths;
+}
 QList<Net::NetRequest::Ptr> Library::getDownloads(const RuntimeContext& runtimeContext,
                                                   class HttpMetaCache* cache,
                                                   QStringList& failedLocalFiles,
@@ -138,11 +151,12 @@ QList<Net::NetRequest::Ptr> Library::getDownloads(const RuntimeContext& runtimeC
     };
 
     // Lambda function to add a download request
-    auto add_download = [this, local, check_local_file, cache, stale, &out](QString storage, QString url, QString sha1) {
+    auto add_download = [this, local, check_local_file, cache, stale, &out, &runtimeContext](QString storage, QString url, QString sha1) {
         if (local) {
             return check_local_file(storage);
         }
-        auto entry = cache->resolveEntry("libraries", storage);
+        if(!runtimeContext.librariesRoot.isEmpty()&&!QFileInfo::exists(QDir(runtimeContext.librariesRoot).filePath(storage)))for(const auto& candidate:sourcePaths(runtimeContext,storage)){auto relative=QDir::cleanPath(candidate);if(QDir::isAbsolutePath(relative)||relative==".."||relative.startsWith("../"))continue;if(QFileInfo::exists(QDir(runtimeContext.librariesRoot).filePath(relative))){storage=relative;break;}}
+        auto entry = cache->resolveEntry(runtimeContext.librariesCacheBase.isEmpty()?QStringLiteral("libraries"):runtimeContext.librariesCacheBase, storage);
         if (stale) {
             entry->setStale(true);
         }

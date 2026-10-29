@@ -1,0 +1,2 @@
+7c175470376bca5029dd4a91fbcb2100b58bedac6fd75263ce49cc9e7aa71726  DeeraftApp-0.6.2-windows-x64-setup.exe
+195883e7d7315f04ebab59ffc2852ccc275ed13ae78dc309f4553aa47da1f496  DeeraftApp-0.6.2-windows-x64-portable.zip

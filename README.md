@@ -1,29 +1,30 @@
 # DeeraftApp
 
-同一 Git 仓库内分开管理手机端与电脑端。
+Minecraft 社区应用与启动器，包含 Windows 桌面端和 Android 手机端。
+
+[下载安装包与便携版](https://github.com/Noflowerzzk/DeeraftApp/releases/latest) · [网站下载页](http://mc.ainfinitythecoder.cn/downloads/index.html)
+
+Windows 当前版本为 **0.6.2**，Prism 启动核心固定为 **11.1.1**。主界面使用 Qt Quick/QML 与 QmlMaterial，支持社区、服务器、聊天、实例管理、离线/正版/第三方账号和外部实例目录。详细功能与使用方法见 [桌面端说明](Desktop/README.md)。
+
+已有便携版用户请安装到原程序目录，保留 `data/` 中的账号和设置。安装后可在“设置 → 应用更新”中检查更新。
+
+## 工程
 
 ```text
-Mobile/             现有 Flutter Android 项目及相关文件
-  android/          Android 工程
-  lib/              App 源码
-  server/           网站/机器人配套扩展及部署脚本
-  scripts/          工具链、运行与构建脚本
-  docs/             设计、接口、部署与验证记录
-  dist/             测试安装包（本地，不提交）
-  .toolchain/       本地工具链（不提交）
-  .cache/           本地缓存（不提交）
-Desktop/            电脑端项目目录（已预留）
-  app/              电脑端 App
-  launcher/         启动器
+Mobile/       Flutter Android 客户端及后端配套扩展
+Desktop/
+  app/        QML 界面、社区接口及桌面集成
+  launcher/   Prism 11.1.1 源码和适配
+  scripts/    构建、验证、打包与发布脚本
+  release/    安装包与签名更新通道说明
 ```
 
-手机端说明见 [Mobile/README.md](Mobile/README.md)。电脑端目录说明见 [Desktop/README.md](Desktop/README.md)。现有后端配套文件暂随手机端一并保留，避免本次整理混入功能拆分。
+- [Android 构建与使用](Mobile/README.md)
+- [Windows 构建与使用](Desktop/README.md)
+- [Windows 安装包与发布](Desktop/release/README.md)
 
-在仓库根目录运行：
+工具链、缓存、构建产物和便携数据均保留在项目目录内，不提交到 Git。发布签名私钥不在仓库中。
 
-```powershell
-./Mobile/scripts/flutter.ps1 analyze
-./Mobile/scripts/build.ps1
-```
+## 上游与许可
 
-也可以先进入 `Mobile`，继续使用原有命令。所有新工具链和缓存仍放在本工作目录内，不修改系统 PATH；目前工具链与缓存位于 `Mobile/.toolchain`、`Mobile/.cache`。Git 仓库保留在根目录，统一管理两个项目。
+桌面启动器基于 [Prism Launcher](https://github.com/PrismLauncher/PrismLauncher)，遵循所包含的 [GPL-3.0 许可](Desktop/launcher/LICENSE)。界面使用 [QmlMaterial](https://github.com/hypengw/QmlMaterial)。第三方源码、字体、素材及其许可证随对应工程保留；二进制包也包含许可证目录。

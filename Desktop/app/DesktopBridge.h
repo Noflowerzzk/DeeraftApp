@@ -56,8 +56,10 @@ public:
     Q_INVOKABLE void launchExternal(const QString& rootId,const QString& versionId,const QString& address = {},const QString& javaOverride = {});
     void setExternalLauncher(Deeraft::NativeExternalLaunchController* launcher);
     static void trackTask(Task* task);
+    static void showNotice(const QString& message){if(s_instance)emit s_instance->notice(message);}
     static bool taskCenterAvailable(){return !s_instance.isNull();}
 signals:
+    void notice(const QString& message);
     void changed();
     void themeChanged();
     void tasksChanged();

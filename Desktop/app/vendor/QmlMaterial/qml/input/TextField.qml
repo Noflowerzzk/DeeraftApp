@@ -4,6 +4,7 @@ import Qcm.Material as MD
 
 MD.TextFieldEmbed {
     id: control
+    property bool labelAnimationsEnabled: true
     property bool __labelAnimationsEnabled: false
     Component.onCompleted: __labelAnimationsEnabled = true
 
@@ -58,7 +59,7 @@ MD.TextFieldEmbed {
 
     MD.FloatingPlaceholderText {
         id: m_placeholder
-        animationsEnabled: control.__labelAnimationsEnabled
+        animationsEnabled: control.__labelAnimationsEnabled && control.labelAnimationsEnabled
         x: control.mirrored ? control.__trailingPadding : control.__leadingPadding
         width: Math.max(0, control.width - control.__leadingPadding - control.__trailingPadding)
         horizontalAlignment: control.mirrored ? Text.AlignRight : Text.AlignLeft
@@ -171,7 +172,7 @@ MD.TextFieldEmbed {
         Component {
             id: m_outline_comp
             MD.OutlineTextFieldShape {
-                animationsEnabled: control.__labelAnimationsEnabled
+                animationsEnabled: control.__labelAnimationsEnabled && control.labelAnimationsEnabled
                 borderColor: control.mdState.outlineColor
                 radius: MD.Token.shape.corner.extra_small
                 floatWidth: m_placeholder.implicitWidth + 8

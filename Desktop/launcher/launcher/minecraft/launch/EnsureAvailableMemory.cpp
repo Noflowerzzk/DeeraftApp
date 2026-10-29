@@ -19,6 +19,7 @@
 #include "EnsureAvailableMemory.h"
 
 #include "HardwareInfo.h"
+#include "DesktopBridge.h"
 #include "ui/dialogs/CustomMessageBox.h"
 
 EnsureAvailableMemory::EnsureAvailableMemory(LaunchTask* parent, MinecraftInstance* instance) : LaunchStep(parent), m_instance(instance) {}
@@ -80,31 +81,8 @@ void EnsureAvailableMemory::executeTask()
     const uint64_t max = std::max(settingMin, settingMax);
 
     if (static_cast<double>(max) * 0.9 > static_cast<double>(available)) {
-        bool shouldAbort = false;
-
-        if (m_instance->settings()->get("LowMemWarning").toBool()) {
-            auto* dialog = CustomMessageBox::selectable(
-                nullptr, tr("Low free memory"),
-                tr("There might not be enough free RAM to launch this instance with the current memory settings.\n\n"
-                   "Maximum allocated: %1 MiB\nFree: %2 MiB (out of %3 MiB total)\n\n"
-                   "Launch anyway? This may cause slowdowns in the game and your system.")
-                    .arg(max)
-                    .arg(available)
-                    .arg(HardwareInfo::totalRamMiB()),
-                QMessageBox::Icon::Warning, QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::No,
-                QMessageBox::StandardButton::No);
-
-            shouldAbort = dialog->exec() == QMessageBox::No;
-            dialog->deleteLater();
-        }
-
-        const auto message = tr("Not enough RAM available to launch this instance");
-        if (shouldAbort) {
-            emit logLine(message, MessageLevel::Fatal);
-            emitFailed(message);
-            return;
-        }
-
+        const auto message=tr("可用内存偏低：%1 MiB，实例分配 %2 MiB。可在实例设置中调整内存。").arg(available).arg(max);
+        DesktopBridge::showNotice(message);
         emit logLine(message, MessageLevel::Warning);
     }
 

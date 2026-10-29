@@ -4,4 +4,5 @@ MD.TextField {
     type: MD.Enum.TextFieldOutlined
     font.pixelSize: 14
     selectByMouse: true
+    labelAnimationsEnabled: !library.reducedMotion
 }

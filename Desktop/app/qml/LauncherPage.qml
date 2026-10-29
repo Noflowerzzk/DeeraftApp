@@ -429,10 +429,10 @@ Item {
   MD.MenuItem {text:"离线启动";enabled:!!page.selected;onTriggered:desktop.action("actionLaunchInstanceOffline",page.selected.id)}
   MD.MenuItem {text:"查看日志";onTriggered:page.detailTab=4}
  }
- AppDialog {id:rootsDialog;title:"实例目录";width:Math.min(page.width-40,650);modal:true;standardButtons:Dialog.Close
+ AppDialog {id:rootsDialog;objectName:"rootsDialog";title:"实例目录";width:Math.min(page.width-40,650);modal:true;standardButtons:Dialog.Close
   ColumnLayout {width:parent.width;spacing:12
-   AppLabel { textFormat: Text.PlainText;text:"DeeraftApp";font.weight:Font.DemiBold}
-   Repeater {model:externalGames.roots;RowLayout {required property var modelData;Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;text:modelData.path;Layout.fillWidth:true;elide:Text.ElideMiddle}ActionButton {text:"刷新";flat:true;enabled:!externalGames.scanning;onClicked:externalGames.addRootAsync(modelData.path)}ActionButton {text:"移除目录";flat:true;enabled:!app.allInstances.some(function(row){return row.rootId===modelData.id&&row.running});onClicked:externalGames.removeRoot(modelData.id)}}}
+   AppLabel { textFormat: Text.PlainText;objectName:"rootsHeading";text:"DeeraftApp";color:app.ink;font.weight:Font.DemiBold}
+   Repeater {model:externalGames.roots;RowLayout {required property var modelData;Layout.fillWidth:true;AppLabel { textFormat: Text.PlainText;objectName:"rootDirectoryPath";text:modelData.path;color:app.ink;Layout.fillWidth:true;elide:Text.ElideMiddle}ActionButton {text:"刷新";flat:true;enabled:!externalGames.scanning;onClicked:externalGames.addRootAsync(modelData.path)}ActionButton {text:"移除目录";flat:true;enabled:!app.allInstances.some(function(row){return row.rootId===modelData.id&&row.running});onClicked:externalGames.removeRoot(modelData.id)}}}
    AppLabel {text:externalGames.error;visible:!!text;Layout.fillWidth:true;wrapMode:Text.Wrap;color:app.colors.error}
    ActionButton {text:"添加实例目录";symbol:"add";enabled:!externalGames.scanning;onClicked:{var path=desktop.chooseDirectory();if(path)externalGames.addRootAsync(path)}}
   }

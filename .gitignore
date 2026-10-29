@@ -17,3 +17,5 @@ __pycache__/
 *.deeraft-tmp
 .data/
 .oil-ui/
+
+Desktop/.secrets/

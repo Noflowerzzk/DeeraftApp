@@ -48,3 +48,5 @@ endif()
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
  set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/Launcher_logic_autogen/mocs_compilation.cpp" PROPERTIES COMPILE_OPTIONS "-O1")
 endif()
+
+target_sources(Launcher_logic PRIVATE "${DEERAFT_APP_DIR}/update/AppUpdater.cpp" "${DEERAFT_APP_DIR}/update/AppUpdater.h")

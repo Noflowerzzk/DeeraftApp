@@ -77,7 +77,7 @@ void NetRequest::addValidator(Validator* v)
 void NetRequest::executeTask()
 {
 #if defined(LAUNCHER_APPLICATION)
-    if (!m_deeraftSourceSelected && dynamic_cast<Download*>(this) && std::all_of(m_headerProxies.begin(),m_headerProxies.end(),[](const auto& proxy){return dynamic_cast<ApiHeaderProxy*>(proxy.get())!=nullptr;})) {
+    if ((!m_deeraftSourceSelected || (m_deeraftOriginalUrl.isEmpty() && getState()==State::Running)) && dynamic_cast<Download*>(this) && std::all_of(m_headerProxies.begin(),m_headerProxies.end(),[](const auto& proxy){return dynamic_cast<ApiHeaderProxy*>(proxy.get())!=nullptr;})) {
         m_deeraftSourceSelected = true;
         m_deeraftOriginalUrl = m_url;
         m_url = DownloadSources::mirror(m_url);
@@ -133,7 +133,7 @@ void NetRequest::executeTask()
 #if defined(LAUNCHER_APPLICATION)
     auto timeout=APPLICATION->settings()->get("RequestTimeout").toInt()*1000;
     // In automatic mode an idle mirror should hand off promptly to the official URL.
-    if(DownloadSources::currentMode()==0&&m_url!=m_deeraftOriginalUrl&&timeout>10000)timeout=10000;
+    if(DownloadSources::currentMode()==0&&(m_url!=m_deeraftOriginalUrl||DownloadSources::mirror(m_url)!=m_url)&&timeout>15000)timeout=15000;
     request.setTransferTimeout(timeout);
 #else
     request.setTransferTimeout();

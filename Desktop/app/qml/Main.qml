@@ -36,11 +36,12 @@ MD.Pane {
  property string externalLog: ""
  property bool showCompletedTasks:false
  property var visibleTasks:{
-  var rows=desktop.tasks.filter(function(task){return root.showCompletedTasks||task.state==="进行中"||task.state==="失败"}).map(function(task){return Object.assign({canStop:false,canUploadCancel:false,instanceId:"",icon:"download"},task)});
+  var rows=desktop.tasks.filter(function(task){return root.showCompletedTasks||task.state==="进行中"}).map(function(task){return Object.assign({canStop:false,canUploadCancel:false,instanceId:"",icon:"download"},task)});
   allInstances.filter(function(instance){return instance.running}).forEach(function(instance){rows.unshift({id:"instance:"+instance.id,name:instance.name,status:"实例运行中",state:"进行中",icon:"stadia_controller",current:0,total:0,error:"",canCancel:false,canStop:true,canUploadCancel:false,instanceId:instance.id})});
   if(externalGames.scanning)rows.unshift({id:"catalog:scan",name:"检查实例目录",icon:"folder_managed",status:"读取实例信息",state:"进行中",current:0,total:0,error:"",canCancel:false,canStop:false,canUploadCancel:false,instanceId:""});
    if(communityClient.busy&&!communityClient.uploading)rows.push({id:"community:request",name:"社区请求",icon:"cloud_sync",status:"运行中",state:"进行中",current:0,total:0,error:"",canCancel:false,canStop:false,canUploadCancel:false,instanceId:""});
   if(communityClient.uploading)rows.unshift({id:"community:upload",name:"上传服务器",icon:"upload",status:"上传中",state:"进行中",current:communityClient.uploadProgress,total:1,error:"",canCancel:false,canStop:false,canUploadCancel:true,instanceId:""});
+  if(appUpdater.busy)rows.unshift({id:"app:update",name:"DeeraftApp 更新",icon:"system_update",status:appUpdater.status,state:"进行中",current:appUpdater.progress,total:appUpdater.progress>0?1:0,error:"",canCancel:false,canStop:false,canUploadCancel:false,instanceId:""});
   return rows;
  }
  property int activeTaskCount:visibleTasks.filter(function(task){return task.state==="进行中"}).length
@@ -74,7 +75,7 @@ MD.Pane {
  function duration(minutes) { return Number(minutes||0)<60 ? Math.round(Number(minutes||0))+" 分钟" : (Number(minutes)/60).toFixed(1)+" 小时" }
  function showSettings(){ settings.open() }
  function closeSettings(){ settings.close() }
- function notify(text){notifications.show(String(text), 5000)}
+ function notify(text){notifications.show(String(text), 6000)}
  function entryKey(row){ return row.id || "" }
  function meta(row){ return library.metadata[entryKey(row)] || ({}) }
  function findInstance(key){for(var i=0;i<allInstances.length;i++)if(allInstances[i].id===key)return allInstances[i];return null}
@@ -83,6 +84,7 @@ MD.Pane {
  function associate(key,address){associationKey=key;associationPersonal=library.servers.some(function(s){return s.id===key});associationAddress=serverAddress(key,address);associationAddressField.text=associationAddress;associationChoice.currentIndex=Math.max(0,associationChoice.model.findIndex(function(r){return r.id===library.links[key]}));associationDialog.open()}
  function start(row,address){if(!row)return;if(row.running){notify("该实例正在运行");return}if(row.external){externalLog="";desktop.launchExternal(row.rootId,row.versionId,address||"",meta(row).javaPath||"")}else desktop.launchInstance(row.id,address||"")}
  function joinServer(key,address){address=serverAddress(key,address);var row=findInstance(library.links[key]||"");if(!row){associate(key,address);return}launcher.selectInstance(row.id);page=1;start(row,address)}
+ Connections {target:appUpdater;function onNotice(message){root.notify(message)}}
  Connections {target:externalLauncher
   function onLogLine(line){root.externalLog=(root.externalLog+line+"\n").slice(-262144)}
   function onErrorChanged(){if(externalLauncher.error)root.notify(externalLauncher.error)}
@@ -91,7 +93,7 @@ MD.Pane {
  Connections { target: communityClient; function onActivityReceived(player,instance){root.notify(player+" 启动了 "+instance)}
  function onOperationFailed(operation,message){root.notify(message)}
  function onOperationFinished(operation,result){var labels={start:"服务器已启动",stop:"服务器已停止",backup:"备份已创建",restore:"备份已恢复",update:"服务器已保存",delete:"服务器已删除",upload:"服务器已上传",avatar:"头像已更新",cover:"封面已更新"};if(labels[operation])root.notify(labels[operation])} }
- Connections { target: desktop; function onTaskCenterRequested(){tasksDrawer.open()} function onGameStarted(name,version){communityClient.reportGameStarted(name,version);if(!communityClient.authenticated)root.notify(name+" 已启动") } function onChanged(){if(desktop.error && desktop.error!==root.seenDesktopError)root.notify(desktop.error);root.seenDesktopError=desktop.error} }
+ Connections { target: desktop; function onNotice(message){root.notify(message)} function onTaskCenterRequested(){tasksDrawer.open()} function onGameStarted(name,version){communityClient.reportGameStarted(name,version);if(!communityClient.authenticated)root.notify(name+" 已启动") } function onChanged(){if(desktop.error && desktop.error!==root.seenDesktopError)root.notify(desktop.error);root.seenDesktopError=desktop.error} }
  Connections { target: library; function onChanged(){if(library.error && library.error!==root.seenLibraryError)root.notify(library.error);root.seenLibraryError=library.error} }
  Connections { target: externalGames; function onImportFailed(path,message){root.notify(message)} function onImportFinished(path,count){root.notify("已读取 "+count+" 个实例")} }
  Shortcut { sequence: "Ctrl+K"; onActivated: {root.page=1;launcher.focusSearch()} }
@@ -159,6 +161,7 @@ MD.Pane {
        spacing: 16
        IconButton { visible: root.displayedPage===3; symbol: "arrow_back"; hint: "返回社区"; onClicked: root.page=0 }
        AppLabel { text: root.pageTitle; font.pixelSize: 32; lineHeight: 42; font.weight: 600; font.letterSpacing: -.5; color: root.ink; Layout.fillWidth: true }
+       MD.BusyIndicator {objectName:"activeTasksLoading";running:root.activeTaskCount>0&&!library.reducedMotion;visible:root.activeTaskCount>0;indicatorSize:32;Layout.preferredWidth:40;Layout.preferredHeight:40;colors:[root.accent];Accessible.name:"任务运行中"}
        IconButton { objectName:"taskCenterButton";symbol: "assignment"; hint: "任务中心"; onClicked: tasksDrawer.open()
          MD.Badge { visible:root.activeTaskCount>0; anchors.right: parent.right; anchors.top: parent.top; text:root.activeTaskCount }
        }
@@ -198,7 +201,7 @@ MD.Pane {
  MD.SideSheetDialog {id:tasksDrawer;objectName:"downloadTasks";edge:MD.SideSheetBase.End;sheetWidth:Math.min(root.width-60,440);animationsEnabled:!library.reducedMotion
    ColumnLayout {anchors.fill:parent;anchors.margins:24;spacing:20
      RowLayout {Layout.fillWidth:true;AppLabel {objectName:"taskCenterTitle";color:root.ink;textFormat: Text.PlainText;text:"任务中心";font.pixelSize:24;Layout.fillWidth:true}IconButton {symbol:"close";hint:"关闭";onClicked:tasksDrawer.close()}}
-     ActionButton {text:root.showCompletedTasks?"收起已结束任务":"显示已结束任务";flat:true;visible:desktop.tasks.some(function(task){return task.state!=="进行中"&&task.state!=="失败"});onClicked:root.showCompletedTasks=!root.showCompletedTasks}
+     ActionButton {text:root.showCompletedTasks?"收起已结束任务":"显示已结束任务";flat:true;visible:desktop.tasks.some(function(task){return task.state!=="进行中"});onClicked:root.showCompletedTasks=!root.showCompletedTasks}
      AppLabel { textFormat: Text.PlainText;visible:root.visibleTasks.length===0;text:"暂无进行中的任务";color:root.muted}
      ListView {Layout.fillWidth:true;Layout.fillHeight:true;model:taskRows;clip:true;spacing:20
        delegate:ColumnLayout {
@@ -210,7 +213,7 @@ MD.Pane {
           AppLabel {text:modelData.name||"任务";color:root.ink;font.weight:600;wrapMode:Text.Wrap;Layout.fillWidth:true;Layout.row:0;Layout.column:1;Layout.alignment:Qt.AlignVCenter}
           MD.CircularIndicator {objectName:modelData.canStop?"runningTaskProgress":"taskProgress";completionBehavior:MD.CircularIndicator.Keep;strokeWidth:3;wavy:true;color:root.accent;inactiveColor:root.colors.outlineVariant;animationsEnabled:!library.reducedMotion;from:0;to:Math.max(1,modelData.total);value:modelData.current;indeterminate:modelData.total<=0&&modelData.state==="进行中";visible:modelData.state==="进行中"||modelData.total>0;Layout.row:0;Layout.column:2;Layout.preferredWidth:48;Layout.preferredHeight:48;Accessible.name:modelData.name+" "+modelData.state}
           AppLabel {text:modelData.canStop?"运行中":modelData.state;Layout.fillWidth:true;Layout.row:1;Layout.column:1;color:root.muted;font.pixelSize:13}
-          AppLabel {text:Math.min(100,Math.round(100*modelData.current/Math.max(1,modelData.total)))+"%";visible:modelData.total>0;color:root.muted;font.pixelSize:13;Layout.row:1;Layout.column:2;Layout.alignment:Qt.AlignHCenter}
+          AppLabel {objectName:"taskPercentage";text:Math.min(100,Math.round(100*modelData.current/Math.max(1,modelData.total)))+"%";visible:modelData.total>0;color:root.muted;font.pixelSize:13;Layout.row:1;Layout.column:2;Layout.alignment:Qt.AlignHCenter}
           AppLabel {text:modelData.error||(/https?:\/\//.test(modelData.status||"")?modelData.current>0?"下载中":"正在请求资源":modelData.status||"");visible:!!text&&(modelData.state==="进行中"||!!modelData.error);Layout.row:2;Layout.column:1;Layout.columnSpan:2;Layout.fillWidth:true;maximumLineCount:2;elide:Text.ElideRight;wrapMode:Text.Wrap;color:root.muted;font.pixelSize:13;MD.ToolTip.text:modelData.status||""}
          }
          ActionButton {objectName:modelData.canCancel?"cancelDownload":"";text:"取消";visible:modelData.canCancel;Layout.leftMargin:36;onClicked:desktop.cancelTask(modelData.id)}
@@ -220,7 +223,7 @@ MD.Pane {
      }
    }
  }
- MD.SnakeView {
+ AppNotifications {
    id: notifications
    anchors.right: parent.right
    anchors.bottom: parent.bottom

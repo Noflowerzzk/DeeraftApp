@@ -24,7 +24,7 @@ AppDialog {
                 AppTextField { visible: modelData.type!=="正版登录" && modelData.type!=="离线登录"; text: modelData.type; placeholderText: "登录站点名称"; Layout.preferredWidth: 140; onEditingFinished: desktop.setAccountLabel(modelData.uuid,text) }
             } }
             RowLayout { Layout.fillWidth: true
-                AppTextField { id: offlineName; placeholderText: "离线玩家名"; Layout.fillWidth: true }
+                AppTextField { id: offlineName;objectName:"offlinePlayerName"; placeholderText: "离线玩家名"; Layout.fillWidth: true }
                 ActionButton { text: "添加"; onClicked: { desktop.addOfflineAccount(offlineName.text); offlineName.clear() } }
             }
             AppLabel { color:app.ink;textFormat: Text.PlainText; text: desktop.error; visible: text.length > 0; wrapMode: Text.Wrap; Layout.fillWidth: true }
@@ -48,7 +48,16 @@ AppDialog {
                 ActionButton { text: "启动器日志"; flat: true; onClicked: desktop.action("actionViewLog") }
                 ActionButton { text: "关于"; flat: true; onClicked: desktop.action("actionAbout") }
             }
-            AppLabel { color:app.ink;textFormat: Text.PlainText; text: "DeeraftApp · Prism 11.1.1" }
+            AppLabel {color:app.ink;text:"应用更新";font.pixelSize:20}
+            AppLabel {color:app.muted;text:"DeeraftApp "+appUpdater.version+" · Prism 11.1.1"}
+            RowLayout {Layout.fillWidth:true;AppLabel {text:"自动检查更新";color:app.ink;Layout.fillWidth:true}MD.Switch {checked:appUpdater.automatic;onCheckedChangeRequested:function(value){appUpdater.automatic=value}}}
+            AppLabel {color:app.muted;text:appUpdater.status;visible:!!text;Layout.fillWidth:true;wrapMode:Text.Wrap}
+            RowLayout {
+                ActionButton {text:"检查更新";enabled:!appUpdater.busy;onClicked:appUpdater.check()}
+                ActionButton {text:"下载更新";visible:appUpdater.available&&!appUpdater.ready;enabled:!appUpdater.busy;onClicked:appUpdater.download()}
+                ActionButton {text:"重启并安装";visible:appUpdater.ready;highlighted:true;onClicked:appUpdater.install(app.allInstances.some(function(row){return row.running}))}
+                ActionButton {text:"取消";visible:appUpdater.busy;onClicked:appUpdater.cancel()}
+            }
         }
     }
     AppDialog {

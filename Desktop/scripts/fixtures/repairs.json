@@ -1,7 +1,106 @@
 {
-  "instances": [{"id":"nacreate","name":"NaCreate","version":"1.20.1","loader":"Fabric 0.16.14","icon":"grass","source":"native","sourcePath":"F:/Example/instances","group":"整合包","seconds":590760,"maxMemory":4096,"external":false,"valid":true,"running":false,"lastPlayed":"昨天"}],
-  "profile":{"username":"测试玩家","role":"admin"},
-  "community":{"mc":{"motd":"测试服务器","version":"Paper 26.3","online_count":3,"latency_ms":11,"human_players":["Alex","Steve","Test"],"players":["Alex","Steve","Test"]},"kook":{"name":"Deeraft","channels":[{"name":"Minecraft","users":[]},{"name":"其他游戏","users":[]}]}},
-  "servers":[{"name":"NaCreate","version":"1.20.1","is_running":true,"online_players":3},{"name":"CTF_s2","version":"1.21.4","is_running":false,"online_players":0}],
-  "chat":[],"activity":[],"playtime":[{"server":"NaCreate","total_hours":164.1}],"dailyDate":"2026-10-28","daily":[],"dailyWeek":[],"liveRooms":[]
+  "instances": [
+    {
+      "id": "nacreate",
+      "name": "NaCreate",
+      "version": "1.20.1",
+      "loader": "Fabric 0.16.14",
+      "icon": "grass",
+      "source": "native",
+      "sourcePath": "F:/Example/instances",
+      "group": "整合包",
+      "seconds": 590760,
+      "maxMemory": 4096,
+      "external": false,
+      "valid": true,
+      "running": false,
+      "lastPlayed": "昨天"
+    }
+  ],
+  "profile": {
+    "username": "测试玩家",
+    "role": "admin"
+  },
+  "community": {
+    "mc": {
+      "motd": "测试服务器",
+      "version": "Paper 26.3",
+      "online_count": 3,
+      "latency_ms": 11,
+      "human_players": [
+        "Alex",
+        "Steve",
+        "Test"
+      ],
+      "players": [
+        "Alex",
+        "Steve",
+        "Test"
+      ]
+    },
+    "kook": {
+      "name": "Deeraft",
+      "channels": [
+        {
+          "name": "Minecraft",
+          "users": []
+        },
+        {
+          "name": "其他游戏",
+          "users": []
+        }
+      ]
+    }
+  },
+  "servers": [
+    {
+      "name": "NaCreate",
+      "version": "1.20.1",
+      "is_running": true,
+      "online_players": 3
+    },
+    {
+      "name": "CTF_s2",
+      "version": "1.21.4",
+      "is_running": false,
+      "online_players": 0
+    }
+  ],
+  "chat": [
+    {
+      "type": "join",
+      "player": "Alex",
+      "time": "14:00",
+      "message": ""
+    },
+    {
+      "type": "chat",
+      "player": "Alex",
+      "time": "14:01",
+      "message": "服务器准备好了。"
+    },
+    {
+      "type": "chat",
+      "player": "Steve",
+      "time": "14:02",
+      "message": "稍后上线。"
+    },
+    {
+      "type": "leave",
+      "player": "Test",
+      "time": "14:03",
+      "message": ""
+    }
+  ],
+  "activity": [],
+  "playtime": [
+    {
+      "server": "NaCreate",
+      "total_hours": 164.1
+    }
+  ],
+  "dailyDate": "2026-10-28",
+  "daily": [],
+  "dailyWeek": [],
+  "liveRooms": []
 }

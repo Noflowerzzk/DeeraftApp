@@ -7,6 +7,7 @@
 Q_IMPORT_QML_PLUGIN(Qcm_MaterialPlugin)
 Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
 #include "DesktopBridge.h"
+#include "update/AppUpdater.h"
 #include "library/DesktopLibrary.h"
 #include "net/ApiDownload.h"
 #include "net/ChecksumValidator.h"
@@ -55,6 +56,7 @@ Q_IMPORT_QML_PLUGIN(Qcm_Material_LayoutsPlugin)
 #include <QPainter>
 #include <functional>
 #include "DesktopPolishProbe.h"
+#include "DesktopFeedbackProbe.h"
 #include "DesktopLaunchAudit.h"
 
 class InstanceIcons final : public QQuickImageProvider {
@@ -145,6 +147,7 @@ void installDeeraftShell(MainWindow* window){
     QObject::connect(external,&Deeraft::ExternalGameCatalog::versionsChanged,bridge,&DesktopBridge::loadInstanceDirectories);
     host->setExternalLauncher(launcher);
     auto externalAccounts=new ExternalAccountController(APPLICATION->dataRoot()+"/auth",window);
+    auto updater=new AppUpdater(APPLICATION->dataRoot(),window);
     auto sources=new DownloadSources(APPLICATION->dataRoot(),window);
     auto quick=new QQuickView;
     quick->setResizeMode(QQuickView::SizeRootObjectToView);
@@ -160,6 +163,7 @@ void installDeeraftShell(MainWindow* window){
     context->setContextProperty("externalLauncher",launcher);
     context->setContextProperty("externalAccounts",externalAccounts);
     context->setContextProperty("downloadSources",sources);
+    context->setContextProperty("appUpdater",updater);
     const QString visualFixture=qEnvironmentVariable("DEERAFT_SMOKE_DIR").isEmpty()?QString():qEnvironmentVariable("DEERAFT_DESIGN_FIXTURE");
     QJsonObject fixtureData;
     if(!visualFixture.isEmpty()) {
@@ -208,7 +212,12 @@ void installDeeraftShell(MainWindow* window){
         auto click=[quick,item](const char* name){if(auto target=item(name)){auto point=target->mapToItem(quick->rootObject(),QPointF(target->width()/2,target->height()/2));QMouseEvent press(QEvent::MouseButtonPress,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::LeftButton,Qt::NoModifier);QApplication::sendEvent(quick,&press);QMouseEvent release(QEvent::MouseButtonRelease,point,quick->mapToGlobal(point.toPoint()),Qt::LeftButton,Qt::NoButton,Qt::NoModifier);QApplication::sendEvent(quick,&release);}};
         auto escape=[quick]{QKeyEvent press(QEvent::KeyPress,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&press);QKeyEvent release(QEvent::KeyRelease,Qt::Key_Escape,Qt::NoModifier);QApplication::sendEvent(quick,&release);};
         const auto importDirectory=qEnvironmentVariable("DEERAFT_IMPORT_DIRECTORY");
+        if(qEnvironmentVariable("DEERAFT_UPDATE_PROBE")=="1"){
+            QObject::connect(updater,&AppUpdater::changed,window,[updater,smoke]{if(updater->busy()||updater->status().isEmpty())return;const bool ok=updater->latest()==updater->version()&&!updater->available();QSaveFile file(smoke+"/update-check.json");if(file.open(QIODevice::WriteOnly)){file.write(QJsonDocument(QJsonObject{{"success",ok},{"version",updater->version()},{"latest",updater->latest()},{"status",updater->status()},{"automatic",updater->automatic()},{"kernel","11.1.1"}}).toJson());file.commit();}qApp->exit(ok?0:1);});
+            QTimer::singleShot(0,updater,&AppUpdater::check);QTimer::singleShot(20000,window,[]{qApp->exit(2);});return;
+        }
         if(startDesktopLaunchAudit(bridge,external,window,smoke))return;
+        if(startFeedbackProbe(quick,bridge,external,window,smoke))return;
         if(startPolishProbe(quick,host,bridge,external,window,smoke))return;
         if(!importDirectory.isEmpty()){
             auto elapsed=std::make_shared<QElapsedTimer>();auto pulse=std::make_shared<QElapsedTimer>();

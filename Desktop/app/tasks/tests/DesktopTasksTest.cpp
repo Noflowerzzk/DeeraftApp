@@ -1,4 +1,10 @@
 #include <QtTest>
+#include "update/AppUpdater.h"
+#include "download/DownloadSources.h"
+#include <openssl/evp.h>
+#include <openssl/pem.h>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include <QNetworkAccessManager>
 #include "tasks/ConcurrentTask.h"
 #include "net/NetJob.h"
@@ -17,6 +23,7 @@
 class WaitingTask final:public Task {
 public:
  bool started=false;
+ void complete(){emitSucceeded();}
  bool canAbort()const override{return true;}
  bool abort()override{if(isRunning())emitAborted();return true;}
 protected:
@@ -25,6 +32,45 @@ protected:
 class DesktopTasksTest:public QObject {
  Q_OBJECT
 private slots:
+ void updatesUseVerifiedDownloadsAndCancelSafely(){
+  QTemporaryDir directory;{QSettings settings(directory.filePath("desktop.ini"),QSettings::IniFormat);settings.setValue("updates/automatic",false);}
+  QTcpServer server;QVERIFY(server.listen(QHostAddress::LocalHost));
+  const QByteArray artifact="isolated installer bytes";bool corrupt=false,stall=false;int requested=0;
+  const auto url=QString("http://127.0.0.1:%1/downloads/windows/test.exe").arg(server.serverPort());
+  const auto payload=QJsonDocument(QJsonObject{{"version","0.6.1"},{"kernel","11.1.1"},{"platform","windows-x64"},{"sha256",QString::fromLatin1(QCryptographicHash::hash(artifact,QCryptographicHash::Sha256).toHex())},{"size",artifact.size()},{"url",url}}).toJson(QJsonDocument::Compact);
+  auto key=EVP_PKEY_Q_keygen(nullptr,nullptr,"ED25519");QVERIFY(key);auto bio=BIO_new(BIO_s_mem());PEM_write_bio_PUBKEY(bio,key);char* pointer=nullptr;auto length=BIO_get_mem_data(bio,&pointer);QByteArray publicKey(pointer,length);BIO_free(bio);
+  auto context=EVP_MD_CTX_new();EVP_DigestSignInit(context,nullptr,nullptr,nullptr,key);size_t size=64;QByteArray signature(64,0);QVERIFY(EVP_DigestSign(context,reinterpret_cast<unsigned char*>(signature.data()),&size,reinterpret_cast<const unsigned char*>(payload.constData()),payload.size())==1);EVP_MD_CTX_free(context);EVP_PKEY_free(key);
+  const auto envelope=QJsonDocument(QJsonObject{{"payload",QString::fromLatin1(payload.toBase64())},{"signature",QString::fromLatin1(signature.toBase64())}}).toJson();
+  connect(&server,&QTcpServer::newConnection,this,[&]{while(server.hasPendingConnections()){auto socket=server.nextPendingConnection();connect(socket,&QTcpSocket::readyRead,socket,[&,socket]{auto request=socket->readAll();if(socket->property("sent").toBool())return;socket->setProperty("sent",true);++requested;if(stall)return;const auto body=request.contains("latest.json")?envelope:corrupt?QByteArray(artifact.size(),'x'):artifact;socket->write("HTTP/1.1 200 OK\r\nContent-Length: "+QByteArray::number(body.size())+"\r\nConnection: close\r\n\r\n"+body);socket->disconnectFromHost();});connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);}});
+  AppUpdater updater(directory.path());updater.m_channelUrl=QUrl(QString("http://127.0.0.1:%1/downloads/windows/latest.json").arg(server.serverPort()));updater.m_testPublicKey=publicKey;
+  updater.check();QTRY_VERIFY_WITH_TIMEOUT(!updater.busy(),5000);QVERIFY(updater.available());QCOMPARE(updater.latest(),QString("0.6.1"));updater.download();QTRY_VERIFY_WITH_TIMEOUT(!updater.busy(),5000);QVERIFY(updater.ready());
+  QFile installed(updater.m_installer);QVERIFY(installed.open(QIODevice::ReadOnly));QCOMPARE(installed.readAll(),artifact);installed.close();
+  QSignalSpy notices(&updater,&AppUpdater::notice);updater.install(true);QCOMPARE(notices.count(),1);QVERIFY(notices.first().first().toString().contains(QStringLiteral("结束游戏")));
+  corrupt=true;updater.download();QTRY_VERIFY_WITH_TIMEOUT(!updater.busy(),5000);QVERIFY(!updater.ready());QVERIFY(updater.status().contains(QStringLiteral("校验失败")));
+  stall=true;const auto before=requested;updater.download();QTRY_VERIFY_WITH_TIMEOUT(requested>before,5000);updater.cancel();QTRY_VERIFY_WITH_TIMEOUT(!updater.busy(),5000);QVERIFY(!updater.ready());QVERIFY(!QFileInfo::exists(directory.filePath("updates/DeeraftApp-0.6.1-setup.exe")));
+ }
+ void signedUpdatesRejectTampering(){
+  auto key=EVP_PKEY_Q_keygen(nullptr,nullptr,"ED25519");QVERIFY(key);
+  auto bio=BIO_new(BIO_s_mem());QVERIFY(PEM_write_bio_PUBKEY(bio,key));char* data=nullptr;auto size=BIO_get_mem_data(bio,&data);const QByteArray publicKey(data,size);BIO_free(bio);
+  const auto payload=QJsonDocument(QJsonObject{{"version","0.6.1"},{"kernel","11.1.1"},{"platform","windows-x64"},{"sha256",QString(64,'a')},{"size",1024},{"url","http://mc.ainfinitythecoder.cn/downloads/windows/test.exe"}}).toJson(QJsonDocument::Compact);
+  auto context=EVP_MD_CTX_new();QVERIFY(EVP_DigestSignInit(context,nullptr,nullptr,nullptr,key)==1);size_t length=64;QByteArray signature(64,0);QVERIFY(EVP_DigestSign(context,reinterpret_cast<unsigned char*>(signature.data()),&length,reinterpret_cast<const unsigned char*>(payload.constData()),payload.size())==1);EVP_MD_CTX_free(context);EVP_PKEY_free(key);
+  auto envelope=QJsonObject{{"payload",QString::fromLatin1(payload.toBase64())},{"signature",QString::fromLatin1(signature.toBase64())}};
+  QVERIFY(!AppUpdater::verifyManifest(QJsonDocument(envelope).toJson(),publicKey).isEmpty());
+  envelope["payload"]=QString::fromLatin1((payload+" ").toBase64());QVERIFY(AppUpdater::verifyManifest(QJsonDocument(envelope).toJson(),publicKey).isEmpty());
+  envelope["payload"]=QString::fromLatin1(payload.toBase64());signature[0]^=1;envelope["signature"]=QString::fromLatin1(signature.toBase64());QVERIFY(AppUpdater::verifyManifest(QJsonDocument(envelope).toJson(),publicKey).isEmpty());
+ }
+ void loaderMirrorsUseDocumentedRepositories(){
+  QTemporaryDir directory;DownloadSources sources(directory.path());sources.setMode(0);
+  QCOMPARE(DownloadSources::mirror(QUrl("https://maven.fabricmc.net/net/fabricmc/test.jar")),QUrl("https://bmclapi2.bangbang93.com/maven/net/fabricmc/test.jar"));
+  QCOMPARE(DownloadSources::mirror(QUrl("https://maven.quiltmc.org/repository/release/org/quiltmc/test.jar")),QUrl("https://bmclapi2.bangbang93.com/maven/org/quiltmc/test.jar"));
+  QCOMPARE(DownloadSources::mirror(QUrl("https://maven.neoforged.net/releases/net/neoforged/test.jar")),QUrl("https://bmclapi2.bangbang93.com/maven/net/neoforged/test.jar"));
+  QCOMPARE(DownloadSources::mirror(QUrl("http://files.minecraftforge.net/maven/net/minecraftforge/test.jar")),QUrl("https://bmclapi2.bangbang93.com/maven/net/minecraftforge/test.jar"));
+  QCOMPARE(DownloadSources::mirror(QUrl("https://login.live.com/token")),QUrl("https://login.live.com/token"));sources.setMode(2);
+  QCOMPARE(DownloadSources::mirror(QUrl("https://maven.fabricmc.net/test.jar")),QUrl("https://maven.fabricmc.net/test.jar"));
+ }
+ void jobCountsAreStoredForTaskCenter(){
+  QNetworkAccessManager network;NetJob job("progress",&network,1);auto first=makeShared<WaitingTask>(),second=makeShared<WaitingTask>();job.addTask(first);job.addTask(second);job.start();QTRY_VERIFY(first->started);first->complete();QTRY_VERIFY(second->started);QCOMPARE(job.getProgress(),qint64(1));QCOMPARE(job.getTotalProgress(),qint64(2));second->complete();QTRY_COMPARE(job.getState(),Task::State::Succeeded);QCOMPARE(job.getProgress(),qint64(2));
+ }
  void externalResourcesStayInTheirOriginalDirectory(){
   QTemporaryDir dir;
   auto put=[](const QString& path,const QByteArray& bytes){QDir().mkpath(QFileInfo(path).absolutePath());QFile file(path);if(file.open(QIODevice::WriteOnly))file.write(bytes);};

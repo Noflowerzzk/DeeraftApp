@@ -39,13 +39,17 @@ MD.Shape {
         }
     ]
 
+    MD.Shape {
+      x:m_p.strokeWidth/2; y:m_p.strokeWidth/2
+      width:root.width-m_p.strokeWidth; height:root.height-m_p.strokeWidth
+      preferredRendererType: Shape.GeometryRenderer
     MD.RoundPath {
         id: m_p
         strokeWidth: 1
         strokeColor: "black"
         fillColor: "transparent"
-        width: root.width
-        height: root.height
+        width: Math.max(0, root.width - strokeWidth)
+        height: Math.max(0, root.height - strokeWidth)
         corners: MD.Util.corners(root.radius)
         startX: Math.max(m_p.corners.topLeft, root.openX) + root.openWidth
 
@@ -54,5 +58,6 @@ MD.Shape {
             x: Math.max(m_p.corners.topLeft, root.openX)
             y: 0
         }
+    }
     }
 }
